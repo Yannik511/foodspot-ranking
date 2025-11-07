@@ -1,0 +1,640 @@
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../services/supabase'
+
+function CreateList() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  
+  // Get category from URL parameter
+  const categoryParam = searchParams.get('category')
+  const selectedCategory = categoryParam === 'all' ? null : (categoryParam || null)
+
+  // Form state
+  const [formData, setFormData] = useState({
+    list_name: '',
+    city: '',
+    description: '',
+    category: selectedCategory,
+    coverImageUrl: null,
+    coverImageFile: null,
+  })
+  
+  // If no category parameter, redirect to category selection
+  useEffect(() => {
+    if (!categoryParam) {
+      navigate('/select-category')
+    }
+  }, [categoryParam, navigate])
+
+  // Validation state
+  const [errors, setErrors] = useState({})
+  const [validationState, setValidationState] = useState({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [toast, setToast] = useState(null)
+
+  // City dropdown state
+  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false)
+  const [citySearchTerm, setCitySearchTerm] = useState('')
+  const cityDropdownRef = useRef(null)
+  const cityInputRef = useRef(null)
+
+  // City suggestions - German cities + European capitals/metropolitan areas
+  const allCities = useMemo(() => {
+    const cities = [
+      // German cities
+      'München', 'Berlin', 'Hamburg', 'Frankfurt', 'Köln', 'Stuttgart', 
+      'Düsseldorf', 'Dortmund',
+      // European capitals and metropolitan areas
+      'Amsterdam', 'Barcelona', 'Brussels', 'Budapest', 'Copenhagen', 'Dublin',
+      'Lisbon', 'London', 'Madrid', 'Milan', 'Oslo', 'Paris', 'Prague', 
+      'Rome', 'Stockholm', 'Vienna', 'Warsaw', 'Zurich'
+    ]
+    // Remove duplicates and sort alphabetically
+    return [...new Set(cities)].sort((a, b) => {
+      // Normalize for German umlauts
+      const normalize = (str) => str
+        .toLowerCase()
+        .replace(/ä/g, 'ae')
+        .replace(/ö/g, 'oe')
+        .replace(/ü/g, 'ue')
+      return normalize(a).localeCompare(normalize(b), 'de')
+    })
+  }, [])
+
+  // Filtered cities based on search term
+  const filteredCities = useMemo(() => {
+    if (!citySearchTerm.trim()) return allCities
+    const search = citySearchTerm.toLowerCase()
+    return allCities.filter(city => 
+      city.toLowerCase().includes(search) ||
+      city.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').includes(search)
+    )
+  }, [citySearchTerm, allCities])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        cityDropdownRef.current &&
+        !cityDropdownRef.current.contains(event.target) &&
+        cityInputRef.current &&
+        !cityInputRef.current.contains(event.target)
+      ) {
+        setIsCityDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Auto-save to localStorage
+  useEffect(() => {
+    if (formData.list_name || formData.city || formData.description) {
+      localStorage.setItem('createListDraft', JSON.stringify({
+        list_name: formData.list_name,
+        city: formData.city,
+        description: formData.description,
+      }))
+    }
+  }, [formData.list_name, formData.city, formData.description])
+
+  // Load draft from localStorage
+  useEffect(() => {
+    const savedData = localStorage.getItem('createListDraft')
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData)
+        setFormData(prev => ({ ...prev, ...parsed }))
+        if (parsed.city) {
+          setCitySearchTerm(parsed.city)
+        }
+      } catch (e) {
+        console.error('Error loading draft:', e)
+      }
+    }
+  }, [])
+
+  // Validate form
+  const validateForm = () => {
+    const newErrors = {}
+    const newValidationState = {}
+
+    // Name validation
+    if (!formData.list_name.trim()) {
+      newErrors.list_name = 'Listenname ist erforderlich'
+      newValidationState.list_name = 'error'
+    } else if (formData.list_name.length < 3) {
+      newErrors.list_name = 'Mindestens 3 Zeichen erforderlich'
+      newValidationState.list_name = 'error'
+    } else {
+      newValidationState.list_name = 'valid'
+    }
+
+    // City validation
+    if (!formData.city.trim()) {
+      newErrors.city = 'Stadt ist erforderlich'
+      newValidationState.city = 'error'
+    } else {
+      newValidationState.city = 'valid'
+    }
+
+    setErrors(newErrors)
+    setValidationState(newValidationState)
+    return Object.keys(newErrors).length === 0
+  }
+
+  // Handle input change
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+    if (errors[field]) {
+      setErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors[field]
+        return newErrors
+      })
+    }
+  }
+
+  // Handle city input change
+  const handleCityInputChange = (value) => {
+    setCitySearchTerm(value)
+    handleInputChange('city', value)
+    setIsCityDropdownOpen(true)
+  }
+
+  // Handle city input focus
+  const handleCityFocus = () => {
+    // If there's a city value, use it as search term; otherwise show all cities
+    if (formData.city && !citySearchTerm) {
+      setCitySearchTerm(formData.city)
+    }
+    setIsCityDropdownOpen(true)
+  }
+
+  // Handle city selection from dropdown
+  const handleCitySelect = (city) => {
+    handleInputChange('city', city)
+    setCitySearchTerm('')
+    setIsCityDropdownOpen(false)
+    if (cityInputRef.current) {
+      cityInputRef.current.blur()
+    }
+  }
+
+  // Handle cover image upload
+  const handleCoverImageChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      setErrors(prev => ({ ...prev, coverImage: 'Bitte wähle ein Bild aus' }))
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors(prev => ({ ...prev, coverImage: 'Bild muss kleiner als 5MB sein' }))
+      return
+    }
+
+    // Create preview URL
+    const previewUrl = URL.createObjectURL(file)
+    setFormData(prev => ({
+      ...prev,
+      coverImageUrl: previewUrl,
+      coverImageFile: file,
+    }))
+  }
+
+  // Show toast helper
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  // Handle submit
+  const handleSubmit = async () => {
+    if (!validateForm()) return
+    setIsSubmitting(true)
+
+    try {
+      console.log('Creating list with data:', {
+        list_name: formData.list_name,
+        city: formData.city,
+        hasImage: !!formData.coverImageFile,
+        user_id: user?.id
+      })
+
+      // Upload image if provided
+      let imageUrl = null
+      if (formData.coverImageFile) {
+        const fileExt = formData.coverImageFile.name.split('.').pop()
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`
+
+        // Upload to storage
+        const { error: uploadError } = await supabase.storage
+          .from('list-covers')
+          .upload(fileName, formData.coverImageFile, {
+            cacheControl: '3600',
+            upsert: false
+          })
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError)
+          throw new Error(`Upload failed: ${uploadError.message}`)
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('list-covers')
+          .getPublicUrl(fileName)
+
+        if (!urlData || !urlData.publicUrl) {
+          throw new Error('Failed to get public URL for uploaded image')
+        }
+
+        imageUrl = urlData.publicUrl
+      }
+
+      // Optimistic update: Create temporary list object for immediate display
+      const tempListId = `temp-${Date.now()}`
+      const optimisticList = {
+        id: tempListId,
+        user_id: user.id,
+        list_name: formData.list_name.trim(),
+        city: formData.city.trim(),
+        description: formData.description.trim() || null,
+        category: formData.category || null,
+        cover_image_url: imageUrl,
+        entryCount: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        is_public: false,
+        accent_color: '#FF784F',
+      }
+
+      // Store optimistic list in sessionStorage for Dashboard to pick up
+      sessionStorage.setItem('newList', JSON.stringify(optimisticList))
+
+      // Clear draft
+      localStorage.removeItem('createListDraft')
+
+      // Navigate immediately (optimistic) - no loading screen
+      setIsSubmitting(false)
+      navigate('/dashboard', { replace: true })
+
+      // Insert list in background (non-blocking)
+      try {
+        const insertData = {
+          user_id: user.id,
+          list_name: formData.list_name.trim(),
+          city: formData.city.trim(),
+          description: formData.description.trim() || null,
+          category: formData.category || null,
+          cover_image_url: imageUrl,
+        }
+
+        const { data: insertedList, error: insertError } = await supabase
+        .from('lists')
+        .insert(insertData)
+          .select()
+          .single()
+
+      if (insertError) {
+        console.error('Insert error details:', insertError)
+        if (insertError.code === '23505') {
+            // Remove optimistic list on duplicate error
+            sessionStorage.removeItem('newList')
+            // Real-time subscription will handle sync
+          return
+        }
+        throw insertError
+      }
+
+        // Replace optimistic list with real one via sessionStorage
+        if (insertedList) {
+          const realList = {
+            ...insertedList,
+            entryCount: 0,
+          }
+          sessionStorage.setItem('newList', JSON.stringify(realList))
+        }
+        
+        // Real-time subscription will sync automatically
+      } catch (error) {
+        console.error('Error creating list in background:', error)
+        // Remove optimistic list on error
+        sessionStorage.removeItem('newList')
+        // Real-time subscription will handle sync
+      }
+    } catch (error) {
+      console.error('Error creating list:', error)
+      showToast('Fehler beim Erstellen der Liste. Bitte versuche es erneut.', 'error')
+      setIsSubmitting(false)
+    }
+  }
+
+  // Check if form is valid
+  const isFormValid = () => {
+    return formData.list_name.trim().length >= 3 && formData.city.trim().length > 0
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-white via-[#FFF2EB] to-white">
+      {/* Loading Overlay - Only show if submitting and not navigating */}
+      {isSubmitting && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-3xl p-8 text-center shadow-2xl max-w-sm mx-4">
+            <div className="relative w-16 h-16 mx-auto mb-4">
+              <div className="absolute inset-0 border-4 border-[#FF7E42]/20 rounded-full dark:border-[#FF9357]/20"></div>
+              <div className="absolute inset-0 border-4 border-[#FF7E42] border-t-transparent rounded-full animate-spin dark:border-[#FF9357]"></div>
+            </div>
+            <h3 className="text-xl font-bold mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
+              Liste wird erstellt...
+            </h3>
+            <p className="text-gray-600" style={{ fontFamily: "'Inter', sans-serif" }}>
+              Einen Moment bitte
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <header className="bg-white/70 backdrop-blur-[12px] border-b border-gray-200/30 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+        <button
+          onClick={() => navigate('/select-category')}
+          className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
+        >
+          <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        <h1 className="text-lg font-bold" style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700 }}>
+          Neue Liste erstellen
+          {selectedCategory && (
+            <span className="ml-2 text-sm font-normal text-gray-500">
+              ({selectedCategory})
+            </span>
+          )}
+        </h1>
+
+        <div className="w-10" />
+      </header>
+
+      {/* Main Content */}
+      <main className="px-4 py-6 pb-8">
+        <div className="space-y-6 max-w-2xl mx-auto">
+          {/* List Name */}
+          <div className="bg-white rounded-[20px] shadow-lg border border-gray-100 overflow-hidden p-6">
+            <label className="block text-sm font-semibold mb-2 text-gray-700">
+              Listenname <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={formData.list_name}
+                onChange={(e) => handleInputChange('list_name', e.target.value)}
+                placeholder="z. B. Beste Burger Münchens"
+                className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
+                  errors.list_name 
+                    ? 'border-red-400 focus:ring-red-200' 
+                    : validationState.list_name === 'valid'
+                    ? 'border-green-400 focus:ring-green-200'
+                    : 'border-gray-200 focus:ring-[#FF7E42]/20 dark:focus:ring-[#FF9357]/20'
+                }`}
+              />
+              {validationState.list_name === 'valid' && (
+                <svg className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </div>
+            {errors.list_name && <p className="mt-2 text-sm text-red-500">{errors.list_name}</p>}
+          </div>
+
+          {/* City */}
+          <div className="bg-white rounded-[20px] shadow-lg border border-gray-100 p-6">
+            <label className="block text-sm font-semibold mb-2 text-gray-700">
+              Stadt <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <input
+                ref={cityInputRef}
+                type="text"
+                value={formData.city}
+                onChange={(e) => handleCityInputChange(e.target.value)}
+                onFocus={handleCityFocus}
+                placeholder="z. B. München"
+                className={`w-full px-4 py-3 pr-10 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
+                  errors.city 
+                    ? 'border-red-400 focus:ring-red-200' 
+                    : validationState.city === 'valid'
+                    ? 'border-green-400 focus:ring-green-200'
+                    : 'border-gray-200 focus:ring-[#FF7E42]/20 dark:focus:ring-[#FF9357]/20'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors z-10"
+              >
+                <svg 
+                  className={`w-5 h-5 transition-transform ${isCityDropdownOpen ? 'rotate-180' : ''}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {validationState.city === 'valid' && !isCityDropdownOpen && (
+                <svg className="absolute right-10 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500 z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+              
+              {/* Custom Dropdown */}
+              {isCityDropdownOpen && (
+                <div 
+                  ref={cityDropdownRef}
+                  className="absolute z-[100] w-full mt-2 bg-white rounded-[14px] shadow-xl border border-gray-200 max-h-64 overflow-y-auto"
+                  style={{
+                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                  }}
+                >
+                  {filteredCities.length > 0 ? (
+                    <div className="py-2">
+                      {filteredCities.map((city, index) => (
+                        <button
+                          key={city}
+                          type="button"
+                          onClick={() => handleCitySelect(city)}
+                          className={`w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors ${
+                            index === 0 ? 'rounded-t-[14px]' : ''
+                          } ${
+                            index === filteredCities.length - 1 ? 'rounded-b-[14px]' : ''
+                          } ${
+                            formData.city === city ? 'bg-[#FFE4C3]/50 text-[#FF7E42] font-medium dark:bg-[#B85C2C]/30 dark:text-[#FF9357]' : 'text-gray-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span className="text-sm">{city}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="px-4 py-6 text-center text-gray-500 text-sm">
+                      Keine Städte gefunden
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            {errors.city && <p className="mt-2 text-sm text-red-500">{errors.city}</p>}
+          </div>
+
+          {/* Description */}
+          <div className="bg-white rounded-[20px] shadow-lg border border-gray-100 overflow-hidden p-6">
+            <label className="block text-sm font-semibold mb-2 text-gray-700">
+              Beschreibung <span className="text-gray-500 text-xs font-normal">(optional)</span>
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => handleInputChange('description', e.target.value)}
+              placeholder="Kurze Beschreibung deiner Liste"
+              rows="3"
+              maxLength="250"
+              className="w-full px-4 py-3 rounded-[14px] border border-gray-200 transition-all focus:outline-none focus:ring-2 focus:ring-[#FF7E42]/20 dark:focus:ring-[#FF9357]/20 resize-none"
+            />
+            <p className="text-sm text-gray-500 mt-2 text-right">{formData.description.length}/250</p>
+          </div>
+
+          {/* Cover Image */}
+          <div className="bg-white rounded-[20px] shadow-lg border border-gray-100 overflow-hidden p-6">
+            <label className="block text-sm font-semibold mb-2 text-gray-700">
+              Titelbild
+            </label>
+            
+            {formData.coverImageUrl ? (
+              <div className="relative rounded-xl overflow-hidden">
+                <img src={formData.coverImageUrl} alt="Preview" className="w-full h-64 object-cover" />
+                <button
+                  onClick={() => handleInputChange('coverImageUrl', null)}
+                  className="absolute top-2 right-2 w-8 h-8 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/80"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <label className="block cursor-pointer">
+                <input type="file" accept="image/*" onChange={handleCoverImageChange} className="hidden" />
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-[#FF7E42] hover:bg-[#FFE4C3]/30 transition-all dark:hover:border-[#FF9357] dark:hover:bg-[#B85C2C]/20">
+                  <div className="text-4xl mb-2">📸</div>
+                  <p className="text-gray-600 font-medium">Bild auswählen</p>
+                  <p className="text-sm text-gray-500 mt-1">PNG, JPG bis 5MB</p>
+                </div>
+              </label>
+            )}
+          </div>
+
+          {/* Live Preview */}
+          {formData.list_name && formData.city && (
+            <div className="bg-white rounded-[20px] shadow-lg border border-gray-100 overflow-hidden p-6">
+              <h2 className="text-xl font-bold mb-4">Vorschau</h2>
+              <div className="rounded-2xl overflow-hidden shadow-md border border-gray-100 relative h-48">
+                {/* Background Image */}
+                {formData.coverImageUrl ? (
+                  <div 
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{ backgroundImage: `url(${formData.coverImageUrl})` }}
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200" />
+                )}
+
+                {/* Gradient Overlay for text */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+
+                {/* Text Content */}
+                <div className="absolute bottom-0 left-0 right-0 p-6">
+                  <h3 className="text-2xl font-bold text-white mb-2 drop-shadow-lg">
+                    {formData.list_name}
+                  </h3>
+                  <p className="text-white/90 text-sm flex items-center gap-1 drop-shadow-md">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {formData.city}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Submit Button */}
+          <button
+            onClick={handleSubmit}
+            disabled={!isFormValid() || isSubmitting}
+            className={`w-full py-4 rounded-[20px] font-semibold text-lg transition-all ${
+              isFormValid() && !isSubmitting
+                ? 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A] text-white shadow-lg hover:shadow-xl active:scale-[0.98] dark:from-[#FF9357] dark:to-[#B85C2C]'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            🍽️ Liste erstellen
+          </button>
+        </div>
+      </main>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div 
+          className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-fadeSlideDown"
+          style={{ animation: 'fadeSlideDown 0.3s ease-out' }}
+        >
+          <div className={`rounded-[16px] px-6 py-4 shadow-xl flex items-center gap-3 ${
+            toast.type === 'success' 
+              ? 'bg-green-500 text-white' 
+              : 'bg-red-500 text-white'
+          }`}>
+            {toast.type === 'success' ? (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            )}
+            <span className="font-semibold" style={{ fontFamily: "'Poppins', sans-serif" }}>
+              {toast.message}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* CSS Animations */}
+      <style>{`
+        @keyframes fadeSlideDown {
+          from { opacity: 0; transform: translate(-50%, -20px); }
+          to { opacity: 1; transform: translate(-50%, 0); }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+export default CreateList

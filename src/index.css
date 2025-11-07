@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* FriendlyDarkModeTierLayout - Global Theme System */
+:root {
+  /* Light Mode (Default) */
+  --surfaceApp: #F7F8FA;
+  --surfaceCard: #141518;
+  --surfaceMuted: #E5E7EB;
+  --onSurface: #FFFFFF;
+  --onSurfaceMuted: rgba(255, 255, 255, 0.7);
+  --divider: rgba(255, 255, 255, 0.08);
+  --accentPrimary: #FF9500;
+  
+  /* Tier Colors - Light Mode */
+  --tier-s: #FF3B30;
+  --tier-a: #FF9500;
+  --tier-b: #FFD60A;
+  --tier-c: #34C759;
+  --tier-d: #007AFF;
+}
+
+/* Dark Mode (Prepared but not active yet) */
+@media (prefers-color-scheme: dark) {
+  .dark-mode-enabled:root {
+    --surfaceApp: #0B0C0F;
+    --surfaceCard: #1A1C20;
+    --surfaceMuted: #2A2C30;
+    --onSurface: #ECEFF4;
+    --onSurfaceMuted: rgba(236, 239, 244, 0.7);
+    --divider: rgba(236, 239, 244, 0.08);
+    --accentPrimary: #FF9500;
+    
+    /* Tier Colors - Dark Mode (slightly desaturated) */
+    --tier-s: #E63946;
+    --tier-a: #F77F00;
+    --tier-b: #F4D35E;
+    --tier-c: #52B788;
+    --tier-d: #4CC9F0;
+  }
+}
+
+/* Manual Dark Mode toggle (for future use) */
+[data-theme="dark"] {
+  --surfaceApp: #0B0C0F;
+  --surfaceCard: #1A1C20;
+  --surfaceMuted: #2A2C30;
+  --onSurface: #ECEFF4;
+  --onSurfaceMuted: rgba(236, 239, 244, 0.7);
+  --divider: rgba(236, 239, 244, 0.08);
+  --accentPrimary: #FF9500;
+  
+  /* Tier Colors - Dark Mode */
+  --tier-s: #E63946;
+  --tier-a: #F77F00;
+  --tier-b: #F4D35E;
+  --tier-c: #52B788;
+  --tier-d: #4CC9F0;
+}
+
+@layer base {
+  * {
+    @apply antialiased;
+  }
+  
+  body {
+    @apply bg-gray-50 text-gray-900 m-0;
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  }
+}
+
+@layer utilities {
+  .bg-gradient-radial {
+    background: radial-gradient(circle at center, var(--tw-gradient-stops));
+  }
+}
