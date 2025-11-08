@@ -1,18 +1,18 @@
 -- =============================================
--- RESTORE BASIC FUNCTIONS - VOLLSTÄNDIGE BEREINIGUNG
+-- RESTORE BASIC FUNCTIONS - VOLLSTÄNDIGER ROLLBACK
 -- =============================================
--- Diese Query:
+-- Diese Query setzt die Datenbank auf den Stand VOR den Shared Lists Änderungen zurück
+-- =============================================
+-- Was wird gemacht:
 -- 1. Löscht alle geteilten Listen Daten (list_collaborators, shared_lists)
--- 2. Entfernt ALLE problematischen RLS Policies für geteilte Listen
--- 3. Stellt die ursprünglichen, einfachen RLS Policies für lists/foodspots wieder her
--- 4. Stellt sicher, dass Listen erstellt und angezeigt werden können
+-- 2. Entfernt ALLE Shared Lists Policies
+-- 3. Entfernt ALLE erweiterten Policies für Collaborators
+-- 4. Stellt die ursprünglichen, einfachen RLS Policies wieder her
 -- =============================================
 -- WICHTIG: 
 -- - Freundschafts-Funktionen (friendships, activity) werden NICHT verändert!
 -- - Freunde hinzufügen, Profil anzeigen, Vergleichen funktionieren weiterhin!
 -- - Nur geteilte Listen Features werden entfernt
--- =============================================
--- WICHTIG: Führe diese Query im Supabase SQL Editor aus!
 -- =============================================
 
 -- =============================================
@@ -23,64 +23,86 @@ DELETE FROM list_collaborators;
 DELETE FROM shared_lists;
 
 -- =============================================
--- SCHRITT 2: Lösche ALLE problematischen Policies
+-- SCHRITT 2: Lösche ALLE Shared Lists Policies
 -- =============================================
--- Lösche ALLE Policies, die mit geteilten Listen zu tun haben
--- oder die die grundlegenden Funktionen blockieren könnten
 
--- Lists Policies löschen (alle)
+-- Shared Lists Policies (alle Varianten)
+DROP POLICY IF EXISTS "Users can view own shared lists" ON shared_lists;
+DROP POLICY IF EXISTS "Users can create shared lists for own lists" ON shared_lists;
+DROP POLICY IF EXISTS "Users can update own shared lists" ON shared_lists;
+DROP POLICY IF EXISTS "Users can delete own shared lists" ON shared_lists;
+DROP POLICY IF EXISTS "Owners can view own shared lists" ON shared_lists;
+DROP POLICY IF EXISTS "Owners can create shared lists for own lists" ON shared_lists;
+DROP POLICY IF EXISTS "Owners can update own shared lists" ON shared_lists;
+DROP POLICY IF EXISTS "Owners can delete own shared lists" ON shared_lists;
+DROP POLICY IF EXISTS "Owners and collaborators can view shared lists" ON shared_lists;
+DROP POLICY IF EXISTS "List owners can create shared lists" ON shared_lists;
+DROP POLICY IF EXISTS "List owners can update shared lists" ON shared_lists;
+DROP POLICY IF EXISTS "List owners can delete shared lists" ON shared_lists;
+DROP POLICY IF EXISTS "Friends can view shared lists if profile is public" ON shared_lists;
+DROP POLICY IF EXISTS "List members can view shared lists" ON shared_lists;
+
+-- List Collaborators Policies (alle Varianten)
+DROP POLICY IF EXISTS "Users can view own collaborator entries" ON list_collaborators;
+DROP POLICY IF EXISTS "Users can view collaborators of accessible lists" ON list_collaborators;
+DROP POLICY IF EXISTS "Users can view their own collaborator entries" ON list_collaborators;
+DROP POLICY IF EXISTS "Owners and collaborators can view collaborator entries" ON list_collaborators;
+DROP POLICY IF EXISTS "List owners can add collaborators" ON list_collaborators;
+DROP POLICY IF EXISTS "List owners can update collaborators" ON list_collaborators;
+DROP POLICY IF EXISTS "List owners can remove collaborators" ON list_collaborators;
+DROP POLICY IF EXISTS "List owners and collaborators can remove collaborators" ON list_collaborators;
+DROP POLICY IF EXISTS "List owners can manage collaborators" ON list_collaborators;
+DROP POLICY IF EXISTS "Users can remove collaborators" ON list_collaborators;
+
+-- =============================================
+-- SCHRITT 3: Lösche ALLE erweiterten Policies für Lists
+-- =============================================
+
+-- Erweiterte Policies für Lists (Collaborators können sehen)
+DROP POLICY IF EXISTS "Collaborators can view shared lists" ON lists;
+DROP POLICY IF EXISTS "List members can view lists" ON lists;
+DROP POLICY IF EXISTS "Friends can view lists if profile is public" ON lists;
+DROP POLICY IF EXISTS "Users can view accessible lists" ON lists;
+
+-- =============================================
+-- SCHRITT 4: Lösche ALLE erweiterten Policies für Foodspots
+-- =============================================
+
+-- Erweiterte Policies für Foodspots (Collaborators können sehen/bearbeiten)
+DROP POLICY IF EXISTS "Collaborators can view foodspots in shared lists" ON foodspots;
+DROP POLICY IF EXISTS "Editors can create foodspots in shared lists" ON foodspots;
+DROP POLICY IF EXISTS "Editors can update foodspots in shared lists" ON foodspots;
+DROP POLICY IF EXISTS "Editors can delete foodspots in shared lists" ON foodspots;
+DROP POLICY IF EXISTS "List members can view foodspots" ON foodspots;
+DROP POLICY IF EXISTS "Friends can view foodspots if profile is public" ON foodspots;
+DROP POLICY IF EXISTS "Users can view foodspots in accessible lists" ON foodspots;
+
+-- =============================================
+-- SCHRITT 5: Lösche ALLE bestehenden Policies für lists und foodspots
+-- =============================================
+-- (Wir erstellen sie danach neu mit den ursprünglichen, einfachen Policies)
+
 DROP POLICY IF EXISTS "Users can view own lists" ON lists;
 DROP POLICY IF EXISTS "Users can create own lists" ON lists;
 DROP POLICY IF EXISTS "Users can update own lists" ON lists;
 DROP POLICY IF EXISTS "Users can delete own lists" ON lists;
 DROP POLICY IF EXISTS "Public lists are viewable by all users" ON lists;
-DROP POLICY IF EXISTS "Friends can view lists if profile is public" ON lists;
-DROP POLICY IF EXISTS "List members can view lists" ON lists;
-DROP POLICY IF EXISTS "Users can view accessible lists" ON lists;
-DROP POLICY IF EXISTS "Collaborators can view shared lists" ON lists;
-DROP POLICY IF EXISTS "List members can view shared lists" ON lists;
 
--- Foodspots Policies löschen (alle)
 DROP POLICY IF EXISTS "Users can view foodspots in own lists" ON foodspots;
 DROP POLICY IF EXISTS "Users can create foodspots in own lists" ON foodspots;
 DROP POLICY IF EXISTS "Users can update own foodspots" ON foodspots;
 DROP POLICY IF EXISTS "Users can delete own foodspots" ON foodspots;
-DROP POLICY IF EXISTS "Friends can view foodspots if profile is public" ON foodspots;
-DROP POLICY IF EXISTS "List members can view foodspots" ON foodspots;
-DROP POLICY IF EXISTS "Users can view foodspots in accessible lists" ON foodspots;
-DROP POLICY IF EXISTS "Collaborators can view foodspots in shared lists" ON foodspots;
-
--- Shared Lists Policies löschen (alle)
-DROP POLICY IF EXISTS "Users can view own shared lists" ON shared_lists;
-DROP POLICY IF EXISTS "Users can create shared lists for own lists" ON shared_lists;
-DROP POLICY IF EXISTS "Users can update own shared lists" ON shared_lists;
-DROP POLICY IF EXISTS "Users can delete own shared lists" ON shared_lists;
-DROP POLICY IF EXISTS "Friends can view shared lists if profile is public" ON shared_lists;
-DROP POLICY IF EXISTS "List members can view shared lists" ON shared_lists;
-DROP POLICY IF EXISTS "List owners can create shared lists" ON shared_lists;
-DROP POLICY IF EXISTS "List owners can update shared lists" ON shared_lists;
-DROP POLICY IF EXISTS "List owners can delete shared lists" ON shared_lists;
-
--- List Collaborators Policies löschen (alle)
-DROP POLICY IF EXISTS "Users can view collaborators of accessible lists" ON list_collaborators;
-DROP POLICY IF EXISTS "Users can view their own collaborator entries" ON list_collaborators;
-DROP POLICY IF EXISTS "List owners can add collaborators" ON list_collaborators;
-DROP POLICY IF EXISTS "List owners can manage collaborators" ON list_collaborators;
-DROP POLICY IF EXISTS "List owners can update collaborators" ON list_collaborators;
-DROP POLICY IF EXISTS "List owners can remove collaborators" ON list_collaborators;
-DROP POLICY IF EXISTS "Users can remove collaborators" ON list_collaborators;
 
 -- =============================================
--- SCHRITT 3: Stelle sicher, dass RLS aktiviert ist
+-- SCHRITT 6: Stelle sicher, dass RLS aktiviert ist
 -- =============================================
 
 ALTER TABLE lists ENABLE ROW LEVEL SECURITY;
 ALTER TABLE foodspots ENABLE ROW LEVEL SECURITY;
 
 -- =============================================
--- SCHRITT 4: Erstelle die ursprünglichen, einfachen Policies NEU
+-- SCHRITT 7: Erstelle die ursprünglichen, einfachen Policies NEU
 -- =============================================
--- Diese Policies sind einfach und funktionieren sicher
 
 -- =============================================
 -- LISTS POLICIES - URSPRÜNGLICH & EINFACH
@@ -119,9 +141,22 @@ TO authenticated
 USING (auth.uid() = user_id);
 
 -- Öffentliche Listen können von allen eingeloggten Usern gesehen werden
--- Hinweis: Diese Policy wird nur erstellt, wenn die Spalte is_public existiert
--- Falls die Spalte nicht existiert, kann diese Policy einfach übersprungen werden
--- (Die App funktioniert auch ohne diese Policy)
+-- (Nur wenn is_public Spalte existiert - sonst wird diese Policy übersprungen)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = 'lists' 
+    AND column_name = 'is_public'
+  ) THEN
+    CREATE POLICY "Public lists are viewable by all users"
+    ON lists
+    FOR SELECT
+    TO authenticated
+    USING (is_public = true AND auth.uid() IS NOT NULL);
+  END IF;
+END $$;
 
 -- =============================================
 -- FOODSPOTS POLICIES - URSPRÜNGLICH & EINFACH
@@ -171,30 +206,57 @@ TO authenticated
 USING (auth.uid() = user_id);
 
 -- =============================================
--- SCHRITT 5: Überprüfung
+-- SCHRITT 8: VERIFIKATION
 -- =============================================
--- Zeige, wie viele Policies jetzt existieren
 
+-- Zeige alle Policies für lists
 SELECT 
-  schemaname,
-  tablename,
+  'lists' as table_name,
   policyname,
-  permissive,
-  roles,
   cmd
 FROM pg_policies
 WHERE schemaname = 'public'
-  AND tablename IN ('lists', 'foodspots', 'shared_lists', 'list_collaborators')
-ORDER BY tablename, policyname;
+  AND tablename = 'lists'
+ORDER BY policyname;
 
--- Zeige, ob noch geteilte Listen Daten vorhanden sind
+-- Zeige alle Policies für foodspots
+SELECT 
+  'foodspots' as table_name,
+  policyname,
+  cmd
+FROM pg_policies
+WHERE schemaname = 'public'
+  AND tablename = 'foodspots'
+ORDER BY policyname;
+
+-- Zeige alle Policies für shared_lists (sollten keine sein)
+SELECT 
+  'shared_lists' as table_name,
+  policyname,
+  cmd
+FROM pg_policies
+WHERE schemaname = 'public'
+  AND tablename = 'shared_lists'
+ORDER BY policyname;
+
+-- Zeige alle Policies für list_collaborators (sollten keine sein)
+SELECT 
+  'list_collaborators' as table_name,
+  policyname,
+  cmd
+FROM pg_policies
+WHERE schemaname = 'public'
+  AND tablename = 'list_collaborators'
+ORDER BY policyname;
+
+-- Prüfe, ob noch geteilte Listen Daten vorhanden sind
 SELECT 
   (SELECT COUNT(*) FROM list_collaborators) as remaining_collaborators,
   (SELECT COUNT(*) FROM shared_lists) as remaining_shared_lists;
 
 -- Überprüfe, ob friendships Policies noch vorhanden sind (sollten nicht verändert worden sein)
 SELECT 
-  tablename,
+  'friendships' as table_name,
   policyname,
   cmd
 FROM pg_policies
@@ -222,4 +284,3 @@ ORDER BY policyname;
 -- =============================================
 -- WICHTIG: Freundschafts-Features sind NICHT betroffen!
 -- =============================================
-
