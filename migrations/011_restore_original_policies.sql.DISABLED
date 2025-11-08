@@ -1,0 +1,73 @@
+-- =============================================
+-- MIGRATION 011: Restore Original RLS Policies
+-- =============================================
+-- Restores original policies for lists and foodspots that may have been accidentally removed
+-- Idempotent: Safe to run multiple times
+-- =============================================
+
+-- IMPORTANT: Drop any policies that might have replaced the original ones
+DROP POLICY IF EXISTS "Users can view accessible lists" ON lists;
+
+-- Restore lists policies (drop and recreate to ensure they work)
+DROP POLICY IF EXISTS "Users can view own lists" ON lists;
+CREATE POLICY "Users can view own lists"
+ON lists FOR SELECT TO authenticated
+USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can create own lists" ON lists;
+CREATE POLICY "Users can create own lists"
+ON lists FOR INSERT TO authenticated
+WITH CHECK (auth.uid() = user_id AND auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "Users can update own lists" ON lists;
+CREATE POLICY "Users can update own lists"
+ON lists FOR UPDATE TO authenticated
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete own lists" ON lists;
+CREATE POLICY "Users can delete own lists"
+ON lists FOR DELETE TO authenticated
+USING (auth.uid() = user_id);
+
+-- Restore foodspots policies (drop and recreate to ensure they work)
+DROP POLICY IF EXISTS "Users can view foodspots in accessible lists" ON foodspots;
+DROP POLICY IF EXISTS "Users can view foodspots in own lists" ON foodspots;
+CREATE POLICY "Users can view foodspots in own lists"
+ON foodspots FOR SELECT TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM lists 
+    WHERE lists.id = foodspots.list_id 
+    AND lists.user_id = auth.uid()
+  )
+);
+
+DROP POLICY IF EXISTS "Users can create foodspots in own lists" ON foodspots;
+CREATE POLICY "Users can create foodspots in own lists"
+ON foodspots FOR INSERT TO authenticated
+WITH CHECK (
+  auth.uid() = user_id
+  AND auth.uid() IS NOT NULL
+  AND EXISTS (
+    SELECT 1 FROM lists 
+    WHERE lists.id = foodspots.list_id 
+    AND lists.user_id = auth.uid()
+  )
+);
+
+DROP POLICY IF EXISTS "Users can update own foodspots" ON foodspots;
+CREATE POLICY "Users can update own foodspots"
+ON foodspots FOR UPDATE TO authenticated
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete own foodspots" ON foodspots;
+CREATE POLICY "Users can delete own foodspots"
+ON foodspots FOR DELETE TO authenticated
+USING (auth.uid() = user_id);
+
+-- =============================================
+-- SUCCESS: Original Policies Restored
+-- =============================================
+

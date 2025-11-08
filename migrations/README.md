@@ -4,6 +4,8 @@ Dieser Ordner enthält alle SQL-Migrationen für die Foodspot Ranking App.
 
 ## 📋 Migrations-Übersicht
 
+### ✅ Aktive Migrationen (Verwenden!)
+
 | Datei | Beschreibung | Reihenfolge |
 |-------|--------------|-------------|
 | `000_complete_setup.sql` | **ALLES IN EINEM** - Komplettes Setup (empfohlen für Neustart) | 1️⃣ |
@@ -15,6 +17,25 @@ Dieser Ordner enthält alle SQL-Migrationen für die Foodspot Ranking App.
 | `006_create_storage_buckets.sql` | **MANUELL** - Anleitung für Storage Buckets | 6️⃣ |
 | `007_create_storage_policies.sql` | Erstellt RLS Policies für Storage | 7️⃣ |
 | `008_create_rls_policies.sql` | Erstellt RLS Policies für Tabellen | 8️⃣ |
+
+### ⚠️ Deaktivierte Migrationen (Nicht verwenden!)
+
+Diese Migrationen sind veraltet und wurden durch `RESTORE_BASIC_FUNCTIONS.sql` (im Root-Verzeichnis) ersetzt:
+- `010_fix_shared_lists_rls.sql.DISABLED` - Veraltete Shared Lists RLS Fix
+- `011_restore_original_policies.sql.DISABLED` - Veralteter Policy Restore
+- `012_fix_shared_lists_rls_safe.sql.DISABLED` - Veraltete Safe RLS Fix
+- `013_EMERGENCY_RESTORE_ALL_POLICIES.sql.DISABLED` - Veralteter Emergency Restore
+- `014_VERIFY_RLS_ENABLED.sql.DISABLED` - Veraltete RLS Verifikation
+
+**Für RLS-Reparaturen verwende:** `../RESTORE_BASIC_FUNCTIONS.sql` im Root-Verzeichnis!
+
+## 🔧 RLS-Policies reparieren
+
+Falls Probleme mit RLS-Policies auftreten (z.B. Listen werden nicht angezeigt):
+
+**Verwende:** `../RESTORE_BASIC_FUNCTIONS.sql` (im Root-Verzeichnis)
+
+Diese Datei stellt alle grundlegenden RLS-Policies wieder her und entfernt problematische Policies.
 
 ## 🚀 Schnellstart: Komplettes Setup
 
@@ -119,6 +140,8 @@ Nach dem Setup kannst du testen:
 - [Supabase SQL Editor](https://supabase.com/docs/guides/database/tables)
 - [Supabase Storage](https://supabase.com/docs/guides/storage)
 - [Row Level Security](https://supabase.com/docs/guides/auth/row-level-security)
+
+
 
 
 

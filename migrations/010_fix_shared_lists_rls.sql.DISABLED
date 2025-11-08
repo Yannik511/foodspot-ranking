@@ -1,0 +1,327 @@
+-- =============================================
+-- MIGRATION 010: Fix Shared Lists RLS & Logic
+-- =============================================
+-- Fixes infinite recursion in RLS policies and creates stable shared lists logic
+-- Idempotent: Safe to run multiple times
+-- =============================================
+
+-- Step 1: Drop existing policies (idempotent)
+DROP POLICY IF EXISTS "Users can view own shared lists" ON shared_lists;
+DROP POLICY IF EXISTS "Users can create shared lists for own lists" ON shared_lists;
+DROP POLICY IF EXISTS "Users can update own shared lists" ON shared_lists;
+DROP POLICY IF EXISTS "Users can delete own shared lists" ON shared_lists;
+DROP POLICY IF EXISTS "Friends can view shared lists if profile is public" ON shared_lists;
+DROP POLICY IF EXISTS "List members can view shared lists" ON shared_lists;
+DROP POLICY IF EXISTS "List owners can create shared lists" ON shared_lists;
+DROP POLICY IF EXISTS "List owners can update shared lists" ON shared_lists;
+DROP POLICY IF EXISTS "List owners can delete shared lists" ON shared_lists;
+DROP POLICY IF EXISTS "Users can view collaborators of accessible lists" ON list_collaborators;
+DROP POLICY IF EXISTS "Users can view their own collaborator entries" ON list_collaborators;
+DROP POLICY IF EXISTS "List owners can add collaborators" ON list_collaborators;
+DROP POLICY IF EXISTS "List owners can manage collaborators" ON list_collaborators;
+DROP POLICY IF EXISTS "List owners can update collaborators" ON list_collaborators;
+DROP POLICY IF EXISTS "List owners can remove collaborators" ON list_collaborators;
+DROP POLICY IF EXISTS "Users can remove collaborators" ON list_collaborators;
+
+-- Step 1a: Update shared_lists table to allow 'participants' visibility
+-- Drop and recreate the check constraint to include 'participants'
+ALTER TABLE shared_lists DROP CONSTRAINT IF EXISTS shared_lists_visibility_check;
+ALTER TABLE shared_lists ADD CONSTRAINT shared_lists_visibility_check 
+  CHECK (visibility IN ('private', 'friends', 'link', 'public', 'participants'));
+
+-- Step 2: Create SECURITY DEFINER function to check list membership
+-- This function checks if a user is a member of a list (owner or collaborator)
+-- It does NOT query shared_lists to avoid recursion
+CREATE OR REPLACE FUNCTION is_list_member(p_list_id UUID, p_user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+AS $$
+DECLARE
+  v_is_owner BOOLEAN;
+  v_is_collaborator BOOLEAN;
+BEGIN
+  -- Check if user is the owner of the list
+  SELECT EXISTS (
+    SELECT 1 FROM lists
+    WHERE id = p_list_id AND user_id = p_user_id
+  ) INTO v_is_owner;
+
+  IF v_is_owner THEN
+    RETURN TRUE;
+  END IF;
+
+  -- Check if user is a collaborator (only if not owner to avoid unnecessary query)
+  IF NOT v_is_owner THEN
+    SELECT EXISTS (
+      SELECT 1 FROM list_collaborators
+      WHERE list_id = p_list_id AND user_id = p_user_id
+    ) INTO v_is_collaborator;
+  ELSE
+    v_is_collaborator := FALSE; -- Owner is already a member
+  END IF;
+
+  RETURN v_is_owner OR v_is_collaborator;
+END;
+$$;
+
+-- Grant execute permission
+GRANT EXECUTE ON FUNCTION is_list_member(UUID, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION is_list_member(UUID, UUID) TO anon;
+
+-- Step 3: Create SECURITY DEFINER function for creating shared lists
+-- This function creates a shared list entry and initial collaborators in a transaction
+-- Note: visibility must be one of: 'private', 'friends', 'link', 'public', 'participants'
+CREATE OR REPLACE FUNCTION create_shared_list_with_collaborators(
+  p_list_id UUID,
+  p_owner_id UUID,
+  p_visibility VARCHAR(20) DEFAULT 'participants',
+  p_collaborators JSONB DEFAULT '[]'::jsonb
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_shared_list_id UUID;
+  v_collaborator JSONB;
+BEGIN
+  -- Verify that the user owns the list
+  IF NOT EXISTS (
+    SELECT 1 FROM lists
+    WHERE id = p_list_id AND user_id = p_owner_id
+  ) THEN
+    RAISE EXCEPTION 'User does not own this list';
+  END IF;
+
+  -- Verify that the owner_id matches the authenticated user
+  IF p_owner_id != auth.uid() THEN
+    RAISE EXCEPTION 'Owner ID must match authenticated user';
+  END IF;
+
+  -- Validate visibility value
+  IF p_visibility NOT IN ('private', 'friends', 'link', 'public', 'participants') THEN
+    RAISE EXCEPTION 'Invalid visibility value: %', p_visibility;
+  END IF;
+
+  -- Check if shared_list already exists
+  SELECT id INTO v_shared_list_id
+  FROM shared_lists
+  WHERE list_id = p_list_id;
+
+  -- Create or update shared_list entry
+  IF v_shared_list_id IS NULL THEN
+    INSERT INTO shared_lists (list_id, owner_id, visibility)
+    VALUES (p_list_id, p_owner_id, p_visibility)
+    RETURNING id INTO v_shared_list_id;
+  ELSE
+    UPDATE shared_lists
+    SET visibility = p_visibility,
+        updated_at = TIMEZONE('utc'::text, NOW())
+    WHERE id = v_shared_list_id;
+  END IF;
+
+  -- Add owner as collaborator with 'editor' role (if not exists)
+  -- Note: We use 'editor' role for owner, not a separate 'owner' role
+  -- The owner is identified by lists.user_id, not by role in list_collaborators
+  INSERT INTO list_collaborators (list_id, user_id, role, added_by)
+  VALUES (p_list_id, p_owner_id, 'editor', p_owner_id)
+  ON CONFLICT (list_id, user_id) DO UPDATE
+  SET role = 'editor',
+      added_by = p_owner_id;
+
+  -- Add collaborators from JSONB array
+  FOR v_collaborator IN SELECT * FROM jsonb_array_elements(p_collaborators)
+  LOOP
+    INSERT INTO list_collaborators (list_id, user_id, role, added_by)
+    VALUES (
+      p_list_id,
+      (v_collaborator->>'user_id')::UUID,
+      COALESCE(v_collaborator->>'role', 'viewer'),
+      p_owner_id
+    )
+    ON CONFLICT (list_id, user_id) DO UPDATE
+    SET role = COALESCE(EXCLUDED.role, list_collaborators.role),
+        added_by = p_owner_id;
+  END LOOP;
+
+  RETURN v_shared_list_id;
+END;
+$$;
+
+-- Grant execute permission
+GRANT EXECUTE ON FUNCTION create_shared_list_with_collaborators(UUID, UUID, VARCHAR, JSONB) TO authenticated;
+
+-- Step 4: Create non-recursive RLS policies for lists
+-- Lists: Owner can see their own lists; Insert/Update/Delete only for owner
+-- (Assuming lists table already has basic RLS, we ensure it's correct)
+
+-- Step 5: Create non-recursive RLS policies for list_collaborators
+-- Select: Entries where user_id = auth.uid() OR current user is owner of the linked list
+-- NOTE: We do NOT use is_list_member here to avoid recursion (it checks list_collaborators)
+CREATE POLICY "Users can view their own collaborator entries"
+  ON list_collaborators
+  FOR SELECT
+  USING (
+    user_id = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM lists
+      WHERE lists.id = list_collaborators.list_id
+      AND lists.user_id = auth.uid()
+    )
+  );
+
+-- Insert/Update: Only the owner of the list
+CREATE POLICY "List owners can manage collaborators"
+  ON list_collaborators
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM lists
+      WHERE lists.id = list_id
+      AND lists.user_id = auth.uid()
+    )
+    AND added_by = auth.uid()
+  );
+
+CREATE POLICY "List owners can update collaborators"
+  ON list_collaborators
+  FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM lists
+      WHERE lists.id = list_id
+      AND lists.user_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM lists
+      WHERE lists.id = list_id
+      AND lists.user_id = auth.uid()
+    )
+  );
+
+-- Delete: Owner OR user removing themselves
+CREATE POLICY "Users can remove collaborators"
+  ON list_collaborators
+  FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM lists
+      WHERE lists.id = list_id
+      AND lists.user_id = auth.uid()
+    )
+    OR user_id = auth.uid()  -- Allow users to remove themselves
+  );
+
+-- Step 6: Create non-recursive RLS policies for shared_lists
+-- Select: Only if user is a member of the list
+-- NOTE: We avoid using is_list_member function directly to prevent issues
+-- Instead, we check directly if user is owner or collaborator
+CREATE POLICY "List members can view shared lists"
+  ON shared_lists
+  FOR SELECT
+  USING (
+    -- User is the owner
+    auth.uid() = owner_id
+    OR
+    -- User is a collaborator in the list
+    EXISTS (
+      SELECT 1 FROM list_collaborators
+      WHERE list_collaborators.list_id = shared_lists.list_id
+      AND list_collaborators.user_id = auth.uid()
+    )
+  );
+
+-- Insert/Delete: Only the owner of the list
+CREATE POLICY "List owners can create shared lists"
+  ON shared_lists
+  FOR INSERT
+  WITH CHECK (
+    auth.uid() = owner_id
+    AND EXISTS (
+      SELECT 1 FROM lists
+      WHERE lists.id = list_id
+      AND lists.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "List owners can update shared lists"
+  ON shared_lists
+  FOR UPDATE
+  USING (auth.uid() = owner_id)
+  WITH CHECK (auth.uid() = owner_id);
+
+CREATE POLICY "List owners can delete shared lists"
+  ON shared_lists
+  FOR DELETE
+  USING (auth.uid() = owner_id);
+
+-- Step 7: Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_lists_owner_id ON lists(user_id);
+CREATE INDEX IF NOT EXISTS idx_list_collaborators_list_user ON list_collaborators(list_id, user_id);
+CREATE INDEX IF NOT EXISTS idx_list_collaborators_user_id ON list_collaborators(user_id);
+CREATE INDEX IF NOT EXISTS idx_shared_lists_list_id ON shared_lists(list_id);
+CREATE INDEX IF NOT EXISTS idx_shared_lists_owner_id ON shared_lists(owner_id);
+
+-- Step 8: Add policy for collaborators to view foodspots in shared lists
+-- IMPORTANT: Do NOT drop existing "Users can view foodspots in own lists" policy
+-- Only add an additional policy for collaborators
+DROP POLICY IF EXISTS "Friends can view foodspots if profile is public" ON foodspots;
+DROP POLICY IF EXISTS "List members can view foodspots" ON foodspots;
+DROP POLICY IF EXISTS "Collaborators can view foodspots in shared lists" ON foodspots;
+
+-- Add additional policy for collaborators to view foodspots in shared lists
+-- This works alongside the existing "Users can view foodspots in own lists" policy
+CREATE POLICY "Collaborators can view foodspots in shared lists"
+  ON foodspots
+  FOR SELECT
+  USING (
+    -- User is a collaborator in the list (but not the owner)
+    EXISTS (
+      SELECT 1 FROM list_collaborators
+      WHERE list_collaborators.list_id = foodspots.list_id
+      AND list_collaborators.user_id = auth.uid()
+    )
+    AND NOT EXISTS (
+      -- Not the owner (owner already covered by "Users can view foodspots in own lists")
+      SELECT 1 FROM lists
+      WHERE lists.id = foodspots.list_id
+      AND lists.user_id = auth.uid()
+    )
+  );
+
+-- Step 9: Add policy for collaborators to view shared lists
+-- IMPORTANT: Do NOT modify existing "Users can view own lists" policy
+-- Only add an additional policy for collaborators
+-- Drop only policies that are specifically for shared lists (not the basic ones)
+DROP POLICY IF EXISTS "Friends can view lists if profile is public" ON lists;
+DROP POLICY IF EXISTS "List members can view lists" ON lists;
+DROP POLICY IF EXISTS "Collaborators can view shared lists" ON lists;
+
+-- Add additional policy for collaborators to view shared lists
+-- This works alongside the existing "Users can view own lists" policy
+CREATE POLICY "Collaborators can view shared lists"
+  ON lists
+  FOR SELECT
+  USING (
+    -- User is a collaborator in a shared list (but not the owner)
+    EXISTS (
+      SELECT 1 FROM list_collaborators
+      WHERE list_collaborators.list_id = lists.id
+      AND list_collaborators.user_id = auth.uid()
+    )
+    AND auth.uid() != user_id  -- Not the owner (owner already covered by "Users can view own lists")
+  );
+
+-- Step 10: Add comment for documentation
+COMMENT ON FUNCTION is_list_member(UUID, UUID) IS 'Checks if a user is a member of a list (owner or collaborator). Non-recursive.';
+COMMENT ON FUNCTION create_shared_list_with_collaborators(UUID, UUID, VARCHAR, JSONB) IS 'Creates a shared list entry and collaborators in a transaction. Non-recursive.';
+
+-- =============================================
+-- SUCCESS: Shared Lists RLS Fixed
+-- =============================================
+
+

@@ -1,14 +1,78 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useTheme } from '../contexts/ThemeContext'
 import WelcomeCard from '../components/WelcomeCard'
 import FeaturesSection from '../components/FeaturesSection'
 import Avatar from '../components/Avatar'
 import { supabase } from '../services/supabase'
+import { hapticFeedback } from '../utils/haptics'
+import { springEasing, staggerDelay } from '../utils/animations'
+
+// Hook to check for unread social notifications
+const useSocialNotifications = () => {
+  const { user } = useAuth()
+  const [hasUnread, setHasUnread] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+
+    const checkUnread = async () => {
+      try {
+        const lastViewed = localStorage.getItem('social_tab_last_viewed')
+        const lastViewedTime = lastViewed ? new Date(lastViewed).getTime() : 0
+
+        const [incomingRequests, acceptedRequests] = await Promise.all([
+          supabase.from('friendships').select('id').eq('addressee_id', user.id).eq('status', 'pending').limit(1),
+          supabase.from('friendships').select('id, created_at').eq('requester_id', user.id).eq('status', 'accepted').gt('updated_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()).limit(1)
+        ])
+
+        const hasIncoming = (incomingRequests.data?.length || 0) > 0
+        const hasAccepted = (acceptedRequests.data?.length || 0) > 0 && 
+          acceptedRequests.data.some(r => new Date(r.created_at).getTime() > lastViewedTime)
+
+        setHasUnread(hasIncoming || hasAccepted)
+      } catch (error) {
+        console.error('Error checking notifications:', error)
+      }
+    }
+
+    checkUnread()
+    const interval = setInterval(checkUnread, 30000) // Check every 30 seconds
+
+    const channel = supabase
+      .channel('dashboard_social_notifications')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'friendships',
+        filter: `addressee_id=eq.${user.id}`
+      }, () => checkUnread())
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'friendships',
+        filter: `requester_id=eq.${user.id}`
+      }, () => checkUnread())
+      .subscribe()
+
+    return () => {
+      clearInterval(interval)
+      supabase.removeChannel(channel)
+    }
+  }, [user])
+
+  return hasUnread
+}
 
 function Dashboard() {
   const { user } = useAuth()
+  const { isDark } = useTheme()
   const navigate = useNavigate()
+  const hasSocialNotifications = useSocialNotifications()
+  
+  // Nur "Meine Listen" View - geteilte Listen wurden entfernt
+  const [listView] = useState('meine')
   
   // Initialize with optimistic list from sessionStorage if available
   const [lists, setLists] = useState(() => {
@@ -40,6 +104,9 @@ function Dashboard() {
   // Long press refs
   const longPressRefs = useRef({})
   const longPressTimer = useRef(null)
+  
+  // Track pending deletions to prevent race conditions with real-time sync
+  const pendingDeletionsRef = useRef(new Set())
 
   // Track window height for responsive calculations
   useEffect(() => {
@@ -52,25 +119,40 @@ function Dashboard() {
   // Note: Optimistic list is now initialized in useState initializer above
   // This ensures it's available immediately on first render
 
-  // Fetch lists with entry counts
+  // Fetch lists with entry counts (only private lists, excluding shared lists)
   useEffect(() => {
     const fetchListsWithCounts = async () => {
       if (!user) return
       
       setLoading(true)
       try {
-        // Fetch lists
+        // Fetch all lists owned by user (keine geteilten Listen mehr)
         const { data: listsData, error: listsError } = await supabase
           .from('lists')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
 
-        if (listsError) throw listsError
+        if (listsError) {
+          console.error('Error fetching lists:', listsError)
+          console.error('Error details:', JSON.stringify(listsError, null, 2))
+          // Wichtig: Zeige Fehler in Console, aber setze trotzdem leeres Array
+          setLists([])
+          setLoading(false)
+          return
+        }
+
+        if (!listsData || listsData.length === 0) {
+          setLists([])
+          setLoading(false)
+          return
+        }
+        
+        console.log('Lists loaded successfully:', listsData.length, 'lists')
 
         // Fetch foodspot counts for all lists
         const listsWithCounts = await Promise.all(
-          (listsData || []).map(async (list) => {
+          listsData.map(async (list) => {
             const { count, error: countError } = await supabase
               .from('foodspots')
               .select('*', { count: 'exact', head: true })
@@ -91,12 +173,17 @@ function Dashboard() {
         // Find optimistic lists from current state (temp IDs)
         const optimisticLists = lists.filter(l => l.id?.startsWith('temp-'))
         
+        // Filter out pending deletions before merging
+        const filteredLists = listsWithCounts.filter(list => 
+          !pendingDeletionsRef.current.has(list.id)
+        )
+        
         // Merge: Start with fetched lists, then add optimistic if not found
-        const mergedLists = [...listsWithCounts]
+        const mergedLists = [...filteredLists]
         
         // Add optimistic lists if real list not found yet
         optimisticLists.forEach(optimisticList => {
-          const realListExists = listsWithCounts.some(l => 
+          const realListExists = filteredLists.some(l => 
             l.list_name === optimisticList.list_name && l.city === optimisticList.city
           )
           if (!realListExists) {
@@ -152,7 +239,7 @@ function Dashboard() {
     }
 
     fetchListsWithCounts()
-
+    
     // Subscribe to lists changes
     const listsChannel = supabase
       .channel('lists_changes')
@@ -180,9 +267,27 @@ function Dashboard() {
             })
             // Clear sessionStorage
             sessionStorage.removeItem('newList')
-          } else {
-            // For UPDATE/DELETE, refresh
-            fetchListsWithCounts()
+          } else if (payload.eventType === 'DELETE') {
+            // Handle DELETE events - remove from UI immediately
+            const deletedListId = payload.old?.id
+            if (deletedListId) {
+              // Mark as pending deletion to prevent re-fetching
+              pendingDeletionsRef.current.add(deletedListId)
+              
+              // Remove from UI immediately
+              setLists(prev => prev.filter(l => l.id !== deletedListId))
+              
+              // Clear from pending after a delay
+              setTimeout(() => {
+                pendingDeletionsRef.current.delete(deletedListId)
+              }, 5000)
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            // For UPDATE, refresh only if not pending deletion
+            const updatedListId = payload.new?.id
+            if (updatedListId && !pendingDeletionsRef.current.has(updatedListId)) {
+              fetchListsWithCounts()
+            }
           }
         })
       .subscribe()
@@ -316,14 +421,11 @@ function Dashboard() {
     }
   }
 
-  // Long press handlers
+  // Long press handlers with improved haptics
   const handleLongPressStart = (listId) => {
     longPressTimer.current = setTimeout(() => {
       openEditModal(listId)
-      // Haptic feedback (vibration)
-      if (navigator.vibrate) {
-        navigator.vibrate(50)
-      }
+      hapticFeedback.medium()
     }, 600)
   }
 
@@ -351,30 +453,101 @@ function Dashboard() {
   }
 
   const handleDeleteList = async (listId) => {
-    // Optimistic update: Remove immediately from UI
+    // Store previous state for rollback
     const listToDelete = lists.find(l => l.id === listId)
     const previousLists = [...lists]
     
-    setLists(prev => prev.filter(l => l.id !== listId))
+    // Close confirmation dialog
     setShowDeleteConfirm(null)
     
+    // Show loading state
+    hapticFeedback.medium()
+    showToast('Liste wird gelöscht...', 'info')
+    
     try {
-      // Delete in background (non-blocking)
-      const { error } = await supabase
+      // First: Delete from database (wait for confirmation)
+      // Use a timeout for mobile networks (30 seconds)
+      const deletePromise = supabase
         .from('lists')
         .delete()
         .eq('id', listId)
-
-      if (error) throw error
-
+        .eq('user_id', user?.id) // Extra security: ensure user owns the list
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout: Löschen dauerte zu lange. Bitte prüfe deine Internetverbindung.')), 30000)
+      )
+      
+      // Race between delete and timeout
+      const deleteResult = await Promise.race([
+        deletePromise.then(result => ({ success: true, result })),
+        timeoutPromise.then(() => ({ success: false, error: new Error('Timeout') }))
+      ])
+      
+      if (!deleteResult.success) {
+        throw deleteResult.error
+      }
+      
+      const { data, error } = deleteResult.result
+      
+      if (error) {
+        console.error('Delete error:', error)
+        // Check if it's a permission error
+        if (error.code === 'PGRST301' || error.message?.includes('permission denied')) {
+          throw new Error('Keine Berechtigung zum Löschen dieser Liste')
+        }
+        throw error
+      }
+      
+      // Verify deletion was successful by checking if list still exists
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('lists')
+        .select('id')
+        .eq('id', listId)
+        .eq('user_id', user?.id)
+        .single()
+      
+      // If list still exists, deletion failed
+      if (verifyData && !verifyError) {
+        throw new Error('Liste konnte nicht gelöscht werden. Bitte versuche es erneut.')
+      }
+      
+      // Mark as pending deletion to prevent real-time sync from re-adding it
+      pendingDeletionsRef.current.add(listId)
+      
+      // Only remove from UI after successful deletion
+      setLists(prev => prev.filter(l => l.id !== listId))
+      
+      hapticFeedback.success()
       showToast('Liste erfolgreich gelöscht!', 'success')
-      // Real-time subscription will sync automatically
+      
+      // Clear sessionStorage if this was the optimistic list
+      const newListData = sessionStorage.getItem('newList')
+      if (newListData) {
+        try {
+          const newList = JSON.parse(newListData)
+          if (newList.id === listId) {
+            sessionStorage.removeItem('newList')
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+      
+      // Clear from pending deletions after 10 seconds (enough time for real-time sync)
+      setTimeout(() => {
+        pendingDeletionsRef.current.delete(listId)
+      }, 10000)
+      
     } catch (error) {
       console.error('Error deleting list:', error)
-      // Rollback on error
+      // Rollback on error - restore list in UI
       setLists(previousLists)
       setShowDeleteConfirm(listId)
-      showToast('Fehler beim Löschen. Bitte versuche es erneut.', 'error')
+      
+      // Show user-friendly error message
+      const errorMessage = error.message || 'Fehler beim Löschen. Bitte versuche es erneut.'
+      showToast(errorMessage, 'error')
+      hapticFeedback.error()
     }
   }
 
@@ -384,28 +557,34 @@ function Dashboard() {
     setTimeout(() => setToast(null), 3000)
   }
 
-  const isEmpty = lists.length === 0
+  const isEmpty = lists.length === 0 && listView === 'meine'
   const { cardHeight, gap, titleSize, subtitleSize, padding, borderRadius } = calculateCardLayout(lists.length)
 
   // Don't show loading screen if we have optimistic lists (seamless transition)
-  if (loading && lists.length === 0) {
+  if (loading && lists.length === 0 && listView === 'meine') {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center ${
+        isDark 
+          ? 'bg-gradient-to-b from-gray-900 to-gray-800' 
+          : 'bg-gradient-to-b from-white to-gray-50'
+      }`}>
         <div className="text-center">
           <div className="text-4xl mb-4 animate-bounce">🍔</div>
-          <p className="text-gray-600">Lädt deine Listen...</p>
+          <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>Lädt deine Listen...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className={`min-h-screen flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
       {/* Background with gradient */}
       <div 
         className="fixed inset-0"
         style={{
-          background: 'radial-gradient(60% 50% at 50% 0%, #FFF1E8 0%, #FFFFFF 60%)',
+          background: isDark 
+            ? 'radial-gradient(60% 50% at 50% 0%, #1F2937 0%, #111827 60%)'
+            : 'radial-gradient(60% 50% at 50% 0%, #FFF1E8 0%, #FFFFFF 60%)',
         }}
       />
 
@@ -423,32 +602,37 @@ function Dashboard() {
       </div>
 
       {/* Header */}
-      <header className="bg-white/70 backdrop-blur-[12px] border-b border-gray-200/30 flex items-center justify-between sticky top-0 z-10"
+      <header className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-[12px] border-b border-gray-200/30 dark:border-gray-700/30 flex items-center justify-between sticky top-0 z-10"
         style={{
-          paddingLeft: 'clamp(16px, 1.5vw, 24px)',
-          paddingRight: 'clamp(16px, 1.5vw, 24px)',
-          paddingTop: 'clamp(12px, 2vh, 16px)',
-          paddingBottom: 'clamp(12px, 2vh, 16px)',
+          paddingLeft: 'clamp(16px, 4vw, 24px)',
+          paddingRight: 'clamp(16px, 4vw, 24px)',
+          paddingTop: `calc(clamp(12px, 3vh, 16px) + env(safe-area-inset-top))`,
+          paddingBottom: 'clamp(12px, 3vh, 16px)',
+          minHeight: `calc(60px + env(safe-area-inset-top))`,
         }}
       >
-        <div 
-          className="flex items-center justify-center"
+        <button
+          onClick={() => {
+            hapticFeedback.light()
+            navigate('/account')
+          }}
+          className="flex items-center justify-center active:scale-95 transition-all"
           style={{
             minWidth: 'clamp(40px, 3vw, 56px)',
             minHeight: 'clamp(40px, 3vw, 56px)',
             width: 'clamp(40px, 3vw, 56px)',
             height: 'clamp(40px, 3vw, 56px)',
           }}
+          aria-label="Öffne Profil"
         >
           <Avatar 
             size="responsive"
-            onClick={() => navigate('/account')}
             className="w-full h-full"
           />
-        </div>
+        </button>
 
         <h1 
-          className="text-gray-900" 
+          className="text-gray-900 dark:text-white flex-1 text-center px-2" 
           style={{ 
             fontFamily: "'Poppins', sans-serif", 
             fontWeight: 700,
@@ -456,22 +640,48 @@ function Dashboard() {
             lineHeight: '1.2',
           }}
         >
-          {isEmpty ? 'Foodspot Ranker' : `${getUsername()}s Foodspots`}
+          {isEmpty ? 'Rankify' : `${getUsername()}s Foodspots`}
         </h1>
 
-        <div className="w-9" />
+        <button
+          onClick={() => {
+            hapticFeedback.light()
+            navigate('/settings')
+          }}
+          className="flex items-center justify-center"
+          style={{
+            width: '44px',
+            height: '44px',
+            minWidth: '44px',
+            minHeight: '44px',
+          }}
+          aria-label="Öffne Einstellungen"
+        >
+          <svg 
+            className="w-7 h-7 text-gray-900 dark:text-white" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
       </header>
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto px-4 py-6 pb-24 relative">
-        {isEmpty ? (
-          <div className="flex flex-col items-center justify-center min-h-full text-center px-4">
-            <WelcomeCard username={getUsername()} onCreateList={() => navigate('/select-category')} foodEmoji={userFoodEmoji} />
-            <FeaturesSection />
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: `${gap}px` }}>
-            {lists.map((list, index) => (
+        {/* My Lists View */}
+        {listView === 'meine' && (
+          <>
+            {isEmpty ? (
+              <div className="flex flex-col items-center justify-center min-h-full text-center px-4">
+                <WelcomeCard username={getUsername()} onCreateList={() => navigate('/select-category')} foodEmoji={userFoodEmoji} />
+                <FeaturesSection />
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: `${gap}px` }}>
+                {lists.map((list, index) => (
               <div
                 key={list.id}
                 onMouseDown={() => handleLongPressStart(list.id)}
@@ -480,11 +690,12 @@ function Dashboard() {
                 onTouchStart={() => handleLongPressStart(list.id)}
                 onTouchEnd={handleLongPressEnd}
                 onClick={(e) => handleListClick(list.id, e)}
-                className="relative overflow-hidden shadow-lg active:scale-[0.98] transition-all duration-200 cursor-pointer group"
+                className="relative overflow-hidden shadow-lg active:scale-[0.98] transition-all cursor-pointer group"
                 style={{
                   height: `${cardHeight}px`,
                   borderRadius: `${borderRadius}px`,
-                  animation: `fadeSlideUp 0.4s ease-out ${index * 40}ms both`,
+                  transition: `all 0.2s ${springEasing.default}`,
+                  animation: `fadeSlideUp 0.4s ${springEasing.gentle} ${staggerDelay(index, 40)} both`,
                 }}
               >
                 {/* Background Image */}
@@ -494,7 +705,11 @@ function Dashboard() {
                     style={{ backgroundImage: `url(${list.cover_image_url})` }}
                   />
                 ) : (
-                  <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300" />
+                  <div className={`absolute inset-0 bg-gradient-to-br ${
+                    isDark 
+                      ? 'from-gray-700 to-gray-800' 
+                      : 'from-gray-200 to-gray-300'
+                  }`} />
                 )}
 
                 {/* Gradient Overlay */}
@@ -565,19 +780,23 @@ function Dashboard() {
 
                   {/* Dropdown Menu */}
                   {menuOpenForList === list.id && (
-                    <div className="absolute top-12 right-0 bg-white rounded-xl shadow-xl overflow-hidden min-w-[140px]">
+                    <div className={`absolute top-12 right-0 rounded-xl shadow-xl overflow-hidden min-w-[140px] ${
+                      isDark ? 'bg-gray-800' : 'bg-white'
+                    }`}>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
                           setMenuOpenForList(null)
                           openEditModal(list.id)
                         }}
-                        className="w-full px-4 py-3 flex items-center gap-2 hover:bg-gray-50 transition-colors"
+                        className={`w-full px-4 py-3 flex items-center gap-2 transition-colors ${
+                          isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+                        }`}
                       >
-                        <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className={`w-5 h-5 ${isDark ? 'text-gray-200' : 'text-gray-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
-                        <span className="text-gray-700 font-medium">Bearbeiten</span>
+                        <span className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Bearbeiten</span>
                       </button>
                       <button
                         onClick={(e) => {
@@ -585,7 +804,9 @@ function Dashboard() {
                           setMenuOpenForList(null)
                           setShowDeleteConfirm(list.id)
                         }}
-                        className="w-full px-4 py-3 flex items-center gap-2 hover:bg-red-50 transition-colors text-red-600"
+                        className={`w-full px-4 py-3 flex items-center gap-2 transition-colors ${
+                          isDark ? 'hover:bg-red-900/20 text-red-400' : 'hover:bg-red-50 text-red-600'
+                        }`}
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -600,20 +821,35 @@ function Dashboard() {
 
             {/* CTA: Create Another List */}
             <button
-              onClick={() => navigate('/create-list')}
-              className="w-full border-2 border-dashed border-gray-300 rounded-[24px] p-6 flex flex-col items-center justify-center gap-3 hover:border-[#FFB25A] hover:bg-[#FFE4C3]/30 transition-all active:scale-[0.98] group dark:hover:border-[#FF9357] dark:hover:bg-[#B85C2C]/20"
+              onClick={() => {
+                hapticFeedback.medium()
+                navigate('/create-list')
+              }}
+              onTouchStart={() => hapticFeedback.light()}
+              className={`w-full border-2 border-dashed rounded-[24px] p-6 flex flex-col items-center justify-center gap-3 transition-all active:scale-[0.98] group ${
+                isDark
+                  ? 'border-gray-600 hover:border-[#FF9357] hover:bg-[#B85C2C]/20'
+                  : 'border-gray-300 hover:border-[#FFB25A] hover:bg-[#FFE4C3]/30'
+              }`}
               style={{
-                animation: `fadeSlideUp 0.4s ease-out ${lists.length * 40}ms both`,
+                transition: `all 0.2s ${springEasing.default}`,
+                animation: `fadeSlideUp 0.4s ${springEasing.gentle} ${staggerDelay(lists.length, 40)} both`,
               }}
             >
               <div className="text-3xl">📋</div>
               <div className="text-center">
-                <p className="font-semibold text-gray-700 group-hover:text-[#FF7E42] transition-colors dark:group-hover:text-[#FF9357]" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                <p className={`font-semibold transition-colors ${
+                  isDark
+                    ? 'text-gray-200 group-hover:text-[#FF9357]'
+                    : 'text-gray-700 group-hover:text-[#FF7E42]'
+                }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
                   + Weitere Liste erstellen
                 </p>
               </div>
             </button>
           </div>
+            )}
+          </>
         )}
       </main>
 
@@ -642,29 +878,56 @@ function Dashboard() {
         />
       )}
 
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation - Only Friends & Account, Settings removed */}
       {!isEmpty && (
-        <nav className="fixed bottom-0 left-0 right-0 backdrop-blur-[12px] px-4 py-3 flex items-center justify-around bg-white/60 border-t border-gray-200/30">
-          <button className="flex flex-col items-center gap-1 active:scale-95">
-            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span className="text-xs font-medium text-gray-400" style={{ fontFamily: "'Poppins', sans-serif" }}>Settings</span>
+        <nav 
+          className="fixed bottom-0 left-0 right-0 backdrop-blur-[12px] px-4 py-3 flex items-center justify-around bg-white/60 dark:bg-gray-800/60 border-t border-gray-200/30 dark:border-gray-700/30"
+          style={{
+            paddingBottom: `max(12px, env(safe-area-inset-bottom))`,
+          }}
+        >
+          <button 
+            onClick={() => {
+              hapticFeedback.light()
+              navigate('/social')
+            }}
+            className="flex flex-col items-center gap-1 active:scale-95 transition-transform relative"
+            style={{
+              minWidth: '44px',
+              minHeight: '44px',
+            }}
+            aria-label="Social"
+          >
+            <div className="relative">
+              <svg className="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              {hasSocialNotifications && (
+                <span 
+                  className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"
+                  style={{ animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}
+                />
+              )}
+            </div>
+            <span className="text-xs font-medium text-gray-400 dark:text-gray-500" style={{ fontFamily: "'Poppins', sans-serif" }}>Social</span>
           </button>
 
-          <button className="flex flex-col items-center gap-1 active:scale-95">
-            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            <span className="text-xs font-medium text-gray-400" style={{ fontFamily: "'Poppins', sans-serif" }}>Freunde</span>
-          </button>
-
-          <button className="flex flex-col items-center gap-1 active:scale-95">
-            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button 
+            onClick={() => {
+              hapticFeedback.light()
+              navigate('/account')
+            }}
+            className="flex flex-col items-center gap-1 active:scale-95 transition-transform"
+            style={{
+              minWidth: '44px',
+              minHeight: '44px',
+            }}
+            aria-label="Account"
+          >
+            <svg className="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
-            <span className="text-xs font-medium text-gray-400" style={{ fontFamily: "'Poppins', sans-serif" }}>Account</span>
+            <span className="text-xs font-medium text-gray-400 dark:text-gray-500" style={{ fontFamily: "'Poppins', sans-serif" }}>Profil</span>
           </button>
         </nav>
       )}
@@ -672,23 +935,37 @@ function Dashboard() {
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6">
-            <h2 className="text-2xl font-bold mb-4" style={{ fontFamily: "'Poppins', sans-serif" }}>
+          <div className={`rounded-3xl shadow-2xl max-w-md w-full p-6 ${
+            isDark ? 'bg-gray-800' : 'bg-white'
+          }`}>
+            <h2 className={`text-2xl font-bold mb-4 ${
+              isDark ? 'text-white' : 'text-gray-900'
+            }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
               Liste löschen?
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className={`mb-6 ${
+              isDark ? 'text-gray-300' : 'text-gray-600'
+            }`}>
               Möchtest du diese Liste wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(null)}
-                className="flex-1 py-3 rounded-[14px] border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-all"
+                className={`flex-1 py-3 rounded-[14px] border font-semibold transition-all ${
+                  isDark
+                    ? 'border-gray-600 text-gray-200 hover:bg-gray-700'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
               >
                 Abbrechen
               </button>
               <button
                 onClick={() => handleDeleteList(showDeleteConfirm)}
-                className="flex-1 py-3 rounded-[14px] bg-red-500 text-white font-semibold shadow-lg hover:bg-red-600 transition-all"
+                className={`flex-1 py-3 rounded-[14px] text-white font-semibold shadow-lg transition-all ${
+                  isDark
+                    ? 'bg-red-600 hover:bg-red-700'
+                    : 'bg-red-500 hover:bg-red-600'
+                }`}
               >
                 Löschen
               </button>
@@ -706,11 +983,17 @@ function Dashboard() {
           <div className={`rounded-[16px] px-6 py-4 shadow-xl flex items-center gap-3 ${
             toast.type === 'success' 
               ? 'bg-green-500 text-white' 
+              : toast.type === 'info'
+              ? 'bg-blue-500 text-white'
               : 'bg-red-500 text-white'
           }`}>
             {toast.type === 'success' ? (
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : toast.type === 'info' ? (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             ) : (
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -741,6 +1024,7 @@ function Dashboard() {
 
 // Edit List Modal Component
 function EditListModal({ list, onClose, onSave }) {
+  const { isDark } = useTheme()
   const { user } = useAuth()
   
   const [formData, setFormData] = useState({
@@ -885,17 +1169,25 @@ function EditListModal({ list, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className={`rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto ${
+        isDark ? 'bg-gray-800' : 'bg-white'
+      }`}>
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold" style={{ fontFamily: "'Poppins', sans-serif" }}>
+        <div className={`sticky top-0 border-b px-6 py-4 flex items-center justify-between ${
+          isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+        }`}>
+          <h2 className={`text-2xl font-bold ${
+            isDark ? 'text-white' : 'text-gray-900'
+          }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
             Liste bearbeiten
           </h2>
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
+            className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
+              isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+            }`}
           >
-            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-6 h-6 ${isDark ? 'text-gray-300' : 'text-gray-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -905,7 +1197,9 @@ function EditListModal({ list, onClose, onSave }) {
         <div className="p-6 space-y-6">
           {/* List Name */}
           <div>
-            <label className="block text-sm font-semibold mb-2 text-gray-700">
+            <label className={`block text-sm font-semibold mb-2 ${
+              isDark ? 'text-gray-200' : 'text-gray-700'
+            }`}>
               Listenname <span className="text-red-500">*</span>
             </label>
             <input
@@ -913,7 +1207,11 @@ function EditListModal({ list, onClose, onSave }) {
               value={formData.list_name}
               onChange={(e) => handleInputChange('list_name', e.target.value)}
               className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
-                errors.list_name ? 'border-red-400' : 'border-gray-200 focus:ring-[#FF7E42]/20 dark:focus:ring-[#FF9357]/20'
+                errors.list_name 
+                  ? 'border-red-400' 
+                  : isDark
+                    ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
+                    : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
               }`}
             />
             {errors.list_name && <p className="mt-1 text-sm text-red-500">{errors.list_name}</p>}
@@ -921,7 +1219,9 @@ function EditListModal({ list, onClose, onSave }) {
 
           {/* City */}
           <div>
-            <label className="block text-sm font-semibold mb-2 text-gray-700">
+            <label className={`block text-sm font-semibold mb-2 ${
+              isDark ? 'text-gray-200' : 'text-gray-700'
+            }`}>
               Stadt <span className="text-red-500">*</span>
             </label>
             <input
@@ -929,7 +1229,11 @@ function EditListModal({ list, onClose, onSave }) {
               value={formData.city}
               onChange={(e) => handleInputChange('city', e.target.value)}
               className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
-                errors.city ? 'border-red-400' : 'border-gray-200 focus:ring-[#FF7E42]/20 dark:focus:ring-[#FF9357]/20'
+                errors.city 
+                  ? 'border-red-400' 
+                  : isDark
+                    ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
+                    : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
               }`}
             />
             {errors.city && <p className="mt-1 text-sm text-red-500">{errors.city}</p>}
@@ -937,7 +1241,9 @@ function EditListModal({ list, onClose, onSave }) {
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-semibold mb-2 text-gray-700">
+            <label className={`block text-sm font-semibold mb-2 ${
+              isDark ? 'text-gray-200' : 'text-gray-700'
+            }`}>
               Beschreibung (optional)
             </label>
             <textarea
@@ -945,15 +1251,23 @@ function EditListModal({ list, onClose, onSave }) {
               onChange={(e) => handleInputChange('description', e.target.value)}
               maxLength={250}
               rows={3}
-              className="w-full px-4 py-3 rounded-[14px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#FF7E42]/20 dark:focus:ring-[#FF9357]/20 transition-all resize-none"
+              className={`w-full px-4 py-3 rounded-[14px] border transition-all resize-none focus:outline-none focus:ring-2 ${
+                isDark
+                  ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
+                  : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
+              }`}
               placeholder="z.B. Meine Lieblingsspots für den nächsten Urlaub..."
             />
-            <p className="mt-1 text-xs text-gray-500 text-right">{formData.description.length}/250</p>
+            <p className={`mt-1 text-xs text-right ${
+              isDark ? 'text-gray-400' : 'text-gray-500'
+            }`}>{formData.description.length}/250</p>
           </div>
 
           {/* Cover Image */}
           <div>
-            <label className="block text-sm font-semibold mb-2 text-gray-700">
+            <label className={`block text-sm font-semibold mb-2 ${
+              isDark ? 'text-gray-200' : 'text-gray-700'
+            }`}>
               Titelbild
             </label>
             {formData.coverImageUrl ? (
@@ -975,9 +1289,15 @@ function EditListModal({ list, onClose, onSave }) {
             ) : (
               <label className="block cursor-pointer">
                 <input type="file" accept="image/*" onChange={handleCoverImageChange} className="hidden" />
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-[#FF7E42] hover:bg-[#FFE4C3]/30 transition-all dark:hover:border-[#FF9357] dark:hover:bg-[#B85C2C]/20">
+                <div className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
+                  isDark
+                    ? 'border-gray-600 hover:border-[#FF9357] hover:bg-[#B85C2C]/20'
+                    : 'border-gray-300 hover:border-[#FF7E42] hover:bg-[#FFE4C3]/30'
+                }`}>
                   <div className="text-4xl mb-2">📸</div>
-                  <p className="text-gray-600 font-medium">Bild auswählen</p>
+                  <p className={`font-medium ${
+                    isDark ? 'text-gray-300' : 'text-gray-600'
+                  }`}>Bild auswählen</p>
                 </div>
               </label>
             )}
@@ -985,18 +1305,28 @@ function EditListModal({ list, onClose, onSave }) {
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex gap-3">
+        <div className={`sticky bottom-0 border-t px-6 py-4 flex gap-3 ${
+          isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+        }`}>
           <button
             onClick={onClose}
             disabled={isSubmitting}
-            className="flex-1 py-3 rounded-[14px] border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 disabled:opacity-50 transition-all"
+            className={`flex-1 py-3 rounded-[14px] border font-semibold disabled:opacity-50 transition-all ${
+              isDark
+                ? 'border-gray-600 text-gray-200 hover:bg-gray-700'
+                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
           >
             Abbrechen
           </button>
           <button
             onClick={handleSave}
             disabled={isSubmitting}
-            className="flex-1 py-3 rounded-[14px] bg-gradient-to-r from-[#FF7E42] to-[#FFB25A] text-white font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 transition-all dark:from-[#FF9357] dark:to-[#B85C2C]"
+            className={`flex-1 py-3 rounded-[14px] text-white font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 transition-all ${
+              isDark
+                ? 'bg-gradient-to-r from-[#FF9357] to-[#B85C2C]'
+                : 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]'
+            }`}
           >
             {isSubmitting ? 'Speichern...' : 'Speichern'}
           </button>

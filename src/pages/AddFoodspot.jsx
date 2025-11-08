@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
 
 // Category definitions with their specific criteria
@@ -28,6 +29,14 @@ const CATEGORIES = {
   Glühwein: {
     imageUrl: '/images/categories/gluehwein.jpg',
     criteria: ['Geschmack', 'Temperatur', 'Gewürze', 'Alkoholgehalt', 'Preis-Leistung']
+  },
+  'Deutsche Küche': {
+    imageUrl: '/images/categories/deutsche-kuche.jpg', // Will be uploaded to public folder
+    criteria: ['Soße & Braten', 'Beilagen', 'Würzung & Authentizität', 'Frische & Regionalität', 'Portion & Preis-Leistung']
+  },
+  'Bier': {
+    imageUrl: '/images/categories/bier.jpg', // Will be uploaded to public folder
+    criteria: ['Geschmack & Ausgewogenheit', 'Aroma & Geruch', 'Frische & Temperatur', 'Schaumqualität & Kohlensäure', 'Sortencharakter & Authentizität']
   }
 }
 
@@ -54,7 +63,17 @@ const CRITERIA_ICONS = {
   'Temperatur': '🌡️',
   'Gewürze': '🧂',
   'Alkoholgehalt': '🍷',
-  'Preis-Leistung': '💰'
+  'Preis-Leistung': '💰',
+  'Soße & Braten': '🥘',
+  'Beilagen': '🥔',
+  'Würzung & Authentizität': '🌿',
+  'Frische & Regionalität': '🌱',
+  'Portion & Preis-Leistung': '💰',
+  'Geschmack & Ausgewogenheit': '😋',
+  'Aroma & Geruch': '👃',
+  'Frische & Temperatur': '❄️',
+  'Schaumqualität & Kohlensäure': '🫧',
+  'Sortencharakter & Authentizität': '🏆'
 }
 
 // Helper function to compress image
@@ -97,6 +116,7 @@ function AddFoodspot() {
   const spotId = searchParams.get('spotId') || null // For edit mode
   const isEditMode = !!spotId
   const { user } = useAuth()
+  const { isDark } = useTheme()
   const navigate = useNavigate()
 
   const [list, setList] = useState(null)
@@ -571,10 +591,12 @@ function AddFoodspot() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center ${
+        isDark ? 'bg-gray-900' : 'bg-gray-50'
+      }`}>
         <div className="text-center">
           <div className="text-4xl mb-4 animate-bounce">🍔</div>
-          <p className="text-gray-600">Lädt...</p>
+          <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>Lädt...</p>
         </div>
       </div>
     )
@@ -582,12 +604,18 @@ function AddFoodspot() {
 
   if (!list) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className={`min-h-screen flex items-center justify-center p-4 ${
+        isDark ? 'bg-gray-900' : 'bg-gray-50'
+      }`}>
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Liste nicht gefunden</p>
+          <p className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Liste nicht gefunden</p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="px-6 py-3 bg-[#FF7E42] text-white rounded-[14px] font-semibold dark:bg-[#FF9357]"
+            className={`px-6 py-3 text-white rounded-[14px] font-semibold ${
+              isDark
+                ? 'bg-gradient-to-r from-[#FF9357] to-[#B85C2C]'
+                : 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]'
+            }`}
           >
             Zurück zum Dashboard
           </button>
@@ -599,20 +627,30 @@ function AddFoodspot() {
   // Category Selection Screen - only show if NOT in edit mode, category not selected, AND list doesn't have a category
   if ((showCategorySelection || !selectedCategory) && !isEditMode && !listCategory) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className={`min-h-screen flex flex-col ${
+        isDark ? 'bg-gray-900' : 'bg-gray-50'
+      }`}>
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
+        <header className={`border-b sticky top-0 z-20 ${
+          isDark
+            ? 'bg-gray-800 border-gray-700'
+            : 'bg-white border-gray-200'
+        }`}>
           <div className="flex items-center justify-between px-4 py-3">
             <button
               onClick={() => navigate(`/tierlist/${id}`)}
-              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
+              className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
+                isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+              }`}
             >
-              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className={`w-6 h-6 ${isDark ? 'text-gray-200' : 'text-gray-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
 
-            <h1 className="text-lg font-bold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
+            <h1 className={`text-lg font-bold ${
+              isDark ? 'text-white' : 'text-gray-900'
+            }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
               Neuer Foodspot
             </h1>
 
@@ -623,10 +661,16 @@ function AddFoodspot() {
         {/* Category Selection */}
         <main className="flex-1 overflow-y-auto px-4 py-6">
           <div className="max-w-2xl mx-auto">
-            <div className="bg-white rounded-[24px] shadow-lg border border-gray-100 p-8">
+            <div className={`rounded-[24px] shadow-lg border p-8 ${
+              isDark
+                ? 'bg-gray-800 border-gray-700'
+                : 'bg-white border-gray-100'
+            }`}>
               <div className="flex items-center gap-3 mb-6">
                 <span className="text-3xl">📝</span>
-                <h2 className="text-xl font-bold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                <h2 className={`text-xl font-bold ${
+                  isDark ? 'text-white' : 'text-gray-900'
+                }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
                   Kategorie wählen:
                 </h2>
               </div>
@@ -636,9 +680,17 @@ function AddFoodspot() {
                   <button
                     key={category}
                     onClick={() => handleCategorySelect(category)}
-                    className="w-full bg-white hover:bg-gray-50 border-2 border-gray-200 hover:border-[#FF7E42] rounded-[20px] p-6 transition-all active:scale-[0.98] flex items-center gap-4 group dark:hover:border-[#FF9357]"
+                    className={`w-full border-2 rounded-[20px] p-6 transition-all active:scale-[0.98] flex items-center gap-4 group ${
+                      isDark
+                        ? 'bg-gray-700 hover:bg-gray-600 border-gray-600 hover:border-[#FF9357]'
+                        : 'bg-white hover:bg-gray-50 border-gray-200 hover:border-[#FF7E42]'
+                    }`}
                   >
-                    <div className="w-16 h-16 bg-gray-100 group-hover:bg-[#FFE4C3]/50 rounded-2xl flex items-center justify-center overflow-hidden transition-colors relative dark:group-hover:bg-[#B85C2C]/30">
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center overflow-hidden transition-colors relative ${
+                      isDark
+                        ? 'bg-gray-600 group-hover:bg-[#B85C2C]/30'
+                        : 'bg-gray-100 group-hover:bg-[#FFE4C3]/50'
+                    }`}>
                       <img 
                         src={imageUrl} 
                         alt={category}
@@ -651,7 +703,9 @@ function AddFoodspot() {
                             'Pizza': '🍕',
                             'Asiatisch': '🍜',
                             'Mexikanisch': '🌮',
-                            'Glühwein': '🍷'
+                            'Glühwein': '🍷',
+                            'Deutsche Küche': '🥨',
+                            'Bier': '🍺'
                           }
                           e.target.style.display = 'none'
                           const emoji = fallbackEmojis[category] || '🍔'
@@ -659,7 +713,11 @@ function AddFoodspot() {
                         }}
                       />
                     </div>
-                    <span className="text-lg font-semibold text-gray-900 group-hover:text-[#FF7E42] transition-colors dark:group-hover:text-[#FF9357]" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                    <span className={`text-lg font-semibold transition-colors ${
+                      isDark
+                        ? 'text-white group-hover:text-[#FF9357]'
+                        : 'text-gray-900 group-hover:text-[#FF7E42]'
+                    }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
                       {category}
                     </span>
                   </button>
@@ -667,12 +725,24 @@ function AddFoodspot() {
 
                 <button
                   onClick={() => handleCategorySelect('Eigene Kategorie')}
-                  className="w-full bg-white hover:bg-gray-50 border-2 border-dashed border-gray-300 hover:border-[#FF7E42] rounded-[20px] p-6 transition-all active:scale-[0.98] flex items-center gap-4 group dark:hover:border-[#FF9357]"
+                  className={`w-full border-2 border-dashed rounded-[20px] p-6 transition-all active:scale-[0.98] flex items-center gap-4 group ${
+                    isDark
+                      ? 'bg-gray-700 hover:bg-gray-600 border-gray-600 hover:border-[#FF9357]'
+                      : 'bg-white hover:bg-gray-50 border-gray-300 hover:border-[#FF7E42]'
+                  }`}
                 >
-                  <div className="w-16 h-16 bg-gray-100 group-hover:bg-[#FFE4C3]/50 rounded-2xl flex items-center justify-center text-4xl transition-colors dark:group-hover:bg-[#B85C2C]/30">
+                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-4xl transition-colors ${
+                    isDark
+                      ? 'bg-gray-600 group-hover:bg-[#B85C2C]/30'
+                      : 'bg-gray-100 group-hover:bg-[#FFE4C3]/50'
+                  }`}>
                     ➕
                   </div>
-                  <span className="text-lg font-semibold text-gray-500 group-hover:text-[#FF7E42] transition-colors dark:group-hover:text-[#FF9357]" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  <span className={`text-lg font-semibold transition-colors ${
+                    isDark
+                      ? 'text-gray-400 group-hover:text-[#FF9357]'
+                      : 'text-gray-500 group-hover:text-[#FF7E42]'
+                  }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
                     Eigene Kategorie
                   </span>
                 </button>
@@ -689,12 +759,18 @@ function AddFoodspot() {
     if (isEditMode) {
       // In edit mode, if category not loaded, navigate back
       return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className={`min-h-screen flex items-center justify-center p-4 ${
+          isDark ? 'bg-gray-900' : 'bg-gray-50'
+        }`}>
           <div className="text-center">
-            <p className="text-gray-600 mb-4">Foodspot konnte nicht geladen werden</p>
+            <p className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Foodspot konnte nicht geladen werden</p>
             <button
               onClick={() => navigate(`/tierlist/${id}`)}
-              className="px-6 py-3 bg-[#FF7E42] text-white rounded-[14px] font-semibold dark:bg-[#FF9357]"
+              className={`px-6 py-3 text-white rounded-[14px] font-semibold ${
+                isDark
+                  ? 'bg-gradient-to-r from-[#FF9357] to-[#B85C2C]'
+                  : 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]'
+              }`}
             >
               Zurück zur Liste
             </button>
@@ -704,10 +780,12 @@ function AddFoodspot() {
     }
     // Should not happen, but fallback
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center ${
+        isDark ? 'bg-gray-900' : 'bg-gray-50'
+      }`}>
         <div className="text-center">
           <div className="text-4xl mb-4 animate-bounce">🍔</div>
-          <p className="text-gray-600">Lädt...</p>
+          <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>Lädt...</p>
         </div>
       </div>
     )
@@ -715,16 +793,26 @@ function AddFoodspot() {
 
   // Main Form
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className={`min-h-screen flex flex-col ${
+      isDark ? 'bg-gray-900' : 'bg-gray-50'
+    }`}>
       {/* Loading Overlay */}
       {isSubmitting && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-3xl p-8 text-center shadow-2xl max-w-sm mx-4">
+          <div className={`rounded-3xl p-8 text-center shadow-2xl max-w-sm mx-4 ${
+            isDark ? 'bg-gray-800' : 'bg-white'
+          }`}>
             <div className="relative w-16 h-16 mx-auto mb-4">
-              <div className="absolute inset-0 border-4 border-[#FF7E42]/20 rounded-full dark:border-[#FF9357]/20"></div>
-              <div className="absolute inset-0 border-4 border-[#FF7E42] border-t-transparent rounded-full animate-spin dark:border-[#FF9357]"></div>
+              <div className={`absolute inset-0 border-4 rounded-full ${
+                isDark ? 'border-[#FF9357]/20' : 'border-[#FF7E42]/20'
+              }`}></div>
+              <div className={`absolute inset-0 border-4 border-t-transparent rounded-full animate-spin ${
+                isDark ? 'border-[#FF9357]' : 'border-[#FF7E42]'
+              }`}></div>
             </div>
-            <h3 className="text-xl font-bold mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
+            <h3 className={`text-xl font-bold mb-2 ${
+              isDark ? 'text-white' : 'text-gray-900'
+            }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
               {isEditMode ? 'Wird gespeichert...' : 'Foodspot wird hinzugefügt...'}
             </h3>
           </div>
@@ -732,18 +820,26 @@ function AddFoodspot() {
       )}
 
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
+      <header className={`border-b sticky top-0 z-20 ${
+        isDark
+          ? 'bg-gray-800 border-gray-700'
+          : 'bg-white border-gray-200'
+      }`}>
         <div className="flex items-center justify-between px-4 py-3">
           <button
             onClick={() => navigate(`/tierlist/${id}`)}
-            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
+            className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
+              isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+            }`}
           >
-            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-6 h-6 ${isDark ? 'text-gray-200' : 'text-gray-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
 
-          <h1 className="text-lg font-bold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
+          <h1 className={`text-lg font-bold ${
+            isDark ? 'text-white' : 'text-gray-900'
+          }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
             {isEditMode ? 'Foodspot bearbeiten' : 'Foodspot erstellen'}
           </h1>
 
@@ -755,8 +851,14 @@ function AddFoodspot() {
       <main className="flex-1 overflow-y-auto px-4 py-6 pb-24">
         <div className="max-w-2xl mx-auto space-y-6">
           {/* Name */}
-          <div className="bg-white rounded-[20px] shadow-lg border border-gray-100 p-6">
-            <label className="block text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+          <div className={`rounded-[20px] shadow-lg border p-6 ${
+            isDark
+              ? 'bg-gray-800 border-gray-700'
+              : 'bg-white border-gray-100'
+          }`}>
+            <label className={`block text-sm font-semibold mb-2 flex items-center gap-2 ${
+              isDark ? 'text-gray-200' : 'text-gray-700'
+            }`}>
               <span className="text-lg">📝</span>
               Name <span className="text-red-500">*</span>
             </label>
@@ -765,16 +867,28 @@ function AddFoodspot() {
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
               placeholder="z. B. BLN Döner"
-              className="w-full px-4 py-3 rounded-[14px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#FF7E42]/20 dark:focus:ring-[#FF9357]/20 transition-all"
+              className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
+                isDark
+                  ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
+                  : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
+              }`}
             />
             {errors.name && <p className="mt-2 text-sm text-red-500">{errors.name}</p>}
           </div>
 
           {/* Location */}
-          <div className="bg-white rounded-[20px] shadow-lg border border-gray-100 p-6">
-            <label className="block text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+          <div className={`rounded-[20px] shadow-lg border p-6 ${
+            isDark
+              ? 'bg-gray-800 border-gray-700'
+              : 'bg-white border-gray-100'
+          }`}>
+            <label className={`block text-sm font-semibold mb-2 flex items-center gap-2 ${
+              isDark ? 'text-gray-200' : 'text-gray-700'
+            }`}>
               <span className="text-lg">📍</span>
-              Standort <span className="text-gray-500 font-normal">(Optional - Google Maps kommt später)</span>
+              Standort <span className={`font-normal ${
+                isDark ? 'text-gray-400' : 'text-gray-500'
+              }`}>(Optional - Google Maps kommt später)</span>
             </label>
             
             <div className="relative">
@@ -783,15 +897,21 @@ function AddFoodspot() {
                 value={locationQuery}
                 onChange={(e) => handleLocationSearch(e.target.value)}
                 placeholder="Suchen oder aktuelle Position verwenden..."
-                className="w-full px-4 py-3 pr-12 rounded-[14px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#FF7E42]/20 dark:focus:ring-[#FF9357]/20 transition-all"
+                className={`w-full px-4 py-3 pr-12 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
+                  isDark
+                    ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
+                    : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
+                }`}
               />
               
               <button
                 onClick={handleCurrentPosition}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors ${
+                  isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                }`}
                 title="Aktuelle Position"
               >
-                <svg className="w-5 h-5 text-[#FF7E42] dark:text-[#FF9357]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={`w-5 h-5 ${isDark ? 'text-[#FF9357]' : 'text-[#FF7E42]'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
@@ -799,17 +919,27 @@ function AddFoodspot() {
 
               {/* Location Suggestions */}
               {locationSuggestions.length > 0 && (
-                <div className="absolute z-50 w-full mt-2 bg-white rounded-[14px] shadow-xl border border-gray-200 max-h-64 overflow-y-auto">
+                <div className={`absolute z-50 w-full mt-2 rounded-[14px] shadow-xl border max-h-64 overflow-y-auto ${
+                  isDark
+                    ? 'bg-gray-800 border-gray-700'
+                    : 'bg-white border-gray-200'
+                }`}>
                   {locationSuggestions.map((place) => (
                     <button
                       key={place.place_id}
                       onClick={() => handleLocationSelect(place)}
-                      className="w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors text-sm flex items-center gap-2"
+                      className={`w-full px-4 py-3 text-left transition-colors text-sm flex items-center gap-2 ${
+                        isDark
+                          ? 'hover:bg-gray-700 active:bg-gray-600 text-gray-200'
+                          : 'hover:bg-gray-50 active:bg-gray-100 text-gray-700'
+                      }`}
                     >
-                      <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className={`w-4 h-4 flex-shrink-0 ${
+                        isDark ? 'text-gray-400' : 'text-gray-400'
+                      }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       </svg>
-                      <span className="text-gray-700">{place.description}</span>
+                      <span className={isDark ? 'text-gray-200' : 'text-gray-700'}>{place.description}</span>
                     </button>
                   ))}
                 </div>
@@ -817,13 +947,23 @@ function AddFoodspot() {
             </div>
 
             {formData.address && (
-              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-start gap-2">
-                <svg className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className={`mt-3 p-3 border rounded-lg flex items-start gap-2 ${
+                isDark
+                  ? 'bg-green-900/20 border-green-700'
+                  : 'bg-green-50 border-green-200'
+              }`}>
+                <svg className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+                  isDark ? 'text-green-400' : 'text-green-600'
+                }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-green-900">Standort ausgewählt:</p>
-                  <p className="text-sm text-green-700 mt-0.5">{formData.address}</p>
+                  <p className={`text-sm font-medium ${
+                    isDark ? 'text-green-300' : 'text-green-900'
+                  }`}>Standort ausgewählt:</p>
+                  <p className={`text-sm mt-0.5 ${
+                    isDark ? 'text-green-400' : 'text-green-700'
+                  }`}>{formData.address}</p>
                 </div>
               </div>
             )}
@@ -832,10 +972,18 @@ function AddFoodspot() {
           </div>
 
           {/* Photo Upload */}
-          <div className="bg-white rounded-[20px] shadow-lg border border-gray-100 p-6">
-            <label className="block text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+          <div className={`rounded-[20px] shadow-lg border p-6 ${
+            isDark
+              ? 'bg-gray-800 border-gray-700'
+              : 'bg-white border-gray-100'
+          }`}>
+            <label className={`block text-sm font-semibold mb-2 flex items-center gap-2 ${
+              isDark ? 'text-gray-200' : 'text-gray-700'
+            }`}>
               <span className="text-lg">📷</span>
-              Foto <span className="text-gray-500 font-normal">(Optional)</span>
+              Foto <span className={`font-normal ${
+                isDark ? 'text-gray-400' : 'text-gray-500'
+              }`}>(Optional)</span>
             </label>
             {formData.cover_photo_url ? (
               <div className="relative rounded-xl overflow-hidden">
@@ -852,9 +1000,17 @@ function AddFoodspot() {
             ) : (
               <label className="block cursor-pointer">
                 <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-[#FF7E42] hover:bg-[#FFE4C3]/30 transition-all dark:hover:border-[#FF9357] dark:hover:bg-[#B85C2C]/20">
-                  <div className="text-4xl mb-2">+ Foto hochladen</div>
-                  <p className="text-sm text-gray-500 mt-1">PNG, JPG bis 5MB</p>
+                <div className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
+                  isDark
+                    ? 'border-gray-600 hover:border-[#FF9357] hover:bg-[#B85C2C]/20'
+                    : 'border-gray-300 hover:border-[#FF7E42] hover:bg-[#FFE4C3]/30'
+                }`}>
+                  <div className={`text-4xl mb-2 ${
+                    isDark ? 'text-gray-300' : 'text-gray-700'
+                  }`}>+ Foto hochladen</div>
+                  <p className={`text-sm mt-1 ${
+                    isDark ? 'text-gray-400' : 'text-gray-500'
+                  }`}>PNG, JPG bis 5MB</p>
                 </div>
               </label>
             )}
@@ -862,9 +1018,15 @@ function AddFoodspot() {
           </div>
 
           {/* Criteria Rating */}
-          <div className="bg-white rounded-[20px] shadow-lg border border-gray-100 p-6">
+          <div className={`rounded-[20px] shadow-lg border p-6 ${
+            isDark
+              ? 'bg-gray-800 border-gray-700'
+              : 'bg-white border-gray-100'
+          }`}>
             <div className="flex items-center justify-between mb-4">
-              <label className="block text-sm font-semibold text-gray-700">
+              <label className={`block text-sm font-semibold ${
+                isDark ? 'text-gray-200' : 'text-gray-700'
+              }`}>
                 📊 BEWERTUNG (1-5)
               </label>
             </div>
@@ -873,7 +1035,9 @@ function AddFoodspot() {
               {CATEGORIES[selectedCategory].criteria.map((criterion) => (
                 <div key={criterion}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <span className={`text-sm font-medium flex items-center gap-2 ${
+                      isDark ? 'text-gray-200' : 'text-gray-700'
+                    }`}>
                       <span className="text-base">{CRITERIA_ICONS[criterion]}</span>
                       {criterion}:
                     </span>
@@ -888,8 +1052,14 @@ function AddFoodspot() {
                           }))}
                           className={`w-10 h-10 rounded-lg font-semibold transition-all ${
                             (formData.ratings[criterion] || 0) === value
-                              ? 'bg-[#FF7E42] text-white shadow-lg scale-110 dark:bg-[#FF9357]'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              ? `text-white shadow-lg scale-110 ${
+                                  isDark
+                                    ? 'bg-[#FF9357]'
+                                    : 'bg-[#FF7E42]'
+                                }`
+                              : isDark
+                                ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                           }`}
                         >
                           {value}
@@ -904,7 +1074,11 @@ function AddFoodspot() {
           </div>
 
           {/* Overall Rating & Tier */}
-          <div className="bg-gradient-to-br from-[#FF7E42] to-[#FFB25A] rounded-[20px] shadow-lg p-6 text-white dark:from-[#FF9357] dark:to-[#B85C2C]">
+          <div className={`rounded-[20px] shadow-lg p-6 text-white ${
+            isDark
+              ? 'bg-gradient-to-br from-[#FF9357] to-[#B85C2C]'
+              : 'bg-gradient-to-br from-[#FF7E42] to-[#FFB25A]'
+          }`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm opacity-90 mb-1">⭐ Gesamt:</p>
@@ -922,10 +1096,18 @@ function AddFoodspot() {
           </div>
 
           {/* Comment */}
-          <div className="bg-white rounded-[20px] shadow-lg border border-gray-100 p-6">
-            <label className="block text-sm font-semibold mb-2 text-gray-700 flex items-center gap-2">
+          <div className={`rounded-[20px] shadow-lg border p-6 ${
+            isDark
+              ? 'bg-gray-800 border-gray-700'
+              : 'bg-white border-gray-100'
+          }`}>
+            <label className={`block text-sm font-semibold mb-2 flex items-center gap-2 ${
+              isDark ? 'text-gray-200' : 'text-gray-700'
+            }`}>
               <span className="text-lg">💬</span>
-              Kommentar <span className="text-gray-500 font-normal">(Optional)</span>
+              Kommentar <span className={`font-normal ${
+                isDark ? 'text-gray-400' : 'text-gray-500'
+              }`}>(Optional)</span>
             </label>
             <textarea
               value={formData.notes}
@@ -933,9 +1115,15 @@ function AddFoodspot() {
               placeholder="Was macht diesen Spot besonders?"
               rows="4"
               maxLength="500"
-              className="w-full px-4 py-3 rounded-[14px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#FF7E42]/20 dark:focus:ring-[#FF9357]/20 resize-none transition-all"
+              className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 resize-none ${
+                isDark
+                  ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
+                  : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
+              }`}
             />
-            <p className="text-sm text-gray-500 mt-2 text-right">{formData.notes.length}/500</p>
+            <p className={`text-sm mt-2 text-right ${
+              isDark ? 'text-gray-400' : 'text-gray-500'
+            }`}>{formData.notes.length}/500</p>
           </div>
 
           {/* Submit/Edit Buttons */}
@@ -945,7 +1133,11 @@ function AddFoodspot() {
               <button
                 onClick={handleDelete}
                 disabled={isSubmitting}
-                className="flex-1 py-4 rounded-[20px] font-semibold text-lg bg-red-500 text-white shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
+                className={`flex-1 py-4 rounded-[20px] font-semibold text-lg text-white shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 ${
+                  isDark
+                    ? 'bg-red-600 hover:bg-red-700'
+                    : 'bg-red-500 hover:bg-red-600'
+                }`}
                 style={{ fontFamily: "'Poppins', sans-serif" }}
               >
                 🗑️ Löschen
@@ -955,7 +1147,11 @@ function AddFoodspot() {
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="flex-1 py-4 rounded-[20px] font-semibold text-lg bg-gradient-to-r from-[#FF7E42] to-[#FFB25A] text-white shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 dark:from-[#FF9357] dark:to-[#B85C2C]"
+                className={`flex-1 py-4 rounded-[20px] font-semibold text-lg text-white shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 ${
+                  isDark
+                    ? 'bg-gradient-to-r from-[#FF9357] to-[#B85C2C]'
+                    : 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]'
+                }`}
                 style={{ fontFamily: "'Poppins', sans-serif" }}
               >
                 💾 Speichern
@@ -965,7 +1161,11 @@ function AddFoodspot() {
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="w-full py-4 rounded-[20px] font-semibold text-lg bg-gradient-to-r from-[#FF7E42] to-[#FFB25A] text-white shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 dark:from-[#FF9357] dark:to-[#B85C2C]"
+              className={`w-full py-4 rounded-[20px] font-semibold text-lg text-white shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 ${
+                isDark
+                  ? 'bg-gradient-to-r from-[#FF9357] to-[#B85C2C]'
+                  : 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]'
+              }`}
               style={{ fontFamily: "'Poppins', sans-serif" }}
             >
               💾 Foodspot speichern

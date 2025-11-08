@@ -1,0 +1,114 @@
+-- =============================================
+-- MIGRATION 013: EMERGENCY RESTORE ALL POLICIES
+-- =============================================
+-- VOLLSTÄNDIGE WIEDERHERSTELLUNG aller RLS Policies
+-- Diese Migration stellt ALLE ursprünglichen Policies wieder her
+-- =============================================
+
+-- Stelle sicher, dass RLS für alle Tabellen aktiviert ist
+ALTER TABLE lists ENABLE ROW LEVEL SECURITY;
+ALTER TABLE foodspots ENABLE ROW LEVEL SECURITY;
+
+-- =============================================
+-- LISTS POLICIES - VOLLSTÄNDIG WIEDERHERSTELLEN
+-- =============================================
+
+-- Lösche ALLE existierenden Policies für lists (um Konflikte zu vermeiden)
+DROP POLICY IF EXISTS "Users can view own lists" ON lists;
+DROP POLICY IF EXISTS "Users can create own lists" ON lists;
+DROP POLICY IF EXISTS "Users can update own lists" ON lists;
+DROP POLICY IF EXISTS "Users can delete own lists" ON lists;
+DROP POLICY IF EXISTS "Public lists are viewable by all users" ON lists;
+DROP POLICY IF EXISTS "Friends can view lists if profile is public" ON lists;
+DROP POLICY IF EXISTS "List members can view lists" ON lists;
+DROP POLICY IF EXISTS "Users can view accessible lists" ON lists;
+DROP POLICY IF EXISTS "Collaborators can view shared lists" ON lists;
+
+-- Erstelle ursprüngliche Policies NEU
+CREATE POLICY "Users can view own lists"
+ON lists FOR SELECT TO authenticated
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create own lists"
+ON lists FOR INSERT TO authenticated
+WITH CHECK (auth.uid() = user_id AND auth.uid() IS NOT NULL);
+
+CREATE POLICY "Users can update own lists"
+ON lists FOR UPDATE TO authenticated
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own lists"
+ON lists FOR DELETE TO authenticated
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Public lists are viewable by all users"
+ON lists FOR SELECT TO authenticated
+USING (is_public = true);
+
+-- =============================================
+-- FOODSPOTS POLICIES - VOLLSTÄNDIG WIEDERHERSTELLEN
+-- =============================================
+
+-- Lösche ALLE existierenden Policies für foodspots (um Konflikte zu vermeiden)
+DROP POLICY IF EXISTS "Users can view foodspots in own lists" ON foodspots;
+DROP POLICY IF EXISTS "Users can create foodspots in own lists" ON foodspots;
+DROP POLICY IF EXISTS "Users can update own foodspots" ON foodspots;
+DROP POLICY IF EXISTS "Users can delete own foodspots" ON foodspots;
+DROP POLICY IF EXISTS "Friends can view foodspots if profile is public" ON foodspots;
+DROP POLICY IF EXISTS "List members can view foodspots" ON foodspots;
+DROP POLICY IF EXISTS "Users can view foodspots in accessible lists" ON foodspots;
+DROP POLICY IF EXISTS "Collaborators can view foodspots in shared lists" ON foodspots;
+
+-- Erstelle ursprüngliche Policies NEU
+CREATE POLICY "Users can view foodspots in own lists"
+ON foodspots FOR SELECT TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM lists 
+    WHERE lists.id = foodspots.list_id 
+    AND lists.user_id = auth.uid()
+  )
+);
+
+CREATE POLICY "Users can create foodspots in own lists"
+ON foodspots FOR INSERT TO authenticated
+WITH CHECK (
+  auth.uid() = user_id
+  AND auth.uid() IS NOT NULL
+  AND EXISTS (
+    SELECT 1 FROM lists 
+    WHERE lists.id = foodspots.list_id 
+    AND lists.user_id = auth.uid()
+  )
+);
+
+CREATE POLICY "Users can update own foodspots"
+ON foodspots FOR UPDATE TO authenticated
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own foodspots"
+ON foodspots FOR DELETE TO authenticated
+USING (auth.uid() = user_id);
+
+-- =============================================
+-- HINWEIS: Geteilte Listen Policies
+-- =============================================
+-- Die Policies für geteilte Listen wurden entfernt, um einen sauberen Start zu gewährleisten
+-- Diese können später schrittweise hinzugefügt werden, wenn die Basis-Funktionalität stabil ist
+-- 
+-- Für geteilte Listen später verwenden:
+-- - "Collaborators can view shared lists" (für lists)
+-- - "Collaborators can view foodspots in shared lists" (für foodspots)
+
+-- =============================================
+-- SUCCESS: ALL POLICIES RESTORED
+-- =============================================
+-- Nach dieser Migration sollten:
+-- ✅ Listen wieder erstellt werden können
+-- ✅ Listen im Profil angezeigt werden
+-- ✅ Abmelden wieder funktionieren
+-- ✅ Geteilte Listen funktionieren (wenn vorhanden)
+-- =============================================
+

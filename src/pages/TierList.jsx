@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
 
 const TIER_COLORS = {
@@ -36,6 +37,7 @@ const TIERS = ['S', 'A', 'B', 'C', 'D']
 function TierList() {
   const { id } = useParams()
   const { user } = useAuth()
+  const { isDark } = useTheme()
   const navigate = useNavigate()
   
   const [list, setList] = useState(null)
@@ -420,10 +422,12 @@ function TierList() {
   // Don't show loading screen if we have optimistic foodspots (seamless transition)
   if (loading && !list && foodspots.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center ${
+        isDark ? 'bg-gray-900' : 'bg-gray-50'
+      }`}>
         <div className="text-center">
           <div className="text-4xl mb-4 animate-bounce">🍔</div>
-          <p className="text-gray-600">Lädt Liste...</p>
+          <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>Lädt Liste...</p>
         </div>
       </div>
     )
@@ -431,12 +435,18 @@ function TierList() {
 
   if (!list) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className={`min-h-screen flex items-center justify-center p-4 ${
+        isDark ? 'bg-gray-900' : 'bg-gray-50'
+      }`}>
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Liste nicht gefunden</p>
+          <p className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Liste nicht gefunden</p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="px-6 py-3 bg-[#FF7E42] text-white rounded-[14px] font-semibold dark:bg-[#FF9357]"
+            className={`px-6 py-3 text-white rounded-[14px] font-semibold ${
+              isDark
+                ? 'bg-gradient-to-r from-[#FF9357] to-[#B85C2C]'
+                : 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]'
+            }`}
           >
             Zurück zum Dashboard
           </button>
@@ -449,70 +459,94 @@ function TierList() {
   const hasSpots = totalSpots > 0
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className={`min-h-screen flex flex-col ${
+      isDark ? 'bg-gray-900' : 'bg-gray-50'
+    }`}>
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
+      <header className={`border-b sticky top-0 z-20 ${
+        isDark
+          ? 'bg-gray-800 border-gray-700'
+          : 'bg-white border-gray-200'
+      }`}>
         <div className="flex items-center justify-between px-4 py-3">
           <button
             onClick={() => navigate('/dashboard')}
-            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
+            className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
+              isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+            }`}
           >
-            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-6 h-6 ${isDark ? 'text-gray-200' : 'text-gray-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
 
-          <h1 className="text-lg font-bold text-gray-900 flex-1 text-center px-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
+          <h1 className={`text-lg font-bold flex-1 text-center px-2 ${
+            isDark ? 'text-white' : 'text-gray-900'
+          }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
             Foodspots in {list.city}
           </h1>
 
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
+              className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
+                isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+              }`}
             >
-              <svg className="w-6 h-6 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
+              <svg className={`w-6 h-6 ${isDark ? 'text-gray-200' : 'text-gray-700'}`} fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
               </svg>
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 top-12 bg-white rounded-xl shadow-xl overflow-hidden min-w-[200px] z-30">
+              <div className={`absolute right-0 top-12 rounded-xl shadow-xl overflow-hidden min-w-[200px] z-30 ${
+                isDark ? 'bg-gray-800' : 'bg-white'
+              }`}>
                 <button
                   onClick={() => handleOpenEditModal('name')}
-                  className="w-full px-4 py-3 flex items-center gap-2 hover:bg-gray-50 transition-colors text-left"
+                  className={`w-full px-4 py-3 flex items-center gap-2 transition-colors text-left ${
+                    isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+                  }`}
                 >
-                  <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`w-5 h-5 ${isDark ? 'text-gray-200' : 'text-gray-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
-                  <span className="text-gray-700 font-medium">Liste umbenennen</span>
+                  <span className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Liste umbenennen</span>
                 </button>
                 <button
                   onClick={() => handleOpenEditModal('city')}
-                  className="w-full px-4 py-3 flex items-center gap-2 hover:bg-gray-50 transition-colors text-left"
+                  className={`w-full px-4 py-3 flex items-center gap-2 transition-colors text-left ${
+                    isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+                  }`}
                 >
-                  <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`w-5 h-5 ${isDark ? 'text-gray-200' : 'text-gray-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  <span className="text-gray-700 font-medium">Stadt ändern</span>
+                  <span className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Stadt ändern</span>
                 </button>
                 <button
                   onClick={() => handleOpenEditModal('cover')}
-                  className="w-full px-4 py-3 flex items-center gap-2 hover:bg-gray-50 transition-colors text-left"
+                  className={`w-full px-4 py-3 flex items-center gap-2 transition-colors text-left ${
+                    isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+                  }`}
                 >
-                  <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`w-5 h-5 ${isDark ? 'text-gray-200' : 'text-gray-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  <span className="text-gray-700 font-medium">Titelbild ändern</span>
+                  <span className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>Titelbild ändern</span>
                 </button>
-                <div className="border-t border-gray-200" />
+                <div className={`border-t ${
+                  isDark ? 'border-gray-700' : 'border-gray-200'
+                }`} />
                 <button
                   onClick={() => {
                     setMenuOpen(false)
                     setShowDeleteConfirm(true)
                   }}
-                  className="w-full px-4 py-3 flex items-center gap-2 hover:bg-red-50 transition-colors text-red-600"
+                  className={`w-full px-4 py-3 flex items-center gap-2 transition-colors ${
+                    isDark ? 'hover:bg-red-900/20 text-red-400' : 'hover:bg-red-50 text-red-600'
+                  }`}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -526,7 +560,9 @@ function TierList() {
       </header>
 
       {/* Main Content - All Tiers Always Visible */}
-      <div className="flex-1 overflow-y-auto bg-gray-50 px-4 py-4">
+      <div className={`flex-1 overflow-y-auto px-4 py-4 ${
+        isDark ? 'bg-gray-900' : 'bg-gray-50'
+      }`}>
         <div className="max-w-5xl mx-auto flex flex-col gap-4">
           {TIERS.map((tier, index) => {
             const tierData = TIER_COLORS[tier]
@@ -559,16 +595,22 @@ function TierList() {
                 </div>
 
                 {/* Right Content Area - Always same height as tier bar */}
-                <div className="flex-1 bg-white flex flex-col h-full">
+                <div className={`flex-1 flex flex-col h-full ${
+                  isDark ? 'bg-gray-800' : 'bg-white'
+                }`}>
                   {isEmpty ? (
                     <div 
-                      className="w-full h-full flex flex-col items-center justify-center text-gray-400"
+                      className={`w-full h-full flex flex-col items-center justify-center ${
+                        isDark ? 'text-gray-500' : 'text-gray-400'
+                      }`}
                       style={{ pointerEvents: 'none' }}
                     >
                       <div className="text-5xl mb-2">
                         {tierData.emoji}
                       </div>
-                      <span className="font-medium text-sm text-gray-400" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                      <span className={`font-medium text-sm ${
+                        isDark ? 'text-gray-500' : 'text-gray-400'
+                      }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
                         Noch leer
                       </span>
                     </div>
@@ -581,7 +623,11 @@ function TierList() {
                             <div
                               key={spot.id}
                               onClick={() => navigate(`/add-foodspot/${id}?spotId=${spot.id}`)}
-                              className="bg-white rounded-xl p-2 cursor-pointer hover:shadow-lg active:scale-[0.98] transition-all duration-150 border border-gray-200 shadow-sm h-20"
+                              className={`rounded-xl p-2 cursor-pointer hover:shadow-lg active:scale-[0.98] transition-all duration-150 border shadow-sm h-20 ${
+                                isDark
+                                  ? 'bg-gray-700 border-gray-600'
+                                  : 'bg-white border-gray-200'
+                              }`}
                               style={{
                                 boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)'
                               }}
@@ -592,7 +638,9 @@ function TierList() {
                                 <div className="flex-1 min-w-0 flex flex-col gap-1 justify-center">
                                   {/* Name */}
                                   <h3 
-                                    className="font-bold text-gray-900 text-sm truncate leading-tight" 
+                                    className={`font-bold text-sm truncate leading-tight ${
+                                      isDark ? 'text-white' : 'text-gray-900'
+                                    }`} 
                                     style={{ fontFamily: "'Poppins', sans-serif" }}
                                   >
                                     {spot.name}
@@ -603,7 +651,9 @@ function TierList() {
                                     {/* Rating */}
                                     <div className="flex items-center gap-0.5">
                                       <span className="text-xs">⭐</span>
-                                      <span className="font-bold text-gray-900 text-xs" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                                      <span className={`font-bold text-xs ${
+                                        isDark ? 'text-white' : 'text-gray-900'
+                                      }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
                                         {(spot.rating || 0).toFixed(1)}/10
                                       </span>
                                     </div>
@@ -618,8 +668,12 @@ function TierList() {
                                           {spot.category === 'Asiatisch' && '🍜'}
                                           {spot.category === 'Mexikanisch' && '🌮'}
                                           {spot.category === 'Glühwein' && '🍷'}
+                                          {spot.category === 'Deutsche Küche' && '🥨'}
+                                          {spot.category === 'Bier' && '🍺'}
                                         </span>
-                                        <span className="text-xs text-gray-600 font-medium truncate">
+                                        <span className={`text-xs font-medium truncate ${
+                                          isDark ? 'text-gray-300' : 'text-gray-600'
+                                        }`}>
                                           {spot.category}
                                         </span>
                                       </div>
@@ -628,7 +682,9 @@ function TierList() {
                                   
                                   {/* Standort (optional, klein) */}
                                   {spot.address && (
-                                    <p className="text-[10px] text-gray-400 truncate">
+                                    <p className={`text-[10px] truncate ${
+                                      isDark ? 'text-gray-400' : 'text-gray-400'
+                                    }`}>
                                       📍 {spot.address.split(',')[0]}
                                     </p>
                                   )}
@@ -639,10 +695,16 @@ function TierList() {
                                   <img
                                     src={spot.cover_photo_url}
                                     alt={spot.name}
-                                    className="w-16 h-16 object-cover rounded-lg flex-shrink-0 border border-gray-200"
+                                    className={`w-16 h-16 object-cover rounded-lg flex-shrink-0 border ${
+                                      isDark ? 'border-gray-600' : 'border-gray-200'
+                                    }`}
                                   />
                                 ) : (
-                                  <div className="w-16 h-16 rounded-lg bg-gray-200 flex-shrink-0 border border-gray-300"></div>
+                                  <div className={`w-16 h-16 rounded-lg flex-shrink-0 border ${
+                                    isDark
+                                      ? 'bg-gray-600 border-gray-500'
+                                      : 'bg-gray-200 border-gray-300'
+                                  }`}></div>
                                 )}
                               </div>
                             </div>
@@ -651,13 +713,19 @@ function TierList() {
                       </div>
                       
                       {tierSizing.hasOverflow && (
-                        <div className="px-3 pt-2 pb-3 border-t border-gray-200 mt-auto">
+                        <div className={`px-3 pt-2 pb-3 border-t mt-auto ${
+                          isDark ? 'border-gray-700' : 'border-gray-200'
+                        }`}>
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
                               setShowTierModal(tier)
                             }}
-                            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg py-2 transition-all duration-150 text-xs font-medium"
+                            className={`w-full rounded-lg py-2 transition-all duration-150 text-xs font-medium ${
+                              isDark
+                                ? 'bg-gray-700 hover:bg-gray-600 text-gray-200'
+                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                            }`}
                           >
                             Alle {tier}-Tier Einträge anzeigen
                           </button>
@@ -675,7 +743,11 @@ function TierList() {
       {/* Floating Add Button */}
       <button
         onClick={() => navigate(`/add-foodspot/${id}`)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-[#FF7E42] to-[#FFB25A] text-white rounded-full shadow-xl flex items-center justify-center hover:shadow-2xl hover:scale-105 transition-all active:scale-95 z-10 dark:from-[#FF9357] dark:to-[#B85C2C]"
+        className={`fixed bottom-6 right-6 w-14 h-14 text-white rounded-full shadow-xl flex items-center justify-center hover:shadow-2xl hover:scale-105 transition-all active:scale-95 z-10 ${
+          isDark
+            ? 'bg-gradient-to-br from-[#FF9357] to-[#B85C2C]'
+            : 'bg-gradient-to-br from-[#FF7E42] to-[#FFB25A]'
+        }`}
         style={{ boxShadow: '0 8px 24px rgba(255, 125, 66, 0.35)' }}
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -686,8 +758,12 @@ function TierList() {
       {/* Edit Modal */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6">
-            <h2 className="text-2xl font-bold mb-4" style={{ fontFamily: "'Poppins', sans-serif" }}>
+          <div className={`rounded-3xl shadow-2xl max-w-md w-full p-6 ${
+            isDark ? 'bg-gray-800' : 'bg-white'
+          }`}>
+            <h2 className={`text-2xl font-bold mb-4 ${
+              isDark ? 'text-white' : 'text-gray-900'
+            }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
               {showEditModal === 'name' && 'Liste umbenennen'}
               {showEditModal === 'city' && 'Stadt ändern'}
               {showEditModal === 'cover' && 'Titelbild ändern'}
@@ -695,14 +771,20 @@ function TierList() {
             
             {showEditModal === 'name' && (
               <div className="mb-6">
-                <label className="block text-sm font-semibold mb-2 text-gray-700">
+                <label className={`block text-sm font-semibold mb-2 ${
+                  isDark ? 'text-gray-200' : 'text-gray-700'
+                }`}>
                   Neuer Listenname
                 </label>
                 <input
                   type="text"
                   value={editFormData.list_name}
                   onChange={(e) => setEditFormData(prev => ({ ...prev, list_name: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-[14px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#FF784F]/20"
+                  className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
+                    isDark
+                      ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
+                      : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
+                  }`}
                   placeholder="z. B. Beste Burger Münchens"
                 />
               </div>
@@ -710,14 +792,20 @@ function TierList() {
             
             {showEditModal === 'city' && (
               <div className="mb-6">
-                <label className="block text-sm font-semibold mb-2 text-gray-700">
+                <label className={`block text-sm font-semibold mb-2 ${
+                  isDark ? 'text-gray-200' : 'text-gray-700'
+                }`}>
                   Neue Stadt
                 </label>
                 <input
                   type="text"
                   value={editFormData.city}
                   onChange={(e) => setEditFormData(prev => ({ ...prev, city: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-[14px] border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#FF784F]/20"
+                  className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
+                    isDark
+                      ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
+                      : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
+                  }`}
                   placeholder="z. B. München"
                 />
               </div>
@@ -725,7 +813,9 @@ function TierList() {
             
             {showEditModal === 'cover' && (
               <div className="mb-6">
-                <label className="block text-sm font-semibold mb-2 text-gray-700">
+                <label className={`block text-sm font-semibold mb-2 ${
+                  isDark ? 'text-gray-200' : 'text-gray-700'
+                }`}>
                   Neues Titelbild
                 </label>
                 {editFormData.cover_image_url ? (
@@ -752,10 +842,18 @@ function TierList() {
                       onChange={handleCoverImageChange} 
                       className="hidden" 
                     />
-                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-[#FF7E42] hover:bg-[#FFE4C3]/30 transition-all dark:hover:border-[#FF9357] dark:hover:bg-[#B85C2C]/20">
+                    <div className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
+                      isDark
+                        ? 'border-gray-600 hover:border-[#FF9357] hover:bg-[#B85C2C]/20'
+                        : 'border-gray-300 hover:border-[#FF7E42] hover:bg-[#FFE4C3]/30'
+                    }`}>
                       <div className="text-4xl mb-2">📸</div>
-                      <p className="text-gray-600 font-medium">Bild auswählen</p>
-                      <p className="text-sm text-gray-500 mt-1">PNG, JPG bis 5MB</p>
+                      <p className={`font-medium ${
+                        isDark ? 'text-gray-300' : 'text-gray-600'
+                      }`}>Bild auswählen</p>
+                      <p className={`text-sm mt-1 ${
+                        isDark ? 'text-gray-400' : 'text-gray-500'
+                      }`}>PNG, JPG bis 5MB</p>
                     </div>
                   </label>
                 )}
@@ -765,13 +863,21 @@ function TierList() {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowEditModal(false)}
-                className="flex-1 py-3 rounded-[14px] border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-all"
+                className={`flex-1 py-3 rounded-[14px] border font-semibold transition-all ${
+                  isDark
+                    ? 'border-gray-600 text-gray-200 hover:bg-gray-700'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
               >
                 Abbrechen
               </button>
               <button
                 onClick={handleSaveEdit}
-                className="flex-1 py-3 rounded-[14px] bg-gradient-to-r from-[#FF7E42] to-[#FFB25A] text-white font-semibold shadow-lg hover:shadow-xl transition-all dark:from-[#FF9357] dark:to-[#B85C2C]"
+                className={`flex-1 py-3 rounded-[14px] text-white font-semibold shadow-lg hover:shadow-xl transition-all ${
+                  isDark
+                    ? 'bg-gradient-to-r from-[#FF9357] to-[#B85C2C]'
+                    : 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]'
+                }`}
               >
                 Speichern
               </button>
@@ -783,23 +889,37 @@ function TierList() {
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6">
-            <h2 className="text-2xl font-bold mb-4" style={{ fontFamily: "'Poppins', sans-serif" }}>
+          <div className={`rounded-3xl shadow-2xl max-w-md w-full p-6 ${
+            isDark ? 'bg-gray-800' : 'bg-white'
+          }`}>
+            <h2 className={`text-2xl font-bold mb-4 ${
+              isDark ? 'text-white' : 'text-gray-900'
+            }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
               Liste löschen?
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className={`mb-6 ${
+              isDark ? 'text-gray-300' : 'text-gray-600'
+            }`}>
               Möchtest du diese Liste wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 py-3 rounded-[14px] border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-all"
+                className={`flex-1 py-3 rounded-[14px] border font-semibold transition-all ${
+                  isDark
+                    ? 'border-gray-600 text-gray-200 hover:bg-gray-700'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
               >
                 Abbrechen
               </button>
               <button
                 onClick={handleDeleteList}
-                className="flex-1 py-3 rounded-[14px] bg-red-500 text-white font-semibold shadow-lg hover:bg-red-600 transition-all"
+                className={`flex-1 py-3 rounded-[14px] text-white font-semibold shadow-lg transition-all ${
+                  isDark
+                    ? 'bg-red-600 hover:bg-red-700'
+                    : 'bg-red-500 hover:bg-red-600'
+                }`}
               >
                 Löschen
               </button>
@@ -812,11 +932,15 @@ function TierList() {
       {showTierModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div 
-            className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col"
+            className={`rounded-3xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col ${
+              isDark ? 'bg-gray-800' : 'bg-white'
+            }`}
             style={{ boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)' }}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <div className={`flex items-center justify-between px-6 py-4 border-b ${
+              isDark ? 'border-gray-700' : 'border-gray-200'
+            }`}>
               <div className="flex items-center gap-3">
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-xl"
@@ -825,19 +949,25 @@ function TierList() {
                   {showTierModal}
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  <h2 className={`text-xl font-bold ${
+                    isDark ? 'text-white' : 'text-gray-900'
+                  }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
                     {showTierModal}-Tier
                   </h2>
-                  <p className="text-sm text-gray-500">
+                  <p className={`text-sm ${
+                    isDark ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
                     {foodspotsByTier[showTierModal]?.length || 0} Foodspots
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowTierModal(null)}
-                className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center transition-all"
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                  isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                }`}
               >
-                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={`w-6 h-6 ${isDark ? 'text-gray-300' : 'text-gray-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -853,13 +983,19 @@ function TierList() {
                         setShowTierModal(null)
                         navigate(`/add-foodspot/${id}?spotId=${spot.id}`)
                       }}
-                      className="flex items-center gap-4 py-3 cursor-pointer hover:bg-gray-50 active:bg-gray-100 rounded-lg px-3 transition-all duration-150"
+                      className={`flex items-center gap-4 py-3 cursor-pointer rounded-lg px-3 transition-all duration-150 ${
+                        isDark
+                          ? 'hover:bg-gray-700 active:bg-gray-600'
+                          : 'hover:bg-gray-50 active:bg-gray-100'
+                      }`}
                     >
                       {/* Left: Name + Location + Rating + Category */}
                       <div className="flex-1 min-w-0">
                         {/* Name */}
                         <h3 
-                          className="font-bold text-gray-900 text-base truncate" 
+                          className={`font-bold text-base truncate ${
+                            isDark ? 'text-white' : 'text-gray-900'
+                          }`} 
                           style={{ fontFamily: "'Poppins', sans-serif" }}
                         >
                           {spot.name}
@@ -867,7 +1003,9 @@ function TierList() {
                         
                         {/* Standort (wenn verfügbar) */}
                         {spot.address && (
-                          <p className="text-xs text-gray-500 truncate mt-1">
+                          <p className={`text-xs truncate mt-1 ${
+                            isDark ? 'text-gray-400' : 'text-gray-500'
+                          }`}>
                             📍 {spot.address.split(',')[0]}
                           </p>
                         )}
@@ -875,7 +1013,9 @@ function TierList() {
                         {/* Bewertung */}
                         <div className="flex items-center gap-1 mt-1">
                           <span className="text-base">⭐</span>
-                          <span className="font-bold text-gray-900 text-sm" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                          <span className={`font-bold text-sm ${
+                            isDark ? 'text-white' : 'text-gray-900'
+                          }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
                             {(spot.rating || 0).toFixed(1)}/10
                           </span>
                         </div>
@@ -890,8 +1030,12 @@ function TierList() {
                               {spot.category === 'Asiatisch' && '🍜'}
                               {spot.category === 'Mexikanisch' && '🌮'}
                               {spot.category === 'Glühwein' && '🍷'}
+                              {spot.category === 'Deutsche Küche' && '🥨'}
+                              {spot.category === 'Bier' && '🍺'}
                             </span>
-                            <span className="text-sm text-gray-600 font-medium">
+                            <span className={`text-sm font-medium ${
+                              isDark ? 'text-gray-300' : 'text-gray-600'
+                            }`}>
                               {spot.category}
                             </span>
                           </div>
@@ -903,14 +1047,18 @@ function TierList() {
                         <img
                           src={spot.cover_photo_url}
                           alt={spot.name}
-                          className="w-16 h-16 object-cover rounded-[12px] flex-shrink-0 border border-gray-200"
+                          className={`w-16 h-16 object-cover rounded-[12px] flex-shrink-0 border ${
+                            isDark ? 'border-gray-600' : 'border-gray-200'
+                          }`}
                         />
                       ) : (
                         <div className="w-16 h-16 flex-shrink-0" />
                       )}
                     </div>
                     {spotIndex < foodspotsByTier[showTierModal].length - 1 && (
-                      <div className="h-px bg-gray-200 mx-3" />
+                      <div className={`h-px mx-3 ${
+                        isDark ? 'bg-gray-700' : 'bg-gray-200'
+                      }`} />
                     )}
                   </div>
                 ))}

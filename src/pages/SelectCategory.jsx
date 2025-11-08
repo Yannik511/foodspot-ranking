@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useTheme } from '../contexts/ThemeContext'
 
 // Kategorien-Definition (gleiche wie in AddFoodspot)
 const CATEGORIES = {
@@ -39,21 +40,22 @@ const CATEGORIES = {
     description: 'Sushi-Restaurants',
     color: '#FF7E42'
   },
-  'Dessert': {
-    emoji: '🍦',
-    description: 'Desserts & Süßes',
-    color: '#FFB25A'
-  },
-  'Vegan/Healthy': {
-    emoji: '🥗',
-    description: 'Gesunde & vegane Optionen',
+  'Deutsche Küche': {
+    emoji: '🥨',
+    description: 'Bewerte klassische Gerichte der deutschen Küche.',
     color: '#FF9C68'
+  },
+  'Bier': {
+    emoji: '🍺',
+    description: 'Bewerte verschiedene Biersorten – vom Hellen bis zum Craft Beer.',
+    color: '#FFB25A'
   }
 }
 
 function SelectCategory() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { isDark } = useTheme()
   const [selectedCategory, setSelectedCategory] = useState(null)
 
   const handleCategorySelect = (category) => {
@@ -67,19 +69,31 @@ function SelectCategory() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-[#FFF2EB] to-white flex flex-col">
+    <div className={`min-h-screen flex flex-col ${
+      isDark 
+        ? 'bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900' 
+        : 'bg-gradient-to-b from-white via-[#FFF2EB] to-white'
+    }`}>
       {/* Header */}
-      <header className="bg-white/70 backdrop-blur-[12px] border-b border-gray-200/30 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+      <header className={`backdrop-blur-[12px] border-b px-4 py-3 flex items-center justify-between sticky top-0 z-10 ${
+        isDark
+          ? 'bg-gray-800/70 border-gray-700/30'
+          : 'bg-white/70 border-gray-200/30'
+      }`}>
         <button
           onClick={() => navigate('/dashboard')}
-          className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
+          className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
+            isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+          }`}
         >
-          <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-6 h-6 ${isDark ? 'text-gray-200' : 'text-gray-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
 
-        <h1 className="text-lg font-bold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
+        <h1 className={`text-lg font-bold ${
+          isDark ? 'text-white' : 'text-gray-900'
+        }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
           Kategorie auswählen
         </h1>
 
@@ -92,12 +106,16 @@ function SelectCategory() {
           {/* Title */}
           <div className="text-center mb-8">
             <h2 
-              className="text-2xl font-bold text-gray-900 mb-3"
+              className={`text-2xl font-bold mb-3 ${
+                isDark ? 'text-white' : 'text-gray-900'
+              }`}
               style={{ fontFamily: "'Poppins', sans-serif" }}
             >
               Welche Kategorie möchtest du für deine Liste auswählen?
             </h2>
-            <p className="text-gray-600 text-sm">
+            <p className={`text-sm ${
+              isDark ? 'text-gray-300' : 'text-gray-600'
+            }`}>
               Wähle eine spezifische Kategorie oder alle Kategorien für deine Liste
             </p>
           </div>
@@ -132,10 +150,14 @@ function SelectCategory() {
               <button
                 key={category}
                 onClick={() => handleCategorySelect(category)}
-                className={`bg-white rounded-[20px] p-5 shadow-lg hover:shadow-xl transition-all active:scale-[0.98] flex items-center gap-4 group border-2 ${
-                  selectedCategory === category 
-                    ? 'border-[#FF7E42] bg-gradient-to-br from-[#FF7E42]/5 to-[#FFB25A]/5' 
-                    : 'border-gray-100 hover:border-[#FF7E42]/30'
+                className={`rounded-[20px] p-5 shadow-lg hover:shadow-xl transition-all active:scale-[0.98] flex items-center gap-4 group border-2 ${
+                  isDark
+                    ? selectedCategory === category
+                      ? 'bg-gray-800 border-[#FF9357] bg-gradient-to-br from-[#FF9357]/10 to-[#B85C2C]/10'
+                      : 'bg-gray-800 border-gray-700 hover:border-[#FF9357]/40'
+                    : selectedCategory === category
+                      ? 'bg-white border-[#FF7E42] bg-gradient-to-br from-[#FF7E42]/5 to-[#FFB25A]/5'
+                      : 'bg-white border-gray-100 hover:border-[#FF7E42]/30'
                 }`}
                 style={{
                   fontFamily: "'Poppins', sans-serif",
@@ -144,16 +166,26 @@ function SelectCategory() {
                 <div 
                   className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0 transition-all group-hover:scale-110"
                   style={{
-                    background: `linear-gradient(135deg, ${color}15 0%, ${color}25 100%)`,
+                    background: isDark
+                      ? `linear-gradient(135deg, ${color}20 0%, ${color}30 100%)`
+                      : `linear-gradient(135deg, ${color}15 0%, ${color}25 100%)`,
                   }}
                 >
                   {emoji}
                 </div>
                 <div className="flex-1 text-left min-w-0">
-                  <h3 className="font-bold text-gray-900 text-base mb-1 truncate">{category}</h3>
-                  <p className="text-gray-600 text-xs leading-tight">{description}</p>
+                  <h3 className={`font-bold text-base mb-1 truncate ${
+                    isDark ? 'text-white' : 'text-gray-900'
+                  }`}>{category}</h3>
+                  <p className={`text-xs leading-tight ${
+                    isDark ? 'text-gray-300' : 'text-gray-600'
+                  }`}>{description}</p>
                 </div>
-                <svg className="w-5 h-5 text-gray-400 group-hover:text-[#FF7E42] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={`w-5 h-5 transition-colors flex-shrink-0 ${
+                  isDark
+                    ? 'text-gray-400 group-hover:text-[#FF9357]'
+                    : 'text-gray-400 group-hover:text-[#FF7E42]'
+                }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
                 </svg>
               </button>

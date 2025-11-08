@@ -66,3 +66,5 @@ Dies fügt die `ratings` Spalte hinzu, die die einzelnen Bewertungen (z.B. Brot:
 
 
 
+
+

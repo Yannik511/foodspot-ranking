@@ -19,3 +19,5 @@ COMMENT ON COLUMN foodspots.ratings IS 'JSON object storing individual criterion
 
 
 
+
+

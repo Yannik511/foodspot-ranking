@@ -77,3 +77,5 @@ Falls du eine `categories`-Tabelle in der Datenbank haben möchtest, habe ich ei
 
 
 
+
+

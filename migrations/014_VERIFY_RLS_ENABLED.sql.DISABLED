@@ -1,0 +1,33 @@
+-- =============================================
+-- MIGRATION 014: Verify RLS is Enabled
+-- =============================================
+-- Stellt sicher, dass RLS für alle Tabellen aktiviert ist
+-- =============================================
+
+-- Stelle sicher, dass RLS für lists aktiviert ist
+ALTER TABLE lists ENABLE ROW LEVEL SECURITY;
+
+-- Stelle sicher, dass RLS für foodspots aktiviert ist
+ALTER TABLE foodspots ENABLE ROW LEVEL SECURITY;
+
+-- Stelle sicher, dass RLS für shared_lists aktiviert ist (falls Tabelle existiert)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'shared_lists') THEN
+    ALTER TABLE shared_lists ENABLE ROW LEVEL SECURITY;
+  END IF;
+END $$;
+
+-- Stelle sicher, dass RLS für list_collaborators aktiviert ist (falls Tabelle existiert)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'list_collaborators') THEN
+    ALTER TABLE list_collaborators ENABLE ROW LEVEL SECURITY;
+  END IF;
+END $$;
+
+-- =============================================
+-- SUCCESS: RLS Verified
+-- =============================================
+
+

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import { ThemeProvider } from './contexts/ThemeContext'
 import Landing from './pages/Landing'
 import Login from './components/auth/Login'
 import Register from './components/auth/Register'
@@ -9,12 +10,18 @@ import SelectCategory from './pages/SelectCategory'
 import TierList from './pages/TierList'
 import AddFoodspot from './pages/AddFoodspot'
 import Account from './pages/Account'
+import Settings from './pages/Settings'
+import About from './pages/About'
+import Social from './pages/Social'
+import FriendProfile from './pages/FriendProfile'
+import Compare from './pages/Compare'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
@@ -67,9 +74,50 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/about"
+            element={
+              <ProtectedRoute>
+                <About />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/social"
+            element={
+              <ProtectedRoute>
+                <Social />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/friend/:id"
+            element={
+              <ProtectedRoute>
+                <FriendProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/compare/:id"
+            element={
+              <ProtectedRoute>
+                <Compare />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </BrowserRouter>
-    </AuthProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 

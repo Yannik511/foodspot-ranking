@@ -157,27 +157,35 @@ Install these in Cursor:
 
 ```
 foodspot-ranking/
-├── public/              # Static assets
-├── src/
-│   ├── components/      # React components
-│   │   ├── auth/       # Login, Register
-│   │   ├── lists/      # List overview, cards
-│   │   ├── foodspots/  # Foodspot CRUD
-│   │   ├── friends/    # Friends system
-│   │   └── shared/     # Buttons, inputs, etc.
-│   ├── pages/          # Page components
-│   ├── hooks/          # Custom React hooks
-│   ├── contexts/       # React Context (auth, etc.)
-│   ├── services/       # Supabase API calls
-│   ├── utils/          # Helper functions
-│   ├── App.jsx         # Main app component
-│   └── main.jsx        # Entry point
-├── supabase/
-│   └── migrations/     # Database migrations
-├── .env.example        # Environment template
-├── package.json        # Dependencies
-├── tailwind.config.js  # Tailwind configuration
-└── vite.config.js      # Vite configuration
+├── public/                    # Static assets
+├── src/                       # Source code
+│   ├── components/           # React components
+│   │   ├── auth/            # Login, Register
+│   │   └── social/          # Social features (friends, shared lists)
+│   ├── pages/               # Page components
+│   ├── contexts/            # React Context (auth, theme)
+│   ├── services/            # Supabase API calls
+│   ├── utils/               # Helper functions
+│   ├── App.jsx              # Main app component
+│   └── main.jsx             # Entry point
+├── migrations/               # Database migrations (SQL)
+│   └── README.md            # Migration documentation
+├── docs/                     # Documentation
+│   ├── setup/               # Setup guides (Google Maps, MCP, etc.)
+│   └── features/            # Feature documentation
+├── archive/                  # Archived files (not used anymore)
+│   ├── sql-scripts/         # Old SQL scripts
+│   └── docs/                # Old documentation
+├── RESTORE_BASIC_FUNCTIONS.sql  # SQL script to restore RLS policies
+├── SCHNELLSTART_SUPABASE.md     # Quick start guide for Supabase
+├── SETUP_DATABASE.md            # Database setup guide
+├── SETUP_AUTH.md                # Authentication setup guide
+├── DATABASE_SCHEMA_REFERENCE.md # Database schema reference
+├── TIER_SYSTEM_DOKUMENTATION.md # Tier system documentation
+├── .env.example             # Environment template
+├── package.json             # Dependencies
+├── tailwind.config.js       # Tailwind configuration
+└── vite.config.js           # Vite configuration
 ```
 
 ---
@@ -295,6 +303,16 @@ npm install
 
 ## 📚 Resources
 
+### Dokumentation
+- **Supabase Setup**: [`SCHNELLSTART_SUPABASE.md`](SCHNELLSTART_SUPABASE.md) - Schnellstart-Anleitung
+- **Database Setup**: [`SETUP_DATABASE.md`](SETUP_DATABASE.md) - Datenbank-Setup
+- **Auth Setup**: [`SETUP_AUTH.md`](SETUP_AUTH.md) - Authentifizierung
+- **Database Schema**: [`DATABASE_SCHEMA_REFERENCE.md`](DATABASE_SCHEMA_REFERENCE.md) - Schema-Referenz
+- **Tier System**: [`TIER_SYSTEM_DOKUMENTATION.md`](TIER_SYSTEM_DOKUMENTATION.md) - Tier-System Dokumentation
+- **Migrations**: [`migrations/README.md`](migrations/README.md) - Migrations-Dokumentation
+- **Docs**: [`docs/README.md`](docs/README.md) - Weitere Dokumentation
+
+### Externe Ressourcen
 - [React Docs](https://react.dev)
 - [Vite Docs](https://vitejs.dev)
 - [Tailwind CSS](https://tailwindcss.com)
