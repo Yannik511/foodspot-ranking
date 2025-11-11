@@ -5,12 +5,14 @@ import { useTheme } from '../contexts/ThemeContext'
 import UserAvatar from '../components/social/UserAvatar'
 import { supabase } from '../services/supabase'
 import { hapticFeedback } from '../utils/haptics'
+import { useProfilesStore } from '../contexts/ProfileContext'
 
 function Compare() {
   const { id: friendId } = useParams()
   const { user: currentUser } = useAuth()
   const { isDark } = useTheme()
   const navigate = useNavigate()
+  const { ensureProfiles, upsertProfiles } = useProfilesStore()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [myStats, setMyStats] = useState(null)
@@ -23,8 +25,9 @@ function Compare() {
 
   useEffect(() => {
     if (!friendId || !currentUser) return
+    ensureProfiles([friendId, currentUser.id])
     fetchComparisonData()
-  }, [friendId, currentUser])
+  }, [friendId, currentUser, ensureProfiles])
 
   // Helper function to get cached or fetch stats
   const getCachedStats = async (userId) => {
@@ -135,6 +138,12 @@ function Compare() {
       }
 
       setFriendUser(friendProfile)
+      upsertProfiles([{
+        id: friendProfile.id,
+        profile_image_url: friendProfile.user_metadata?.profileImageUrl,
+        username: friendProfile.user_metadata?.username,
+        profile_visibility: friendProfile.user_metadata?.profile_visibility
+      }])
       setFriendProfileVisibility(visibility)
 
       // Check if profile is visible to friends

@@ -5,15 +5,19 @@ import { useTheme } from '../contexts/ThemeContext'
 import UserAvatar from '../components/social/UserAvatar'
 import { supabase } from '../services/supabase'
 import { hapticFeedback } from '../utils/haptics'
+import { useProfilesStore } from '../contexts/ProfileContext'
 
 const CATEGORY_EMOJIS = {
   'Döner': '🥙',
   'Burger': '🍔',
   'Pizza': '🍕',
   'Asiatisch': '🍜',
-  'Mexikanisch': '🌮',
+  'Bratwurst': '🥓',
   'Glühwein': '🍷',
   'Sushi': '🍣',
+  'Steak': '🥩',
+  'Fast Food': '🍔',
+  'Streetfood': '🌯',
   'Deutsche Küche': '🥨',
   'Bier': '🍺'
 }
@@ -23,6 +27,7 @@ function FriendProfile() {
   const { user: currentUser } = useAuth()
   const { isDark } = useTheme()
   const navigate = useNavigate()
+  const { ensureProfiles, upsertProfiles } = useProfilesStore()
   const [friendUser, setFriendUser] = useState(null)
   const [friendship, setFriendship] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -52,6 +57,7 @@ function FriendProfile() {
 
   useEffect(() => {
     if (!id || !currentUser) return
+    ensureProfiles([id, currentUser.id])
     fetchFriendProfile()
     
     // Subscribe to realtime updates for foodspots and lists
@@ -99,7 +105,7 @@ function FriendProfile() {
       window.removeEventListener('focus', handleVisibilityCheck)
       clearInterval(checkVisibilityInterval)
     }
-  }, [id, currentUser])
+  }, [id, currentUser, ensureProfiles])
 
   const fetchFriendProfile = async () => {
     if (!refreshing) setLoading(true)
@@ -171,6 +177,12 @@ function FriendProfile() {
       }
       
       setFriendUser(friendProfile)
+      upsertProfiles([{
+        id: friendProfile.id,
+        profile_image_url: friendProfile.user_metadata?.profileImageUrl,
+        username: friendProfile.user_metadata?.username,
+        profile_visibility: friendProfile.user_metadata?.profile_visibility
+      }])
       setFriendProfileVisibility(visibility)
       
       // Check if we can view stats: must be accepted friend AND profile visibility must be 'friends'
@@ -317,11 +329,6 @@ function FriendProfile() {
     }
   }
 
-  const handleViewLists = () => {
-    // Navigate to a view showing friend's shared lists
-    // For now, just show the lists section
-  }
-
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
     setTimeout(() => setToast(null), 3000)
@@ -466,25 +473,15 @@ function FriendProfile() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-wrap gap-3 mt-6">
-              <button
-                onClick={handleViewLists}
-                className={`flex-1 min-w-[120px] px-4 py-2 rounded-[14px] font-medium transition-all active:scale-[0.98] ${
-                  isDark
-                    ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Listen ansehen
-              </button>
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 mt-6">
               <button
                 onClick={handleCompare}
                 disabled={!canViewStats}
-                className={`flex-1 min-w-[120px] px-4 py-2 rounded-[14px] font-medium transition-all active:scale-[0.98] ${
+                className={`w-full px-4 py-3 rounded-[16px] font-semibold text-base transition-all active:scale-[0.98] ${
                   canViewStats
                     ? isDark
                       ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                     : isDark
                       ? 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-50'
                       : 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'
@@ -495,7 +492,7 @@ function FriendProfile() {
               {friendship && (
                 <button
                   onClick={handleRemoveFriend}
-                  className={`flex-1 min-w-[120px] px-4 py-2 rounded-[14px] font-medium transition-all active:scale-[0.98] ${
+                  className={`w-full px-4 py-3 rounded-[16px] font-semibold text-base transition-all active:scale-[0.98] ${
                     isDark
                       ? 'bg-red-900/30 text-red-400 hover:bg-red-900/40'
                       : 'bg-red-50 text-red-600 hover:bg-red-100'

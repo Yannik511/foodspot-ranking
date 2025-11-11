@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import Avatar from '../components/Avatar'
 import { supabase } from '../services/supabase'
+import { useProfilesStore } from '../contexts/ProfileContext'
 
 // Category emojis for display
 const CATEGORY_EMOJIS = {
@@ -11,9 +12,12 @@ const CATEGORY_EMOJIS = {
   'Burger': '🍔',
   'Pizza': '🍕',
   'Asiatisch': '🍜',
-  'Mexikanisch': '🌮',
+  'Bratwurst': '🥓',
   'Glühwein': '🍷',
   'Sushi': '🍣',
+  'Steak': '🥩',
+  'Fast Food': '🍔',
+  'Streetfood': '🌯',
   'Deutsche Küche': '🥨',
   'Bier': '🍺'
 }
@@ -88,18 +92,35 @@ function Account() {
   const [loading, setLoading] = useState(true)
   
   // Profile stats
-  const [stats, setStats] = useState({
+  const createEmptyStats = () => ({
     totalSpots: 0,
     totalCities: 0,
+    totalPlaces: 0,
     averageScore: 0,
     tierDistribution: { S: 0, A: 0, B: 0, C: 0, D: 0 },
     categoryCounts: {},
     topCities: [],
     topSpots: [],
-    recentSpots: [],
-    activityStreak: 0,
-    lastActivityDates: []
+    recentSpots: []
   })
+
+  const [statsByContext, setStatsByContext] = useState({
+    private: createEmptyStats(),
+    shared: createEmptyStats(),
+    overall: createEmptyStats()
+  })
+  const [activeContext, setActiveContext] = useState('overall')
+  const [listSummary, setListSummary] = useState({
+    total: 0,
+    private: 0,
+    shared: 0
+  })
+  const [contextListIds, setContextListIds] = useState({
+    private: [],
+    shared: [],
+    overall: []
+  })
+  const { getProfile, upsertProfiles } = useProfilesStore()
   
   const getUsername = () => {
     return user?.user_metadata?.username || user?.email?.split('@')[0] || 'Du'
@@ -121,140 +142,466 @@ function Account() {
     return getProfileVisibility() === 'friends'
   }
 
-  // Fetch profile statistics
   useEffect(() => {
-    const fetchStats = async () => {
-      if (!user) return
-      
-      setLoading(true)
-      try {
-        // Fetch all lists for user
-        const { data: listsData, error: listsError } = await supabase
-          .from('lists')
-          .select('id, city')
-          .eq('user_id', user.id)
+    if (typeof document === 'undefined') return
+    if (document.getElementById('profile-animations')) return
 
-        if (listsError) throw listsError
+    const styleElement = document.createElement('style')
+    styleElement.id = 'profile-animations'
+    styleElement.innerHTML = `
+      @keyframes profileFadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    `
+    document.head.appendChild(styleElement)
+  }, [])
 
-        // Fetch all foodspots for user
-        const { data: spotsData, error: spotsError } = await supabase
-          .from('foodspots')
-          .select('id, name, rating, tier, category, address, cover_photo_url, list_id, created_at, updated_at')
-          .eq('user_id', user.id)
+  const computeStats = (lists = [], spots = [], options = {}) => {
+    const {
+      dedupeByName = false,
+      participantMap = new Map(),
+      ownerMap = new Map()
+    } = options
 
-        if (spotsError) throw spotsError
+    const listMap = new Map((lists || []).map(list => [list.id, list]))
+    const processedSpots = []
+    const placeSet = new Set()
 
-        // Calculate statistics
-        const totalSpots = spotsData?.length || 0
-        
-        // Get unique cities from lists
-        const uniqueCities = new Set(listsData?.map(l => l.city) || [])
-        const totalCities = uniqueCities.size
+    if (dedupeByName) {
+      const accumulator = new Map()
 
-        // Calculate average score
-        const ratings = spotsData?.filter(s => s.rating != null).map(s => s.rating) || []
-        const averageScore = ratings.length > 0 
-          ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length 
-          : 0
+      spots?.forEach((spot) => {
+        if (!spot) return
 
-        // Tier distribution
-        const tierDistribution = { S: 0, A: 0, B: 0, C: 0, D: 0 }
-        spotsData?.forEach(spot => {
-          if (spot.tier && tierDistribution[spot.tier] !== undefined) {
-            tierDistribution[spot.tier]++
+        const key = spot.normalized_name?.trim() || spot.name?.trim().toLowerCase() || spot.id
+        const timestamp = new Date(spot.updated_at || spot.created_at || new Date()).getTime()
+        const participants = new Set(participantMap.get(spot.list_id) || [])
+        if (spot.user_id) participants.add(spot.user_id)
+        const ownerId = ownerMap.get(spot.list_id)
+        const ownerIds = new Set()
+        if (ownerId) {
+          participants.add(ownerId)
+          ownerIds.add(ownerId)
+        }
+
+        if (!accumulator.has(key)) {
+          accumulator.set(key, {
+            baseSpot: spot,
+            ratingSum: 0,
+            ratingCount: 0,
+            participants,
+            ownerIds,
+            categories: new Set(spot.category ? [spot.category] : []),
+            listIds: new Set([spot.list_id]),
+            addresses: new Set(spot.address ? [spot.address] : []),
+            latestTimestamp: timestamp,
+            primaryListId: spot.list_id
+          })
+        } else {
+          const entry = accumulator.get(key)
+          spot.category && entry.categories.add(spot.category)
+          entry.listIds.add(spot.list_id)
+          if (spot.address) entry.addresses.add(spot.address)
+          participants.forEach(id => entry.participants.add(id))
+          ownerIds.forEach(id => entry.ownerIds.add(id))
+          if (timestamp > entry.latestTimestamp) {
+            entry.latestTimestamp = timestamp
+            entry.baseSpot = spot
+            entry.primaryListId = spot.list_id
           }
-        })
+        }
 
-        // Category counts
+        const ratingValue = spot.avg_score ?? spot.rating
+        if (ratingValue != null && !Number.isNaN(ratingValue)) {
+          const entry = accumulator.get(key)
+          entry.ratingSum += ratingValue
+          entry.ratingCount += 1
+        }
+      })
+
+      accumulator.forEach((entry) => {
+        const averageScore = entry.ratingCount > 0
+          ? entry.ratingSum / entry.ratingCount
+          : entry.baseSpot.avg_score ?? entry.baseSpot.rating ?? null
+
+        const representativeListId = entry.primaryListId || entry.baseSpot.list_id
+        const addresses = Array.from(entry.addresses)
+
+        processedSpots.push({
+          ...entry.baseSpot,
+          list_id: representativeListId,
+          avg_score: averageScore,
+          rating: averageScore,
+          participants: Array.from(entry.participants),
+          ownerIds: Array.from(entry.ownerIds),
+          category: entry.baseSpot.category || Array.from(entry.categories)[0] || null,
+          updated_at: new Date(entry.latestTimestamp).toISOString(),
+          allAddresses: addresses,
+          address: entry.baseSpot.address || addresses[0] || null,
+          listIds: Array.from(entry.listIds)
+        })
+      })
+    } else {
+      spots?.forEach((spot) => {
+        if (!spot) return
+
+        const participants = new Set(participantMap.get(spot.list_id) || [])
+        if (spot.user_id) participants.add(spot.user_id)
+        const ownerId = ownerMap.get(spot.list_id)
+        const ownerIds = []
+        if (ownerId) {
+          participants.add(ownerId)
+          ownerIds.push(ownerId)
+        }
+
+        processedSpots.push({
+          ...spot,
+          participants: Array.from(participants),
+          ownerIds,
+          allAddresses: spot.address ? [spot.address] : []
+        })
+      })
+    }
+
         const categoryCounts = {}
-        spotsData?.forEach(spot => {
+    const tierDistribution = { S: 0, A: 0, B: 0, C: 0, D: 0 }
+    const ratingValues = []
+    const cityCounts = {}
+    const uniqueCities = new Set()
+
+    processedSpots.forEach((spot) => {
+      const list = listMap.get(spot.list_id)
+      const city = list?.city || spot.city
+      if (city) {
+        uniqueCities.add(city.trim())
+        cityCounts[city] = (cityCounts[city] || 0) + 1
+      }
+
+      const addresses = spot.allAddresses?.length ? spot.allAddresses : (spot.address ? [spot.address] : [])
+      addresses.forEach(address => {
+        if (address) {
+          placeSet.add(address.trim().toLowerCase())
+        }
+      })
+
           if (spot.category) {
             categoryCounts[spot.category] = (categoryCounts[spot.category] || 0) + 1
           }
-        })
 
-        // Top cities (by spot count per city)
-        const cityCounts = {}
-        spotsData?.forEach(spot => {
-          const list = listsData?.find(l => l.id === spot.list_id)
-          if (list?.city) {
-            cityCounts[list.city] = (cityCounts[list.city] || 0) + 1
-          }
-        })
+      if (spot.tier && tierDistribution[spot.tier] !== undefined) {
+        tierDistribution[spot.tier]++
+      }
+
+      const ratingValue = spot.avg_score ?? spot.rating
+      if (ratingValue != null && !Number.isNaN(ratingValue)) {
+        ratingValues.push(ratingValue)
+      }
+    })
+
+    const totalSpots = processedSpots.length
+    const totalCities = uniqueCities.size
+    const totalPlaces = placeSet.size
+    const averageScore = ratingValues.length > 0
+      ? ratingValues.reduce((sum, value) => sum + value, 0) / ratingValues.length
+      : null
+
         const topCities = Object.entries(cityCounts)
           .map(([city, count]) => ({ city, count }))
           .sort((a, b) => b.count - a.count)
           .slice(0, 3)
 
-        // Top 10 spots (by rating)
-        const topSpots = [...(spotsData || [])]
-          .filter(s => s.rating != null)
-          .sort((a, b) => b.rating - a.rating)
+    const topSpots = processedSpots
+      .map((spot) => {
+        const list = listMap.get(spot.list_id)
+        const score = spot.avg_score ?? spot.rating ?? null
+        return {
+          ...spot,
+          avgScore: score,
+          city: list?.city || spot.city || ''
+        }
+      })
+      .filter(spot => spot.avgScore != null && !Number.isNaN(spot.avgScore))
+      .sort((a, b) => b.avgScore - a.avgScore)
           .slice(0, 10)
           .map((spot, index) => ({
             ...spot,
-            rank: index + 1,
-            city: listsData?.find(l => l.id === spot.list_id)?.city || ''
+        rank: index + 1
           }))
 
-        // Recent spots (last 5)
-        const recentSpots = [...(spotsData || [])]
+    const recentSpots = [...processedSpots]
           .sort((a, b) => {
-            const aDate = new Date(a.updated_at || a.created_at)
-            const bDate = new Date(b.updated_at || b.created_at)
+        const aDate = new Date(a.updated_at || a.created_at || new Date(0))
+        const bDate = new Date(b.updated_at || b.created_at || new Date(0))
             return bDate - aDate
           })
           .slice(0, 5)
-          .map(spot => ({
+      .map((spot) => {
+        const list = listMap.get(spot.list_id)
+        return {
             ...spot,
-            city: listsData?.find(l => l.id === spot.list_id)?.city || ''
-          }))
-
-        // Activity streak (last 7 days)
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const last7Days = Array.from({ length: 7 }, (_, i) => {
-          const date = new Date(today)
-          date.setDate(date.getDate() - i)
-          return date.toISOString().split('T')[0]
-        })
-
-        const activityDates = new Set()
-        spotsData?.forEach(spot => {
-          const createdDate = new Date(spot.created_at).toISOString().split('T')[0]
-          const updatedDate = new Date(spot.updated_at).toISOString().split('T')[0]
-          if (last7Days.includes(createdDate) || last7Days.includes(updatedDate)) {
-            activityDates.add(createdDate)
-            activityDates.add(updatedDate)
-          }
-        })
-
-        const lastActivityDates = last7Days.map(date => ({
-          date,
-          active: activityDates.has(date)
-        }))
-
-        // Calculate streak (consecutive days with activity, counting backwards from today)
-        let streak = 0
-        for (let i = 0; i < last7Days.length; i++) {
-          if (activityDates.has(last7Days[i])) {
-            streak++
-          } else {
-            break
-          }
+          city: list?.city || spot.city || ''
         }
+      })
 
-        setStats({
+    return {
           totalSpots,
           totalCities,
+      totalPlaces,
           averageScore,
           tierDistribution,
           categoryCounts,
           topCities,
           topSpots,
-          recentSpots,
-          activityStreak: streak,
-          lastActivityDates
+          recentSpots
+    }
+  }
+
+  // Fetch profile statistics
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!user) return
+
+      setLoading(true)
+      try {
+        const { data: privateLists, error: privateListsError } = await supabase
+          .from('lists')
+          .select('id, city, category, user_id')
+          .eq('user_id', user.id)
+
+        if (privateListsError) throw privateListsError
+
+        const privateListIds = privateLists?.map(list => list.id) || []
+
+        let privateSpots = []
+        if (privateListIds.length > 0) {
+          const { data: privateSpotsData, error: privateSpotsError } = await supabase
+            .from('foodspots')
+            .select('id, name, rating, avg_score, tier, category, address, cover_photo_url, list_id, created_at, updated_at, normalized_name, user_id')
+            .in('list_id', privateListIds)
+
+          if (privateSpotsError) throw privateSpotsError
+          privateSpots = privateSpotsData || []
+        }
+        const { data: membershipRows, error: membershipError } = await supabase
+          .from('list_members')
+          .select('list_id')
+          .eq('user_id', user.id)
+
+        if (membershipError && membershipError.code !== 'PGRST116') {
+          throw membershipError
+        }
+
+        const memberListIds = membershipRows?.map(row => row.list_id) || []
+
+        const sharedOwnedChecks = await Promise.all(
+          privateListIds.map(async (listId) => {
+            const { data, error } = await supabase.rpc('is_shared_list', { p_list_id: listId })
+            if (error) {
+              console.warn('is_shared_list error:', error)
+              return null
+            }
+            return data ? listId : null
+          })
+        )
+
+        const sharedOwnedIds = sharedOwnedChecks.filter(Boolean)
+        const sharedListIdSet = new Set([...memberListIds, ...sharedOwnedIds])
+        const sharedListIds = Array.from(sharedListIdSet)
+
+        const purePrivateListIds = privateListIds.filter(id => !sharedListIdSet.has(id))
+        const privateListsPure = (privateLists || []).filter(list => purePrivateListIds.includes(list.id))
+        const privateSpotsPure = (privateSpots || []).filter(spot => purePrivateListIds.includes(spot.list_id))
+
+        let sharedLists = []
+        if (sharedListIds.length > 0) {
+          const { data: sharedListsData, error: sharedListsError } = await supabase
+            .from('lists')
+            .select('id, city, category, user_id')
+            .in('id', sharedListIds)
+
+          if (sharedListsError) throw sharedListsError
+          sharedLists = sharedListsData || []
+        }
+
+        let sharedSpots = []
+        if (sharedListIds.length > 0) {
+          const { data: sharedSpotsData, error: sharedSpotsError } = await supabase
+            .from('foodspots')
+            .select('id, name, rating, avg_score, tier, category, address, cover_photo_url, list_id, created_at, updated_at, user_id, normalized_name')
+            .in('list_id', sharedListIds)
+
+          if (sharedSpotsError) throw sharedSpotsError
+          sharedSpots = sharedSpotsData || []
+        }
+
+        const participantMap = new Map()
+        const ownerMap = new Map()
+
+        const ensureParticipant = (listId, userId) => {
+          if (!listId || !userId) return
+          const existing = participantMap.get(listId) || new Set()
+          existing.add(userId)
+          participantMap.set(listId, existing)
+        }
+
+        privateLists?.forEach((list) => {
+          if (!list) return
+          ownerMap.set(list.id, list.user_id)
+          ensureParticipant(list.id, list.user_id)
+        })
+
+        sharedLists?.forEach((list) => {
+          if (!list) return
+          ownerMap.set(list.id, list.user_id)
+          ensureParticipant(list.id, list.user_id)
+        })
+
+        if (sharedListIds.length > 0) {
+          const { data: sharedMembersData, error: sharedMembersError } = await supabase
+            .from('list_members')
+            .select('list_id, user_id')
+            .in('list_id', sharedListIds)
+
+          if (sharedMembersError && sharedMembersError.code !== 'PGRST116') {
+            console.warn('Error fetching shared members for profile stats:', sharedMembersError)
+          } else {
+            sharedMembersData?.forEach(member => ensureParticipant(member.list_id, member.user_id))
+          }
+        }
+
+        privateSpots?.forEach(spot => ensureParticipant(spot.list_id, spot.user_id))
+        sharedSpots?.forEach(spot => ensureParticipant(spot.list_id, spot.user_id))
+
+        if (sharedListIds.length > 0) {
+          const { data: ratingsData, error: ratingsError } = await supabase
+            .from('foodspot_ratings')
+            .select('list_id, user_id')
+            .in('list_id', sharedListIds)
+
+          if (ratingsError && ratingsError.code !== 'PGRST116') {
+            console.warn('Error fetching shared ratings for profile stats:', ratingsError)
+          } else {
+            ratingsData?.forEach(rating => ensureParticipant(rating.list_id, rating.user_id))
+          }
+        }
+
+        const participantIds = new Set()
+        participantMap.forEach(set => {
+          set.forEach(id => participantIds.add(id))
+        })
+
+        if (participantIds.size > 0) {
+          const ids = Array.from(participantIds)
+          let profileLookup = {}
+
+          const { data: profileRows, error: profilesError } = await supabase
+            .from('user_profiles')
+            .select('user_id, username, profile_image_url, profile_visibility')
+            .in('user_id', ids)
+
+          if (!profilesError) {
+            profileRows?.forEach(profile => {
+              if (profile?.user_id) {
+                profileLookup[profile.user_id] = {
+                  id: profile.user_id,
+                  username: profile.username,
+                  avatar_url: profile.profile_image_url,
+                  profile_image_url: profile.profile_image_url,
+                  profile_visibility: profile.profile_visibility || 'private'
+                }
+              }
+            })
+          } else {
+            console.warn('user_profiles fallback (Account):', profilesError)
+            const fallbackProfiles = await Promise.all(ids.map(async (id) => {
+              try {
+                const { data, error } = await supabase.rpc('get_user_profile', { user_id: id })
+                if (error || !data) return null
+                const profile = Array.isArray(data) ? data[0] : data
+                if (!profile) return null
+                return {
+                  id: profile.id || id,
+                  username: profile.username,
+                  avatar_url: profile.profile_image_url,
+                  profile_image_url: profile.profile_image_url,
+                  profile_visibility: profile.profile_visibility || 'private'
+                }
+              } catch (rpcError) {
+                console.warn('get_user_profile RPC error:', rpcError)
+                return null
+              }
+            }))
+
+            fallbackProfiles
+              .filter(Boolean)
+              .forEach(profile => {
+                profileLookup[profile.id || profile.user_id] = profile
+              })
+          }
+
+          upsertProfiles(Object.values(profileLookup))
+        }
+
+        const privateStats = computeStats(privateListsPure || [], privateSpotsPure, { participantMap, ownerMap })
+        const sharedStats = computeStats(sharedLists || [], sharedSpots, { participantMap, ownerMap })
+
+        const overallListMap = new Map()
+        privateListsPure?.forEach(list => {
+          if (list) {
+            overallListMap.set(list.id, list)
+          }
+        })
+        sharedLists?.forEach(list => {
+          if (list && !overallListMap.has(list.id)) {
+            overallListMap.set(list.id, list)
+          }
+        })
+
+        const overallListIds = Array.from(overallListMap.keys())
+        const overallLists = Array.from(overallListMap.values())
+
+        const spotMap = new Map()
+        privateSpotsPure?.forEach(spot => {
+          if (spot) {
+            spotMap.set(spot.id, spot)
+          }
+        })
+        sharedSpots?.forEach(spot => {
+          if (spot && !spotMap.has(spot.id)) {
+            spotMap.set(spot.id, spot)
+          }
+        })
+
+        const overallSpots = Array.from(spotMap.values())
+        const overallStats = computeStats(overallLists, overallSpots, {
+          participantMap,
+          ownerMap,
+          dedupeByName: true
+        })
+
+        setStatsByContext({
+          private: privateStats,
+          shared: sharedStats,
+          overall: overallStats
+        })
+
+        setListSummary({
+          private: purePrivateListIds.length,
+          shared: sharedListIds.length,
+          total: new Set([...purePrivateListIds, ...sharedListIds]).size
+        })
+
+        setContextListIds({
+          private: purePrivateListIds,
+          shared: sharedListIds,
+          overall: overallListIds
         })
       } catch (error) {
         console.error('Error fetching stats:', error)
@@ -265,33 +612,30 @@ function Account() {
 
     fetchStats()
 
-    // Subscribe to changes
     const channel = supabase
       .channel('account_stats')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'foodspots',
-        filter: `user_id=eq.${user?.id}`
-      }, () => {
-        fetchStats()
-      })
+        table: 'foodspots'
+      }, () => fetchStats())
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'lists',
+        table: 'lists'
+      }, () => fetchStats())
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'list_members',
         filter: `user_id=eq.${user?.id}`
-      }, () => {
-        fetchStats()
-      })
+      }, () => fetchStats())
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
   }, [user])
-
-  const hasProfileImage = !!user?.user_metadata?.profileImageUrl
 
   const handleImageChange = async (e) => {
     const file = e.target.files?.[0]
@@ -367,11 +711,181 @@ function Account() {
     setTimeout(() => setToast(null), 3000)
   }
 
-  const handleSpotClick = (spot) => {
-    if (spot.list_id) {
-      // Navigate to the tier list for this spot's list
-      navigate(`/tierlist/${spot.list_id}`)
+  const stats = statsByContext[activeContext] || createEmptyStats()
+  const sharedListIdSet = useMemo(() => new Set(contextListIds.shared || []), [contextListIds.shared])
+
+  const formatNumber = (value, decimals = 0) => {
+    if (value == null) return '–'
+    const numericValue = Number(value)
+    if (Number.isNaN(numericValue)) return '–'
+    return numericValue.toLocaleString('de-DE', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals
+    })
+  }
+
+  const kpiCards = useMemo(() => {
+    if (activeContext === 'overall') {
+      return [
+        {
+          key: 'overall-spots',
+          label: 'Overall Foodspots',
+          value: formatNumber(stats.totalSpots)
+        },
+        {
+          key: 'overall-cities',
+          label: 'Overall Städte',
+          value: formatNumber(stats.totalCities)
+        },
+        {
+          key: 'overall-lists',
+          label: 'Overall Listen',
+          value: formatNumber(listSummary.total)
+        },
+        {
+          key: 'overall-score',
+          label: 'Overall Score',
+          value: formatNumber(stats.averageScore, 1),
+          suffix: formatNumber(stats.averageScore, 1) === '–' ? '' : '/10',
+          icon: '🔥',
+          accent: true
+        }
+      ]
     }
+
+    if (activeContext === 'shared') {
+      return [
+        {
+          key: 'shared-spots',
+          label: 'Gesamte Spots (geteilt)',
+          value: formatNumber(stats.totalSpots)
+        },
+        {
+          key: 'shared-cities',
+          label: 'Städte (geteilt)',
+          value: formatNumber(stats.totalCities)
+        },
+        {
+          key: 'shared-lists',
+          label: 'Anzahl Listen (geteilt)',
+          value: formatNumber(listSummary.shared)
+        },
+        {
+          key: 'shared-score',
+          label: 'Ø-Score (geteilt)',
+          value: formatNumber(stats.averageScore, 1),
+          suffix: formatNumber(stats.averageScore, 1) === '–' ? '' : '/10',
+          icon: '🔥',
+          accent: true
+        }
+      ]
+    }
+
+    return [
+      {
+        key: 'private-spots',
+        label: 'Gesamte Spots (privat)',
+        value: formatNumber(stats.totalSpots)
+      },
+      {
+        key: 'private-cities',
+        label: 'Städte (privat)',
+        value: formatNumber(stats.totalCities)
+      },
+      {
+        key: 'private-lists',
+        label: 'Anzahl Listen (privat)',
+        value: formatNumber(listSummary.private)
+      },
+      {
+        key: 'private-score',
+        label: 'Ø-Score (privat)',
+        value: formatNumber(stats.averageScore, 1),
+        suffix: formatNumber(stats.averageScore, 1) === '–' ? '' : '/10',
+        icon: '🔥',
+        accent: true
+      }
+    ]
+  }, [activeContext, stats, listSummary])
+
+  const kpiGridClass = 'grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4'
+
+  const topSpotsTitle = '🏆 Top 10'
+
+  const renderParticipantAvatars = (userIds = [], ownerIds = []) => {
+    const filteredIds = (userIds || []).filter(Boolean)
+    if (!filteredIds.length) return null
+
+    const uniqueUserIds = Array.from(new Set(filteredIds))
+    const ownersSet = new Set((ownerIds || []).filter(Boolean))
+
+    const sorted = uniqueUserIds.sort((a, b) => {
+      const aIsOwner = ownersSet.has(a)
+      const bIsOwner = ownersSet.has(b)
+      if (aIsOwner && !bIsOwner) return -1
+      if (!aIsOwner && bIsOwner) return 1
+      const nameA = getProfile(a)?.username?.toLowerCase() || ''
+      const nameB = getProfile(b)?.username?.toLowerCase() || ''
+      return nameA.localeCompare(nameB)
+    })
+
+    const visible = sorted.slice(0, 4)
+    const extra = sorted.length - visible.length
+
+    return (
+      <div className="flex items-center gap-2">
+        <div className="flex -space-x-2">
+          {visible.map((id, index) => {
+            const profile = getProfile(id)
+            const initials = profile?.username?.charAt(0)?.toUpperCase() || '🍽️'
+            const isOwner = ownersSet.has(id)
+            const ringClasses = isOwner
+              ? `ring-2 ring-[#FF7E42] ${isDark ? 'ring-offset-2 ring-offset-gray-800' : 'ring-offset-2 ring-offset-white'}`
+              : ''
+            const shouldShowImage = profile?.avatar_url && profile?.profile_visibility !== 'private'
+            const avatarUrl = shouldShowImage ? profile.avatar_url : null
+
+            return (
+              <div
+                key={`${id}-${index}`}
+                className={`w-7 h-7 rounded-full border-2 ${
+                  isDark ? 'border-gray-900 bg-gray-700' : 'border-white bg-gray-200'
+                } overflow-hidden flex items-center justify-center text-xs font-semibold ${ringClasses}`}
+              >
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={profile?.username || 'Avatar'}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className={`text-xs font-semibold ${
+                    isDark ? 'text-gray-200' : 'text-gray-700'
+                  }`}>
+                    {initials}
+                  </span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+        {extra > 0 && (
+          <div
+            className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+              isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'
+            }`}
+          >
+            +{extra}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const handleSpotClick = (spot) => {
+    if (!spot?.list_id) return
+    const isSharedList = sharedListIdSet.has(spot.list_id)
+    navigate(isSharedList ? `/shared/tierlist/${spot.list_id}` : `/tierlist/${spot.list_id}`)
   }
 
   if (loading) {
@@ -509,63 +1023,89 @@ function Account() {
             </div>
           </div>
 
-          {/* KPI Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {/* Total Spots */}
-            <div className={`rounded-[20px] shadow-lg border p-4 ${
-              isDark
-                ? 'bg-gray-800 border-gray-700'
-                : 'bg-white border-gray-100'
+          <div className="flex justify-center sm:justify-start">
+            <div className={`inline-flex p-1 rounded-full ${
+              isDark ? 'bg-gray-800' : 'bg-gray-200'
             }`}>
-              <div className={`text-2xl font-bold mb-1 ${
-                isDark ? 'text-white' : 'text-gray-900'
-              }`}>
-                {stats.totalSpots}
-              </div>
-              <div className={`text-xs ${
-                isDark ? 'text-gray-400' : 'text-gray-600'
-              }`}>
-                Gesamte Spots
+              <button
+                onClick={() => setActiveContext('private')}
+                className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                  activeContext === 'private'
+                    ? isDark
+                      ? 'bg-gray-900 text-white shadow-lg'
+                      : 'bg-white text-gray-900 shadow-lg'
+                    : isDark
+                      ? 'text-gray-400'
+                      : 'text-gray-600'
+                }`}
+              >
+                Meine Listen
+              </button>
+              <button
+                onClick={() => setActiveContext('shared')}
+                className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                  activeContext === 'shared'
+                    ? isDark
+                      ? 'bg-gray-900 text-white shadow-lg'
+                      : 'bg-white text-gray-900 shadow-lg'
+                    : isDark
+                      ? 'text-gray-400'
+                      : 'text-gray-600'
+                }`}
+              >
+                Geteilte Listen
+              </button>
+              <button
+                onClick={() => setActiveContext('overall')}
+                className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                  activeContext === 'overall'
+                    ? 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A] text-white shadow-lg'
+                    : isDark
+                      ? 'text-gray-400'
+                      : 'text-gray-600'
+                }`}
+              >
+                Overall
+              </button>
               </div>
             </div>
 
-            {/* Total Cities */}
-            <div className={`rounded-[20px] shadow-lg border p-4 ${
-              isDark
-                ? 'bg-gray-800 border-gray-700'
-                : 'bg-white border-gray-100'
-            }`}>
-              <div className={`text-2xl font-bold mb-1 ${
-                isDark ? 'text-white' : 'text-gray-900'
-              }`}>
-                {stats.totalCities}
+          <div className={kpiGridClass}>
+            {kpiCards.map(card => (
+              <div
+                key={card.key}
+                className={`rounded-[20px] shadow-lg border p-4 relative overflow-hidden ${
+                  card.accent
+                    ? `${isDark ? 'bg-gray-800 border-[#FF9E5A]/60' : 'bg-white border-[#FF7E42]/40'}`
+                    : isDark
+                      ? 'bg-gray-800 border-gray-700'
+                      : 'bg-white border-gray-100'
+                }`}
+              >
+                <div className={`text-2xl font-bold mb-1 ${
+                  card.accent
+                    ? 'text-[#FF7E42]'
+                    : isDark
+                      ? 'text-white'
+                      : 'text-gray-900'
+                }`}>
+                  {card.value}
+                  {card.suffix}
+                </div>
+                <div className={`text-xs flex items-center gap-1 ${
+                  card.accent
+                    ? 'text-[#FF9E5A]'
+                    : isDark
+                      ? 'text-gray-400'
+                      : 'text-gray-600'
+                }`}>
+                  {card.icon && <span>{card.icon}</span>}
+                  <span>{card.label}</span>
+                </div>
               </div>
-              <div className={`text-xs ${
-                isDark ? 'text-gray-400' : 'text-gray-600'
-              }`}>
-                Städte/Orte
-              </div>
-            </div>
+            ))}
+          </div>
 
-            {/* Average Score */}
-            <div className={`rounded-[20px] shadow-lg border p-4 ${
-              isDark
-                ? 'bg-gray-800 border-gray-700'
-                : 'bg-white border-gray-100'
-            }`}>
-              <div className={`text-2xl font-bold mb-1 ${
-                isDark ? 'text-white' : 'text-gray-900'
-              }`}>
-                {stats.averageScore.toFixed(1)}/10
-              </div>
-              <div className={`text-xs ${
-                isDark ? 'text-gray-400' : 'text-gray-600'
-              }`}>
-                Ø Score
-              </div>
-            </div>
-
-            {/* Tier Distribution */}
             <div className={`rounded-[20px] shadow-lg border p-4 ${
               isDark
                 ? 'bg-gray-800 border-gray-700'
@@ -602,7 +1142,6 @@ function Account() {
                 isDark ? 'text-gray-400' : 'text-gray-600'
               }`}>
                 Tier-Verteilung
-              </div>
             </div>
           </div>
 
@@ -647,7 +1186,7 @@ function Account() {
             </div>
           )}
 
-          {/* Top 10 All-Time */}
+          {/* Top 10 Section */}
           {stats.topSpots.length > 0 && (
             <div className={`rounded-[20px] shadow-lg border p-6 ${
               isDark
@@ -657,18 +1196,22 @@ function Account() {
               <h3 className={`text-lg font-bold mb-4 ${
                 isDark ? 'text-white' : 'text-gray-900'
               }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-                🏆 Top 10 All-Time
+                {topSpotsTitle}
               </h3>
               <div className="space-y-3">
-                {stats.topSpots.map((spot) => (
+                {stats.topSpots.map((spot, index) => (
                   <button
-                    key={spot.id}
+                    key={`${spot.id}-${index}`}
                     onClick={() => handleSpotClick(spot)}
                     className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all active:scale-[0.98] ${
                       isDark
                         ? 'hover:bg-gray-700'
                         : 'hover:bg-gray-50'
                     }`}
+                    style={{
+                      animation: `profileFadeInUp 0.35s ease-in-out forwards`,
+                      animationDelay: `${index * 40}ms`
+                    }}
                   >
                     <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
                       spot.rank <= 3
@@ -701,13 +1244,29 @@ function Account() {
                       }`}>
                         {spot.city}
                       </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        {spot.category && (
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                            isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'
+                          }`}>
+                            {spot.category}
+                          </span>
+                        )}
+                        <div className="ml-auto">
+                          {renderParticipantAvatars(spot.participants, spot.ownerIds)}
+                        </div>
+                      </div>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <span className="text-sm">⭐</span>
                       <span className={`font-bold text-sm ${
                         isDark ? 'text-white' : 'text-gray-900'
                       }`}>
-                        {spot.rating?.toFixed(1)}/10
+                        {(() => {
+                          const scoreValue = spot.avgScore ?? spot.rating
+                          const formatted = formatNumber(scoreValue, 1)
+                          return formatted === '–' ? '–' : `${formatted}/10`
+                        })()}
                       </span>
                     </div>
                   </button>
@@ -715,115 +1274,6 @@ function Account() {
               </div>
             </div>
           )}
-
-          {/* Activity Section */}
-          <div className={`rounded-[20px] shadow-lg border p-6 ${
-            isDark
-              ? 'bg-gray-800 border-gray-700'
-              : 'bg-white border-gray-100'
-          }`}>
-            <h3 className={`text-lg font-bold mb-4 ${
-              isDark ? 'text-white' : 'text-gray-900'
-            }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-              Aktivität
-            </h3>
-            
-            {/* Streak */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <span className={`text-sm font-medium ${
-                  isDark ? 'text-gray-300' : 'text-gray-700'
-                }`}>
-                  Wochen-Streak
-                </span>
-                <span className={`text-lg font-bold ${
-                  isDark ? 'text-white' : 'text-gray-900'
-                }`}>
-                  {stats.activityStreak} Tage
-                </span>
-              </div>
-              <div className="grid grid-cols-7 gap-2">
-                {stats.lastActivityDates.reverse().map((day, index) => {
-                  const date = new Date(day.date)
-                  const dayName = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][date.getDay()]
-                  return (
-                    <div key={day.date} className="flex flex-col items-center gap-1">
-                      <div className={`text-xs ${
-                        isDark ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
-                        {dayName}
-                      </div>
-                      <div
-                        className={`w-full aspect-square rounded-lg flex items-center justify-center ${
-                          day.active
-                            ? 'bg-gradient-to-br from-[#FF7E42] to-[#FFB25A]'
-                            : isDark
-                              ? 'bg-gray-700'
-                              : 'bg-gray-200'
-                        }`}
-                      />
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Recent Spots */}
-            {stats.recentSpots.length > 0 && (
-              <div>
-                <h4 className={`text-sm font-semibold mb-3 ${
-                  isDark ? 'text-gray-300' : 'text-gray-700'
-                }`}>
-                  Zuletzt hinzugefügt/aktualisiert
-                </h4>
-                <div className="space-y-2">
-                  {stats.recentSpots.map((spot) => (
-                    <button
-                      key={spot.id}
-                      onClick={() => handleSpotClick(spot)}
-                      className={`w-full flex items-center gap-3 p-2 rounded-lg transition-all active:scale-[0.98] ${
-                        isDark
-                          ? 'hover:bg-gray-700'
-                          : 'hover:bg-gray-50'
-                      }`}
-                    >
-                      {spot.cover_photo_url ? (
-                        <img
-                          src={spot.cover_photo_url}
-                          alt={spot.name}
-                          className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
-                        />
-                      ) : (
-                        <div className={`w-10 h-10 rounded-lg flex-shrink-0 ${
-                          isDark ? 'bg-gray-700' : 'bg-gray-200'
-                        }`} />
-                      )}
-                      <div className="flex-1 min-w-0 text-left">
-                        <div className={`font-medium text-sm truncate ${
-                          isDark ? 'text-white' : 'text-gray-900'
-                        }`}>
-                          {spot.name}
-                        </div>
-                        <div className={`text-xs truncate ${
-                          isDark ? 'text-gray-400' : 'text-gray-500'
-                        }`}>
-                          {spot.city}
-                        </div>
-                      </div>
-                      <div className={`text-xs ${
-                        isDark ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
-                        {new Date(spot.updated_at || spot.created_at).toLocaleDateString('de-DE', {
-                          day: '2-digit',
-                          month: '2-digit'
-                        })}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* Top Cities */}
           {stats.topCities.length > 0 && (
@@ -873,6 +1323,107 @@ function Account() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recent Spots */}
+          {stats.recentSpots.length > 0 && (
+            <div className={`rounded-[20px] shadow-lg border p-6 ${
+              isDark
+                ? 'bg-gray-800 border-gray-700'
+                : 'bg-white border-gray-100'
+            }`}>
+              <h3 className={`text-lg font-bold mb-4 ${
+                isDark ? 'text-white' : 'text-gray-900'
+              }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                Zuletzt hinzugefügt
+              </h3>
+              <div className="space-y-2">
+                {stats.recentSpots.map((spot) => (
+                  <button
+                    key={spot.id}
+                    onClick={() => handleSpotClick(spot)}
+                    className={`w-full flex items-center gap-3 p-2 rounded-lg transition-all active:scale-[0.98] ${
+                      isDark
+                        ? 'hover:bg-gray-700'
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    {spot.cover_photo_url ? (
+                      <img
+                        src={spot.cover_photo_url}
+                        alt={spot.name}
+                        className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className={`w-10 h-10 rounded-lg flex-shrink-0 ${
+                        isDark ? 'bg-gray-700' : 'bg-gray-200'
+                      }`} />
+                    )}
+                    <div className="flex-1 min-w-0 text-left">
+                      <div className={`font-medium text-sm truncate ${
+                        isDark ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {spot.name}
+                      </div>
+                      <div className={`text-xs truncate ${
+                        isDark ? 'text-gray-400' : 'text-gray-500'
+                      }`}>
+                        {spot.city}
+                      </div>
+                    </div>
+                    <div className={`text-xs ${
+                      isDark ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
+                      {new Date(spot.updated_at || spot.created_at).toLocaleDateString('de-DE', {
+                        day: '2-digit',
+                        month: '2-digit'
+                      })}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Category Mix */}
+          {Object.keys(stats.categoryCounts).length > 0 && (
+            <div className={`rounded-[20px] shadow-lg border p-6 ${
+              isDark
+                ? 'bg-gray-800 border-gray-700'
+                : 'bg-white border-gray-100'
+            }`}>
+              <h3 className={`text-lg font-bold mb-4 ${
+                isDark ? 'text-white' : 'text-gray-900'
+              }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                Kategorie-Mix
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(stats.categoryCounts)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([category, count]) => (
+                    <div
+                      key={category}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-full ${
+                        isDark
+                          ? 'bg-gray-700'
+                          : 'bg-gray-100'
+                      }`}
+                    >
+                      <span className="text-base">{CATEGORY_EMOJIS[category] || '🍔'}</span>
+                      <span className={`text-sm font-medium ${
+                        isDark ? 'text-gray-200' : 'text-gray-700'
+                      }`}>
+                        {category}
+                      </span>
+                      <span className={`text-xs font-bold ${
+                        isDark ? 'text-gray-400' : 'text-gray-500'
+                      }`}>
+                        {count}
+                      </span>
+                    </div>
+                  ))}
               </div>
             </div>
           )}

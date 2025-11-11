@@ -1,4 +1,6 @@
+import { useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useProfilesStore } from '../contexts/ProfileContext'
 
 // Generate deterministic color from user ID
 const getColorFromId = (userId) => {
@@ -33,6 +35,13 @@ function Avatar({
   shape = 'circle' // 'circle' or 'square'
 }) {
   const { user } = useAuth()
+  const { ensureProfiles, getProfile } = useProfilesStore()
+
+  useEffect(() => {
+    if (user?.id) {
+      ensureProfiles([user.id])
+    }
+  }, [user?.id, ensureProfiles])
   
   const getUsername = () => {
     return user?.user_metadata?.username || user?.email?.split('@')[0] || 'U'
@@ -42,7 +51,8 @@ function Avatar({
     return getUsername().charAt(0).toUpperCase()
   }
   
-  const profileImageUrl = user?.user_metadata?.profileImageUrl
+  const profileFromStore = useMemo(() => getProfile(user?.id), [getProfile, user?.id])
+  const profileImageUrl = profileFromStore?.avatar_url || user?.user_metadata?.profileImageUrl
   const backgroundColor = getColorFromId(user?.id)
   
   // Add cache busting if provided

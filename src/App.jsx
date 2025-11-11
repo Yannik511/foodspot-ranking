@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import { ProfileProvider } from './contexts/ProfileContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import Landing from './pages/Landing'
 import Login from './components/auth/Login'
@@ -9,6 +10,8 @@ import CreateList from './pages/CreateList'
 import SelectCategory from './pages/SelectCategory'
 import TierList from './pages/TierList'
 import AddFoodspot from './pages/AddFoodspot'
+import SharedTierList from './pages/shared/SharedTierList'
+import AddSharedFoodspot from './pages/shared/AddSharedFoodspot'
 import Account from './pages/Account'
 import Settings from './pages/Settings'
 import About from './pages/About'
@@ -21,7 +24,8 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <BrowserRouter>
+        <ProfileProvider>
+          <BrowserRouter>
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
@@ -63,6 +67,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <AddFoodspot />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/shared/tierlist/:id"
+            element={
+              <ProtectedRoute>
+                <SharedTierList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/shared/add-foodspot/:id"
+            element={
+              <ProtectedRoute>
+                <AddSharedFoodspot />
               </ProtectedRoute>
             }
           />
@@ -116,6 +136,7 @@ function App() {
           />
         </Routes>
       </BrowserRouter>
+        </ProfileProvider>
       </AuthProvider>
     </ThemeProvider>
   )

@@ -52,6 +52,7 @@ function TierList() {
   const [windowHeight, setWindowHeight] = useState(0)
   const scrollRefs = useRef({})
   const menuRef = useRef(null)
+  const [sharedContextChecked, setSharedContextChecked] = useState(false)
 
   // Track window height for responsive calculations
   useEffect(() => {
@@ -60,6 +61,51 @@ function TierList() {
     window.addEventListener('resize', updateHeight)
     return () => window.removeEventListener('resize', updateHeight)
   }, [])
+
+  // Shared list detection – redirect to shared component if necessary
+  useEffect(() => {
+    if (!user || !id || sharedContextChecked) return
+
+    const checkSharedContext = async () => {
+      const targetRoute = `/shared/tierlist/${id}`
+      try {
+        const { data: listMeta, error: listMetaError } = await supabase
+          .from('lists')
+          .select('id, user_id')
+          .eq('id', id)
+          .single()
+
+        if (listMetaError) {
+          if (listMetaError.code === 'PGRST116' || listMetaError.code === '42501') {
+            navigate(targetRoute, { replace: true })
+            return
+          }
+        }
+
+        if (listMeta && listMeta.user_id !== user.id) {
+          navigate(targetRoute, { replace: true })
+          return
+        }
+
+        const { data: memberCheck, error: memberError } = await supabase
+          .from('list_members')
+          .select('id')
+          .eq('list_id', id)
+          .limit(1)
+
+        if (!memberError && memberCheck && memberCheck.length > 0) {
+          navigate(targetRoute, { replace: true })
+          return
+        }
+      } catch (error) {
+        console.error('Error checking shared tier context:', error)
+      }
+
+      setSharedContextChecked(true)
+    }
+
+    checkSharedContext()
+  }, [user, id, navigate, sharedContextChecked])
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -77,6 +123,8 @@ function TierList() {
 
   // Check for optimistic foodspot from AddFoodspot
   useEffect(() => {
+    if (!sharedContextChecked) return
+
     const newFoodspotData = sessionStorage.getItem('newFoodspot')
     if (newFoodspotData && id) {
       try {
@@ -101,11 +149,11 @@ function TierList() {
         sessionStorage.removeItem('newFoodspot')
       }
     }
-  }, [id])
+  }, [id, sharedContextChecked])
 
   // Fetch list and foodspots
   useEffect(() => {
-    if (!user || !id) return
+    if (!user || !id || !sharedContextChecked) return
     
     const fetchData = async () => {
       setLoading(true)
@@ -225,7 +273,7 @@ function TierList() {
       .subscribe()
 
     return () => supabase.removeChannel(channel)
-  }, [id, user])
+  }, [id, user, sharedContextChecked])
 
   // Group foodspots by tier
   const foodspotsByTier = TIERS.reduce((acc, tier) => {
@@ -666,7 +714,7 @@ function TierList() {
                                           {spot.category === 'Burger' && '🍔'}
                                           {spot.category === 'Pizza' && '🍕'}
                                           {spot.category === 'Asiatisch' && '🍜'}
-                                          {spot.category === 'Mexikanisch' && '🌮'}
+                                          {spot.category === 'Bratwurst' && '🥓'}
                                           {spot.category === 'Glühwein' && '🍷'}
                                           {spot.category === 'Deutsche Küche' && '🥨'}
                                           {spot.category === 'Bier' && '🍺'}
@@ -1028,7 +1076,7 @@ function TierList() {
                               {spot.category === 'Burger' && '🍔'}
                               {spot.category === 'Pizza' && '🍕'}
                               {spot.category === 'Asiatisch' && '🍜'}
-                              {spot.category === 'Mexikanisch' && '🌮'}
+                              {spot.category === 'Bratwurst' && '🥓'}
                               {spot.category === 'Glühwein' && '🍷'}
                               {spot.category === 'Deutsche Küche' && '🥨'}
                               {spot.category === 'Bier' && '🍺'}

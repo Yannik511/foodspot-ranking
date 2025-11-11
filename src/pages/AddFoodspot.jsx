@@ -5,38 +5,74 @@ import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
 
 // Category definitions with their specific criteria
+const DEFAULT_SCALE = 5
+
 const CATEGORIES = {
   Döner: {
     imageUrl: '/images/categories/doener.jpg', // Will be uploaded to public folder
-    criteria: ['Brot', 'Fleisch', 'Soße', 'Frische', 'Location']
+    criteria: ['Brot', 'Fleisch', 'Soße', 'Frische', 'Location'],
+    scale: DEFAULT_SCALE
   },
   Burger: {
     imageUrl: '/images/categories/burger.jpg',
-    criteria: ['Bun', 'Patty', 'Toppings/Cheese', 'Geschmack', 'Location']
+    criteria: ['Bun', 'Patty', 'Toppings/Cheese', 'Geschmack', 'Location'],
+    scale: DEFAULT_SCALE
   },
   Pizza: {
     imageUrl: '/images/categories/pizza.jpg',
-    criteria: ['Teig', 'Belag', 'Soße', 'Backen', 'Location']
+    criteria: ['Teig', 'Belag', 'Soße', 'Backen', 'Location'],
+    scale: DEFAULT_SCALE
   },
   Asiatisch: {
     imageUrl: '/images/categories/asiatisch.jpg',
-    criteria: ['Nudeln/Reis', 'Protein', 'Soße', 'Gemüse', 'Location']
+    criteria: ['Nudeln/Reis', 'Protein', 'Soße', 'Gemüse', 'Location'],
+    scale: DEFAULT_SCALE
   },
-  Mexikanisch: {
-    imageUrl: '/images/categories/mexikanisch.jpg',
-    criteria: ['Tortilla', 'Füllung', 'Soße/Schärfe', 'Frische', 'Location']
+  Bratwurst: {
+    imageUrl: '/images/categories/bratwurst.jpg',
+    criteria: [
+      'Geschmack & Würze',
+      'Bratgrad & Textur',
+      'Beilage & Sauce',
+      'Authentizität & Atmosphäre',
+      'Preis-Leistungs-Verhältnis'
+    ],
+    scale: DEFAULT_SCALE
   },
   Glühwein: {
     imageUrl: '/images/categories/gluehwein.jpg',
-    criteria: ['Geschmack', 'Temperatur', 'Gewürze', 'Alkoholgehalt', 'Preis-Leistung']
+    criteria: ['Geschmack', 'Temperatur', 'Gewürze', 'Alkoholgehalt', 'Preis-Leistung'],
+    scale: DEFAULT_SCALE
+  },
+  Sushi: {
+    imageUrl: '/images/categories/sushi.jpg',
+    criteria: ['Fischqualität', 'Reis & Textur', 'Frische & Temperatur', 'Kreativität & Vielfalt', 'Preis-Leistung'],
+    scale: DEFAULT_SCALE
   },
   'Deutsche Küche': {
     imageUrl: '/images/categories/deutsche-kuche.jpg', // Will be uploaded to public folder
-    criteria: ['Soße & Braten', 'Beilagen', 'Würzung & Authentizität', 'Frische & Regionalität', 'Portion & Preis-Leistung']
+    criteria: ['Soße & Braten', 'Beilagen', 'Würzung & Authentizität', 'Frische & Regionalität', 'Portion & Preis-Leistung'],
+    scale: DEFAULT_SCALE
   },
-  'Bier': {
+  Bier: {
     imageUrl: '/images/categories/bier.jpg', // Will be uploaded to public folder
-    criteria: ['Geschmack & Ausgewogenheit', 'Aroma & Geruch', 'Frische & Temperatur', 'Schaumqualität & Kohlensäure', 'Sortencharakter & Authentizität']
+    criteria: ['Geschmack & Ausgewogenheit', 'Aroma & Geruch', 'Frische & Temperatur', 'Schaumqualität & Kohlensäure', 'Sortencharakter & Authentizität'],
+    scale: DEFAULT_SCALE
+  },
+  Steak: {
+    imageUrl: '/images/categories/steak.jpg',
+    criteria: ['Fleischqualität', 'Gargrad & Zubereitung', 'Beilagen & Saucen', 'Ambiente & Service', 'Preis-Leistung'],
+    scale: DEFAULT_SCALE
+  },
+  'Fast Food': {
+    imageUrl: '/images/categories/fast-food.jpg',
+    criteria: ['Geschmack & Frische', 'Schnelligkeit & Service', 'Sauberkeit & Ordnung', 'Preis-Leistung', 'Markenerlebnis'],
+    scale: DEFAULT_SCALE
+  },
+  Streetfood: {
+    imageUrl: '/images/categories/streetfood.jpg',
+    criteria: ['Authentizität & Geschmack', 'Kreativität & Vielfalt', 'Frische & Qualität', 'Atmosphäre & Erlebnis', 'Preis-Leistung'],
+    scale: DEFAULT_SCALE
   }
 }
 
@@ -73,8 +109,29 @@ const CRITERIA_ICONS = {
   'Aroma & Geruch': '👃',
   'Frische & Temperatur': '❄️',
   'Schaumqualität & Kohlensäure': '🫧',
-  'Sortencharakter & Authentizität': '🏆'
+  'Sortencharakter & Authentizität': '🏆',
+  'Fischqualität': '🐟',
+  'Reis & Textur': '🍚',
+  'Kreativität & Vielfalt': '🎨',
+  'Fleischqualität': '🥩',
+  'Gargrad & Zubereitung': '🔥',
+  'Beilagen & Saucen': '🥄',
+  'Ambiente & Service': '🛎️',
+  'Geschmack & Frische': '😋',
+  'Schnelligkeit & Service': '⚡',
+  'Sauberkeit & Ordnung': '🧼',
+  'Markenerlebnis': '✨',
+  'Authentizität & Geschmack': '🧭',
+  'Frische & Qualität': '🥗',
+  'Atmosphäre & Erlebnis': '🎉',
+  'Geschmack & Würze': '🌭',
+  'Bratgrad & Textur': '🔥',
+  'Beilage & Sauce': '🥖',
+  'Authentizität & Atmosphäre': '🎪',
+  'Preis-Leistungs-Verhältnis': '💰'
 }
+
+const getCategoryScale = (category) => CATEGORIES[category]?.scale || DEFAULT_SCALE
 
 // Helper function to compress image
 const compressImage = (file) => {
@@ -144,6 +201,7 @@ function AddFoodspot() {
     cover_photo_url: null,
     cover_photo_file: null
   })
+  const [sharedRedirectChecked, setSharedRedirectChecked] = useState(false)
 
   const [errors, setErrors] = useState({})
 
@@ -155,8 +213,58 @@ function AddFoodspot() {
     }
   }, [])
 
+  // Shared list detection – redirect to shared component
+  useEffect(() => {
+    if (!user || !id || sharedRedirectChecked) return
+
+    const checkSharedContext = async () => {
+      const targetRoute = spotId
+        ? `/shared/add-foodspot/${id}?spotId=${spotId}`
+        : `/shared/add-foodspot/${id}`
+
+      try {
+        const { data: listMeta, error: listMetaError } = await supabase
+          .from('lists')
+          .select('id, user_id')
+          .eq('id', id)
+          .single()
+
+        if (listMetaError) {
+          if (listMetaError.code === 'PGRST116' || listMetaError.code === '42501') {
+            navigate(targetRoute, { replace: true })
+            return
+          }
+        }
+
+        if (listMeta && listMeta.user_id !== user.id) {
+          navigate(targetRoute, { replace: true })
+          return
+        }
+
+        const { data: memberCheck, error: memberError } = await supabase
+          .from('list_members')
+          .select('id')
+          .eq('list_id', id)
+          .limit(1)
+
+        if (!memberError && memberCheck && memberCheck.length > 0) {
+          navigate(targetRoute, { replace: true })
+          return
+        }
+      } catch (error) {
+        console.error('Error checking shared list context:', error)
+      }
+
+      setSharedRedirectChecked(true)
+    }
+
+    checkSharedContext()
+  }, [user, id, spotId, navigate, sharedRedirectChecked])
+
   // Fetch list and existing spot (if edit mode)
   useEffect(() => {
+    if (!sharedRedirectChecked) return
+
     const fetchData = async () => {
       if (!user || !id) return
       
@@ -237,7 +345,7 @@ function AddFoodspot() {
     }
 
     fetchData()
-  }, [id, spotId, isEditMode, user, navigate])
+  }, [id, spotId, isEditMode, user, navigate, sharedRedirectChecked])
 
   // Handle category selection
   const handleCategorySelect = (category) => {
@@ -254,17 +362,21 @@ function AddFoodspot() {
 
   // Calculate overall rating (1-5 stars → 0-10 scale)
   const calculateOverallRating = () => {
-    if (!selectedCategory) return 0
-    
+    const activeCategory = selectedCategory || listCategory
+    if (!activeCategory) return 0
+
     const ratings = Object.values(formData.ratings)
     const filledRatings = ratings.filter(r => r > 0)
-    
+
     if (filledRatings.length === 0) return 0
-    
+
     const sum = filledRatings.reduce((acc, r) => acc + r, 0)
     const average = sum / filledRatings.length
-    // Convert 1-5 star average to 0-10 scale
-    return Math.round(average * 2 * 10) / 10
+    const scale = getCategoryScale(activeCategory)
+    if (scale <= 0) return 0
+    // Convert average to 0-10 scale
+    const normalized = (average / scale) * 10
+    return Math.round(normalized * 10) / 10
   }
 
   // Auto-tier based on score
@@ -702,10 +814,14 @@ function AddFoodspot() {
                             'Burger': '🍔',
                             'Pizza': '🍕',
                             'Asiatisch': '🍜',
-                            'Mexikanisch': '🌮',
+                            'Bratwurst': '🥓',
                             'Glühwein': '🍷',
+                            'Sushi': '🍣',
                             'Deutsche Küche': '🥨',
-                            'Bier': '🍺'
+                            'Bier': '🍺',
+                            'Steak': '🥩',
+                            'Fast Food': '🍔',
+                            'Streetfood': '🌯'
                           }
                           e.target.style.display = 'none'
                           const emoji = fallbackEmojis[category] || '🍔'
@@ -1027,48 +1143,74 @@ function AddFoodspot() {
               <label className={`block text-sm font-semibold ${
                 isDark ? 'text-gray-200' : 'text-gray-700'
               }`}>
-                📊 BEWERTUNG (1-5)
+                📊 BEWERTUNG
               </label>
+              <span className={`text-xs ${
+                isDark ? 'text-gray-400' : 'text-gray-500'
+              }`}>
+                {(() => {
+                  const scale = getCategoryScale(selectedCategory)
+                  return scale === 5 ? '1 - 5 Sterne' : `1 - ${scale} Punkte`
+                })()}
+              </span>
             </div>
             
-            <div className="space-y-4">
-              {CATEGORIES[selectedCategory].criteria.map((criterion) => (
-                <div key={criterion}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className={`text-sm font-medium flex items-center gap-2 ${
-                      isDark ? 'text-gray-200' : 'text-gray-700'
-                    }`}>
-                      <span className="text-base">{CRITERIA_ICONS[criterion]}</span>
-                      {criterion}:
-                    </span>
-                    <div className="flex items-center gap-2">
-                      {[1, 2, 3, 4, 5].map((value) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => setFormData(prev => ({
-                            ...prev,
-                            ratings: { ...prev.ratings, [criterion]: value }
-                          }))}
-                          className={`w-10 h-10 rounded-lg font-semibold transition-all ${
-                            (formData.ratings[criterion] || 0) === value
-                              ? `text-white shadow-lg scale-110 ${
-                                  isDark
-                                    ? 'bg-[#FF9357]'
-                                    : 'bg-[#FF7E42]'
-                                }`
-                              : isDark
-                                ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          }`}
-                        >
-                          {value}
-                        </button>
-                      ))}
-                    </div>
+            <div className="space-y-5">
+              {CATEGORIES[selectedCategory].criteria.map((criterion) => {
+                const ratingScale = getCategoryScale(selectedCategory)
+                const ratingValues = Array.from({ length: ratingScale }, (_, index) => index + 1)
+                return (
+                <div key={criterion} className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  {/* Label - feste Breite für Ausrichtung */}
+                  <div className={`flex items-center gap-2 sm:w-40 sm:flex-shrink-0 ${
+                    isDark ? 'text-gray-200' : 'text-gray-700'
+                  }`}>
+                    <span className="text-lg">{CRITERIA_ICONS[criterion]}</span>
+                    <span className="text-sm font-medium">{criterion}</span>
+                  </div>
+                  
+                  {/* Buttons - flex-grow für gleichmäßige Verteilung */}
+                  <div 
+                    className="grid gap-2 flex-1"
+                    style={{ 
+                      gridTemplateColumns: `repeat(${ratingScale <= 5 ? ratingScale : 5}, 1fr)`,
+                      maxWidth: ratingScale <= 5 ? '280px' : '100%'
+                    }}
+                  >
+                    {ratingValues.map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setFormData(prev => ({
+                          ...prev,
+                          ratings: { ...prev.ratings, [criterion]: value }
+                        }))}
+                        className={`
+                          aspect-square rounded-xl font-bold text-base
+                          transition-all duration-200 ease-out
+                          ${(formData.ratings[criterion] || 0) === value
+                            ? `text-white shadow-lg transform scale-105 ${
+                                isDark
+                                  ? 'bg-[#FF9357]'
+                                  : 'bg-[#FF7E42]'
+                              }`
+                            : isDark
+                              ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 active:scale-95'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 active:scale-95'
+                          }
+                        `}
+                        style={{
+                          minWidth: '44px',
+                          minHeight: '44px'
+                        }}
+                      >
+                        {value}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
             {errors.ratings && <p className="mt-3 text-sm text-red-500">{errors.ratings}</p>}
           </div>

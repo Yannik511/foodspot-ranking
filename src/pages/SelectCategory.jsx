@@ -25,19 +25,34 @@ const CATEGORIES = {
     description: 'Asiatische Küche',
     color: '#FF7E42'
   },
-  'Mexikanisch': {
-    emoji: '🌮',
-    description: 'Mexikanische Gerichte',
+  Bratwurst: {
+    emoji: '🥓',
+    description: 'Bewerte die besten Bratwurst-Stände – von fränkisch bis Currywurst.',
     color: '#FFB25A'
   },
-  'Glühwein': {
+  Glühwein: {
     emoji: '🍷',
     description: 'Glühwein-Stände bewerten',
     color: '#FF9C68'
   },
-  'Sushi': {
+  Sushi: {
     emoji: '🍣',
-    description: 'Sushi-Restaurants',
+    description: 'Sushi-Restaurants vergleichen',
+    color: '#FF7E42'
+  },
+  Steak: {
+    emoji: '🥩',
+    description: 'Steakhäuser & Cuts bewerten',
+    color: '#FF9C68'
+  },
+  'Fast Food': {
+    emoji: '🍔',
+    description: 'Bester Fast-Food-Spot in deiner Stadt',
+    color: '#FFB25A'
+  },
+  Streetfood: {
+    emoji: '🌯',
+    description: 'Streetfood-Märkte & Trucks bewerten',
     color: '#FF7E42'
   },
   'Deutsche Küche': {
@@ -45,7 +60,7 @@ const CATEGORIES = {
     description: 'Bewerte klassische Gerichte der deutschen Küche.',
     color: '#FF9C68'
   },
-  'Bier': {
+  Bier: {
     emoji: '🍺',
     description: 'Bewerte verschiedene Biersorten – vom Hellen bis zum Craft Beer.',
     color: '#FFB25A'

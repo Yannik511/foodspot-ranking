@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
+import { useProfilesStore } from '../../contexts/ProfileContext'
 
 // Generate deterministic color from user ID
 const getColorFromId = (userId) => {
@@ -23,17 +24,28 @@ const getColorFromId = (userId) => {
 }
 
 function UserAvatar({ user, size = 40, className = '', showBorder = true }) {
-  const backgroundColor = useMemo(() => getColorFromId(user?.id), [user?.id])
+  const { ensureProfiles, getProfile } = useProfilesStore()
+  const userId = user?.id || user?.user_id
+
+  useEffect(() => {
+    if (userId) {
+      ensureProfiles([userId])
+    }
+  }, [userId, ensureProfiles])
+
+  const profileFromStore = useMemo(() => getProfile(userId), [getProfile, userId])
+  const backgroundColor = useMemo(() => getColorFromId(userId), [userId])
   
+  const profileImageUrl = profileFromStore?.avatar_url || user?.user_metadata?.profileImageUrl || user?.profileImageUrl
+  const displayName = profileFromStore?.username || user?.user_metadata?.username || user?.username
+
   const getUsername = () => {
-    return user?.user_metadata?.username || user?.email?.split('@')[0] || 'U'
+    return displayName || user?.email?.split('@')[0] || 'U'
   }
 
   const getInitials = () => {
     return getUsername().charAt(0).toUpperCase()
   }
-  
-  const profileImageUrl = user?.user_metadata?.profileImageUrl
   
   return (
     <div
@@ -52,7 +64,7 @@ function UserAvatar({ user, size = 40, className = '', showBorder = true }) {
       {profileImageUrl ? (
         <img
           src={profileImageUrl}
-          alt={getUsername()}
+          alt={displayName || getUsername()}
           className="w-full h-full object-cover"
           style={{ objectFit: 'cover' }}
           onError={(e) => {
@@ -75,6 +87,8 @@ function UserAvatar({ user, size = 40, className = '', showBorder = true }) {
 }
 
 export default UserAvatar
+
+
 
 
 

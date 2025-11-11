@@ -832,7 +832,7 @@ function FeaturesSection() {
               { emoji: '🍕', text: 'Pizza-Topliste', gradient: 'linear-gradient(135deg, #FFD4A3 0%, #FFC98A 100%)' },
               { emoji: '🍔', text: 'Burger-Ranking', gradient: 'linear-gradient(135deg, #FFC98A 0%, #FFB25A 100%)' },
               { emoji: '🍜', text: 'Asiatisch', gradient: 'linear-gradient(135deg, #FFB25A 0%, #FF9C68 100%)' },
-              { emoji: '🌮', text: 'Mexikanisch', gradient: 'linear-gradient(135deg, #FF9C68 0%, #FF8E53 100%)' },
+              { emoji: '🥓', text: 'Bratwurst', gradient: 'linear-gradient(135deg, #FF9C68 0%, #FF8E53 100%)' },
               { emoji: '🍣', text: 'Sushi-Guide', gradient: 'linear-gradient(135deg, #FF8E53 0%, #FF7E42 100%)' },
             ].map((item, index) => (
               <button

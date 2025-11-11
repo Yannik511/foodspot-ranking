@@ -73,6 +73,15 @@ function Social() {
       }, () => {
         checkUnreadNotifications()
       })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'list_invitations',
+        filter: `invitee_id=eq.${user.id}`
+      }, (payload) => {
+        console.log('[Social] Realtime: list_invitations changed:', payload.eventType)
+        checkUnreadNotifications()
+      })
       .subscribe()
 
     return () => {
