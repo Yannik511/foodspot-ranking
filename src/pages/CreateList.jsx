@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
@@ -357,119 +357,22 @@ function CreateList() {
             }`}>
               Stadt <span className="text-red-500">*</span>
             </label>
-            
-            {/* GPS Button */}
-            <div className="mb-3">
-              <button
-                type="button"
-                onClick={handleGetCurrentCity}
-                disabled={loadingLocation}
-                className={`w-full px-4 py-3 rounded-[14px] font-medium transition-all active:scale-95 flex items-center justify-center gap-2 ${
-                  loadingLocation
-                    ? isDark
-                      ? 'bg-gray-700 text-gray-400 cursor-wait'
-                      : 'bg-gray-200 text-gray-500 cursor-wait'
-                    : isDark
-                      ? 'bg-gradient-to-r from-[#B85C2C] to-[#FF9357] text-white hover:shadow-lg'
-                      : 'bg-gradient-to-r from-[#FF7E42] to-[#FF9357] text-white hover:shadow-lg'
-                }`}
-              >
-                {loadingLocation ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>Standort wird ermittelt...</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-lg">📍</span>
-                    <span>Aktuelle Stadt verwenden</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            <div className="relative">
-              <input
-                ref={cityInputRef}
-                type="text"
-                value={formData.city}
-                onChange={(e) => handleCityInputChange(e.target.value)}
-                onFocus={handleCityFocus}
-                placeholder="z. B. München"
-                className={`w-full px-4 py-3 pr-10 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
-                  errors.city 
-                    ? 'border-red-400 focus:ring-red-200' 
-                    : validationState.city === 'valid'
-                    ? 'border-green-400 focus:ring-green-200'
-                    : isDark
-                      ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
-                      : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
-                }`}
-              />
-              <button
-                type="button"
-                onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
-                className={`absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors z-10 ${
-                  isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                <svg 
-                  className={`w-5 h-5 transition-transform ${isCityDropdownOpen ? 'rotate-180' : ''}`}
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              {validationState.city === 'valid' && !isCityDropdownOpen && (
-                <svg className="absolute right-10 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500 z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
-              )}
-              
-              {/* Custom Dropdown */}
-              {isCityDropdownOpen && (
-                <div 
-                  ref={cityDropdownRef}
-                  className="absolute z-[100] w-full mt-2 bg-white rounded-[14px] shadow-xl border border-gray-200 max-h-64 overflow-y-auto"
-                  style={{
-                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-                  }}
-                >
-                  {filteredCities.length > 0 ? (
-                    <div className="py-2">
-                      {filteredCities.map((city, index) => (
-                        <button
-                          key={city}
-                          type="button"
-                          onClick={() => handleCitySelect(city)}
-                          className={`w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors ${
-                            index === 0 ? 'rounded-t-[14px]' : ''
-                          } ${
-                            index === filteredCities.length - 1 ? 'rounded-b-[14px]' : ''
-                          } ${
-                            formData.city === city ? 'bg-[#FFE4C3]/50 text-[#FF7E42] font-medium dark:bg-[#B85C2C]/30 dark:text-[#FF9357]' : 'text-gray-700'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            <span className="text-sm">{city}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="px-4 py-6 text-center text-gray-500 text-sm">
-                      Keine Städte gefunden
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <input
+              type="text"
+              value={formData.city}
+              onChange={(e) => handleInputChange('city', e.target.value)}
+              placeholder="z. B. München oder Gilching"
+              maxLength={100}
+              className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
+                errors.city 
+                  ? 'border-red-400 focus:ring-red-200' 
+                  : validationState.city === 'valid'
+                  ? 'border-green-400 focus:ring-green-200'
+                  : isDark
+                    ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
+                    : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
+              }`}
+            />
             {errors.city && <p className="mt-2 text-sm text-red-500">{errors.city}</p>}
           </div>
 
