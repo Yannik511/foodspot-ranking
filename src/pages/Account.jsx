@@ -1470,7 +1470,7 @@ function Account() {
                     <span className={`text-sm font-medium ${
                       isDark ? 'text-gray-200' : 'text-gray-700'
                     }`}>
-                      ⭐ Ø > 9,0
+                      ⭐ Ø {'>'} 9,0
                     </span>
                   </div>
                 )}
