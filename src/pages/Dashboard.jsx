@@ -1262,6 +1262,7 @@ function Dashboard() {
     setTimeout(() => setToast(null), 3000)
   }
 
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false)
   const currentLists = listView === 'meine' ? lists : sharedLists
   const normalizedPrivateFilters = {
     city: privateFilters.city.trim(),
@@ -1463,73 +1464,120 @@ function Dashboard() {
             {listView === 'meine' && (
               <>
                 <div className="max-w-5xl mx-auto w-full mb-6">
-                  <div className={`rounded-2xl border shadow-sm px-4 py-4 sm:px-5 sm:py-5 ${
+                  <div className={`rounded-2xl border shadow-sm ${
                     isDark ? 'bg-gray-800/80 border-gray-700/60' : 'bg-white/80 border-gray-200/60'
                   }`}>
-                    <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-                      <div className="flex-1 min-w-[180px]">
-                        <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${
-                          isDark ? 'text-gray-300' : 'text-gray-600'
-                        }`}>
-                          Ort
-                        </label>
-                        <input
-                          type="text"
-                          value={privateFilters.city}
-                          onChange={(e) => setPrivateFilters(prev => ({ ...prev, city: e.target.value }))}
-                          placeholder="Ort oder Stadtteil (z. B. München)"
-                          maxLength={100}
-                          autoComplete="off"
-                          className={`w-full px-4 py-3 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 ${
-                            isDark
-                              ? 'bg-gray-900/60 border-gray-700 text-white placeholder:text-gray-500 focus:ring-[#FF9357]/20'
-                              : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
-                          }`}
-                        />
-                      </div>
+                    <button
+                      onClick={() => setIsFilterExpanded(prev => !prev)}
+                      className={`w-full flex items-center justify-between px-4 py-3 sm:px-5 sm:py-4 transition-all ${
+                        isDark ? 'text-gray-300' : 'text-gray-600'
+                      }`}
+                    >
+                      <span className="text-sm font-semibold uppercase tracking-wide" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        Filter
+                        {hasActivePrivateFilters && (
+                          <span className={`ml-2 text-xs px-2 py-1 rounded-full ${
+                            isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'
+                          }`}>
+                            Aktiv
+                          </span>
+                        )}
+                      </span>
+                      <svg
+                        className={`w-5 h-5 transition-transform ${
+                          isFilterExpanded ? 'rotate-180' : ''
+                        } ${isDark ? 'text-gray-300' : 'text-gray-600'}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
 
-                      <div className="w-full sm:w-56">
-                        <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${
-                          isDark ? 'text-gray-300' : 'text-gray-600'
-                        }`}>
-                          Kategorie
-                        </label>
-                        <select
-                          value={privateFilters.category}
-                          onChange={(e) => setPrivateFilters(prev => ({ ...prev, category: e.target.value }))}
-                          className={`w-full px-4 py-3 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 ${
-                            isDark
-                              ? 'bg-gray-900/60 border-gray-700 text-white focus:ring-[#FF9357]/20'
-                              : 'bg-white border-gray-200 text-gray-900 focus:ring-[#FF7E42]/20'
-                          }`}
-                        >
-                          <option value="">Alle Kategorien</option>
-                          {CATEGORY_OPTIONS.map((category) => (
-                            <option key={category} value={category}>
-                              {category}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                    {isFilterExpanded ? (
+                      <div className="px-4 py-4 sm:px-5 sm:py-5 border-t border-gray-200/60 dark:border-gray-700/60">
+                        <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+                          <div className="flex-1 min-w-[180px]">
+                            <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${
+                              isDark ? 'text-gray-300' : 'text-gray-600'
+                            }`}>
+                              Ort
+                            </label>
+                            <input
+                              type="text"
+                              value={privateFilters.city}
+                              onChange={(e) => setPrivateFilters(prev => ({ ...prev, city: e.target.value }))}
+                              placeholder="Ort oder Stadtteil (z. B. München)"
+                              maxLength={100}
+                              autoComplete="off"
+                              className={`w-full px-4 py-3 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 ${
+                                isDark
+                                  ? 'bg-gray-900/60 border-gray-700 text-white placeholder:text-gray-500 focus:ring-[#FF9357]/20'
+                                  : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
+                              }`}
+                            />
+                          </div>
 
-                      <div className="flex sm:flex-col sm:items-end gap-3">
-                        <button
-                          onClick={handleResetFilters}
-                          disabled={!hasActivePrivateFilters}
-                          className={`px-4 py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.98] ${
-                            hasActivePrivateFilters
-                              ? isDark
-                                ? 'bg-gray-700 hover:bg-gray-600 text-gray-100'
-                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                              : isDark
-                                ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          }`}
-                        >
-                          Filter löschen
-                        </button>
+                          <div className="w-full sm:w-56">
+                            <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${
+                              isDark ? 'text-gray-300' : 'text-gray-600'
+                            }`}>
+                              Kategorie
+                            </label>
+                            <select
+                              value={privateFilters.category}
+                              onChange={(e) => setPrivateFilters(prev => ({ ...prev, category: e.target.value }))}
+                              className={`w-full px-4 py-3 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 ${
+                                isDark
+                                  ? 'bg-gray-900/60 border-gray-700 text-white focus:ring-[#FF9357]/20'
+                                  : 'bg-white border-gray-200 text-gray-900 focus:ring-[#FF7E42]/20'
+                              }`}
+                            >
+                              <option value="">Alle Kategorien</option>
+                              {CATEGORY_OPTIONS.map((category) => (
+                                <option key={category} value={category}>
+                                  {category}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="flex sm:flex-col sm:items-end gap-3">
+                            <button
+                              onClick={handleResetFilters}
+                              disabled={!hasActivePrivateFilters}
+                              className={`px-4 py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.98] ${
+                                hasActivePrivateFilters
+                                  ? isDark
+                                    ? 'bg-gray-700 hover:bg-gray-600 text-gray-100'
+                                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                                  : isDark
+                                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              }`}
+                            >
+                              Filter löschen
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className={`px-4 py-3 sm:px-5 sm:py-4 border-t border-gray-200/60 dark:border-gray-700/60 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <div className="flex items-center gap-3 text-xs sm:text-sm">
+                          <div className={`px-3 py-1 rounded-full border ${
+                            isDark ? 'border-gray-700 bg-gray-900/60' : 'border-gray-200 bg-white/80'
+                          }`}>
+                            Ort: {privateFilters.city ? privateFilters.city : 'Alle'}
+                          </div>
+                          <div className={`px-3 py-1 rounded-full border ${
+                            isDark ? 'border-gray-700 bg-gray-900/60' : 'border-gray-200 bg-white/80'
+                          }`}>
+                            Kategorie: {privateFilters.category ? privateFilters.category : 'Alle'}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -2162,6 +2210,25 @@ function Dashboard() {
               )}
             </div>
             <span className="text-xs font-medium text-gray-400 dark:text-gray-500" style={{ fontFamily: "'Poppins', sans-serif" }}>Social</span>
+          </button>
+
+          <button 
+            onClick={() => {
+              hapticFeedback.light()
+              navigate('/discover')
+            }}
+            className="flex flex-col items-center gap-1 active:scale-95 transition-transform"
+            style={{
+              minWidth: '44px',
+              minHeight: '44px',
+            }}
+            aria-label="Entdecken"
+          >
+            <svg className="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19a8 8 0 100-16 8 8 0 000 16z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35" />
+            </svg>
+            <span className="text-xs font-medium text-gray-400 dark:text-gray-500" style={{ fontFamily: "'Poppins', sans-serif" }}>Entdecken</span>
           </button>
 
           <button 

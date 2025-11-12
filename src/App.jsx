@@ -18,6 +18,7 @@ import About from './pages/About'
 import Social from './pages/Social'
 import FriendProfile from './pages/FriendProfile'
 import Compare from './pages/Compare'
+import Discover from './pages/Discover'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -123,6 +124,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <FriendProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/discover"
+            element={
+              <ProtectedRoute>
+                <Discover />
               </ProtectedRoute>
             }
           />

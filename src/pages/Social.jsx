@@ -2,17 +2,13 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
-import Avatar from '../components/Avatar'
 import FriendsTab from '../components/social/FriendsTab'
-import DiscoverTab from '../components/social/DiscoverTab'
-import { hapticFeedback } from '../utils/haptics'
 import { supabase } from '../services/supabase'
 
 function Social() {
   const { user } = useAuth()
   const { isDark } = useTheme()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState('friends') // 'friends' or 'discover'
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false)
 
   // Check for unread notifications
@@ -122,77 +118,20 @@ function Social() {
           <h1 className={`text-lg font-bold ${
             isDark ? 'text-white' : 'text-gray-900'
           }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-            Social
+            Social {hasUnreadNotifications && (
+              <span className="inline-flex items-center justify-center ml-2 align-middle">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+              </span>
+            )}
           </h1>
 
           <div className="w-10" />
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-t border-gray-200 dark:border-gray-700">
-          <button
-            onClick={() => {
-              hapticFeedback.light()
-              setActiveTab('friends')
-              // Mark as read when clicking on friends tab
-              if (user) {
-                localStorage.setItem('social_tab_last_viewed', new Date().toISOString())
-                setHasUnreadNotifications(false)
-              }
-            }}
-            className={`flex-1 py-3 px-4 text-sm font-medium transition-all relative ${
-              activeTab === 'friends'
-                ? isDark
-                  ? 'text-white'
-                  : 'text-gray-900'
-                : isDark
-                  ? 'text-gray-400'
-                  : 'text-gray-500'
-            }`}
-          >
-            <span className="relative inline-block">
-              Freunde
-              {hasUnreadNotifications && (
-                <span 
-                  className="absolute -top-1 -right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800 animate-pulse"
-                  style={{ animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}
-                />
-              )}
-            </span>
-            {activeTab === 'friends' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]" />
-            )}
-          </button>
-          <button
-            onClick={() => {
-              hapticFeedback.light()
-              setActiveTab('discover')
-            }}
-            className={`flex-1 py-3 px-4 text-sm font-medium transition-all relative ${
-              activeTab === 'discover'
-                ? isDark
-                  ? 'text-white'
-                  : 'text-gray-900'
-                : isDark
-                  ? 'text-gray-400'
-                  : 'text-gray-500'
-            }`}
-          >
-            Entdecken
-            {activeTab === 'discover' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]" />
-            )}
-          </button>
         </div>
       </header>
 
       {/* Content */}
       <main className="flex-1 overflow-y-auto">
-        {activeTab === 'friends' ? (
-          <FriendsTab />
-        ) : (
-          <DiscoverTab />
-        )}
+        <FriendsTab />
       </main>
     </div>
   )

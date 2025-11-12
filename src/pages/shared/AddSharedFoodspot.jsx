@@ -747,8 +747,8 @@ function AddSharedFoodspot() {
                 }`}>(Optional)</span>
               </label>
               
-              <input
-                type="text"
+                  <input
+                    type="text"
                 value={formData.address || ''}
                 onChange={(e) => setFormData(prev => ({ 
                   ...prev, 
@@ -756,12 +756,12 @@ function AddSharedFoodspot() {
                 }))}
                 placeholder="z. B. Hauptstr. 5, Gilching oder nur Gilching"
                 maxLength={200}
-                className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
-                  isDark
+                    className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
+                      isDark
                     ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
                     : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
-                }`}
-              />
+                    }`}
+                  />
             </div>
 
             {/* Ratings */}

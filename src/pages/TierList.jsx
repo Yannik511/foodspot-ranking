@@ -296,7 +296,7 @@ function TierList() {
     
     // Determine items to show per tier (adaptive based on screen size)
     const itemsPerRow = window.innerWidth < 640 ? 1 : window.innerWidth < 1024 ? 2 : window.innerWidth < 1280 ? 3 : 4
-    const maxItemsPerTier = 8 // Show max 8 items before overflow
+    const maxItemsPerTier = 5 // Private lists: show max 5 items per tier before overflow
     
     // Calculate height for each tier based on actual content
     const tierHeights = {}
@@ -775,7 +775,7 @@ function TierList() {
                                 : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                             }`}
                           >
-                            Alle {tier}-Tier Einträge anzeigen
+                            +{tierSpots.length - tierSizing.maxItems} ansehen
                           </button>
                         </div>
                       )}

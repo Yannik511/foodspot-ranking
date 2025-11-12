@@ -40,6 +40,7 @@ export const AuthProvider = ({ children }) => {
       options: {
         data: {
           username: username,
+          profile_visibility: 'public',
         },
       },
     })

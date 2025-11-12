@@ -1043,7 +1043,7 @@ function AddFoodspot() {
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
               placeholder="z. B. BLN Döner"
-              className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
+              className={`w-full px-4 py-3 text-base rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
                 isDark
                   ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
                   : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
@@ -1073,7 +1073,7 @@ function AddFoodspot() {
               onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value.trim().replace(/\s+/g, ' ').replace(/[<>]/g, '') }))}
               placeholder="z. B. Hauptstr. 5, Gilching oder nur Gilching"
               maxLength={200}
-              className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
+              className={`w-full px-4 py-3 text-base rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
                 isDark
                   ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
                   : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
@@ -1253,7 +1253,7 @@ function AddFoodspot() {
               placeholder="Was macht diesen Spot besonders?"
               rows="4"
               maxLength="500"
-              className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 resize-none ${
+              className={`w-full px-4 py-3 text-base rounded-[14px] border transition-all focus:outline-none focus:ring-2 resize-none ${
                 isDark
                   ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
                   : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
