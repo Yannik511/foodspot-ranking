@@ -186,16 +186,10 @@ function AddFoodspot() {
   const [listCategory, setListCategory] = useState(null) // Category from list
   // Skip category selection in edit mode OR if list has a specific category
   const [showCategorySelection, setShowCategorySelection] = useState(!isEditMode)
-  const [locationQuery, setLocationQuery] = useState('')
-  const [locationSuggestions, setLocationSuggestions] = useState([])
-  const autocompleteService = useRef(null)
-  const geocoder = useRef(null)
 
   const [formData, setFormData] = useState({
     name: '',
     address: '',
-    latitude: null,
-    longitude: null,
     ratings: {},
     notes: '',
     cover_photo_url: null,
@@ -204,14 +198,6 @@ function AddFoodspot() {
   const [sharedRedirectChecked, setSharedRedirectChecked] = useState(false)
 
   const [errors, setErrors] = useState({})
-
-  // Initialize Google Maps services
-  useEffect(() => {
-    if (window.google?.maps) {
-      autocompleteService.current = new window.google.maps.places.AutocompleteService()
-      geocoder.current = new window.google.maps.Geocoder()
-    }
-  }, [])
 
   // Shared list detection – redirect to shared component
   useEffect(() => {
@@ -439,6 +425,80 @@ function AddFoodspot() {
         })
       }
     })
+  }
+
+  // Handle GPS location (OpenStreetMap)
+  const handleUseCurrentLocation = async () => {
+    if (!isGeolocationSupported()) {
+      showToast('🚫 GPS wird von deinem Browser nicht unterstützt', 'error')
+      return
+    }
+
+    // Prüfe Permission-Status
+    const permissionStatus = await checkLocationPermission()
+    
+    if (permissionStatus === 'denied') {
+      showToast('🚫 Standort-Zugriff blockiert - Bitte in den Browser-Einstellungen aktivieren (🔒 Schloss-Symbol in der Adressleiste)', 'error')
+      return
+    }
+
+    setLoadingLocation(true)
+    
+    try {
+      // 1. GPS-Koordinaten holen (keine Cache-Version, da wir höchste Genauigkeit brauchen)
+      const position = await getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      })
+      
+      const { latitude, longitude, accuracy } = position.coords
+      
+      // 2. Reverse Geocoding (Koordinaten → Adresse)
+      const locationData = await reverseGeocodeThrottled(latitude, longitude)
+      
+      // 3. Formular befüllen
+      setFormData(prev => ({
+        ...prev,
+        address: locationData.address,
+        latitude: latitude,
+        longitude: longitude
+      }))
+      
+      // 4. Location Query für Anzeige
+      setLocationQuery(locationData.address)
+      setLocationSuggestions([])
+      
+      // 5. Clear errors
+      setErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors.location
+        return newErrors
+      })
+      
+      // 6. Success-Toast mit Genauigkeit
+      if (accuracy > 100) {
+        showToast(`⚠️ Standort gespeichert (±${Math.round(accuracy)}m) - evtl. ungenau`, 'warning')
+      } else {
+        showToast(`✓ Standort gespeichert (±${Math.round(accuracy)}m)`, 'success')
+      }
+      
+    } catch (error) {
+      console.error('Location error:', error)
+      
+      // User-friendly Error Message
+      const errorInfo = getLocationErrorMessage(error)
+      
+      // Zeige ausführliche Fehlermeldung
+      if (error.code === 1) { // PERMISSION_DENIED
+        alert(errorInfo.title + '\n\n' + errorInfo.message)
+      } else {
+        showToast(errorInfo.icon + ' ' + errorInfo.title, 'error')
+      }
+      
+    } finally {
+      setLoadingLocation(false)
+    }
   }
 
   // Get current position
@@ -1002,87 +1062,23 @@ function AddFoodspot() {
               isDark ? 'text-gray-200' : 'text-gray-700'
             }`}>
               <span className="text-lg">📍</span>
-              Standort <span className={`font-normal ${
+              Adresse / Stadtteil <span className={`font-normal ${
                 isDark ? 'text-gray-400' : 'text-gray-500'
-              }`}>(Optional - Google Maps kommt später)</span>
+              }`}>(Optional)</span>
             </label>
             
-            <div className="relative">
-              <input
-                type="text"
-                value={locationQuery}
-                onChange={(e) => handleLocationSearch(e.target.value)}
-                placeholder="Suchen oder aktuelle Position verwenden..."
-                className={`w-full px-4 py-3 pr-12 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
-                  isDark
-                    ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
-                    : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
-                }`}
-              />
-              
-              <button
-                onClick={handleCurrentPosition}
-                className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors ${
-                  isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-                }`}
-                title="Aktuelle Position"
-              >
-                <svg className={`w-5 h-5 ${isDark ? 'text-[#FF9357]' : 'text-[#FF7E42]'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </button>
-
-              {/* Location Suggestions */}
-              {locationSuggestions.length > 0 && (
-                <div className={`absolute z-50 w-full mt-2 rounded-[14px] shadow-xl border max-h-64 overflow-y-auto ${
-                  isDark
-                    ? 'bg-gray-800 border-gray-700'
-                    : 'bg-white border-gray-200'
-                }`}>
-                  {locationSuggestions.map((place) => (
-                    <button
-                      key={place.place_id}
-                      onClick={() => handleLocationSelect(place)}
-                      className={`w-full px-4 py-3 text-left transition-colors text-sm flex items-center gap-2 ${
-                        isDark
-                          ? 'hover:bg-gray-700 active:bg-gray-600 text-gray-200'
-                          : 'hover:bg-gray-50 active:bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      <svg className={`w-4 h-4 flex-shrink-0 ${
-                        isDark ? 'text-gray-400' : 'text-gray-400'
-                      }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      </svg>
-                      <span className={isDark ? 'text-gray-200' : 'text-gray-700'}>{place.description}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {formData.address && (
-              <div className={`mt-3 p-3 border rounded-lg flex items-start gap-2 ${
+            <input
+              type="text"
+              value={formData.address || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value.trim().replace(/\s+/g, ' ').replace(/[<>]/g, '') }))}
+              placeholder="z. B. Hauptstr. 5, Gilching oder nur Gilching"
+              maxLength={200}
+              className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
                 isDark
-                  ? 'bg-green-900/20 border-green-700'
-                  : 'bg-green-50 border-green-200'
-              }`}>
-                <svg className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
-                  isDark ? 'text-green-400' : 'text-green-600'
-                }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <div className="flex-1">
-                  <p className={`text-sm font-medium ${
-                    isDark ? 'text-green-300' : 'text-green-900'
-                  }`}>Standort ausgewählt:</p>
-                  <p className={`text-sm mt-0.5 ${
-                    isDark ? 'text-green-400' : 'text-green-700'
-                  }`}>{formData.address}</p>
-                </div>
-              </div>
-            )}
+                  ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
+                  : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
+              }`}
+            />
 
             {errors.location && <p className="mt-2 text-sm text-red-500">{errors.location}</p>}
           </div>

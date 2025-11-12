@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
@@ -8,6 +8,22 @@ import Avatar from '../components/Avatar'
 import { supabase } from '../services/supabase'
 import { hapticFeedback } from '../utils/haptics'
 import { springEasing, staggerDelay } from '../utils/animations'
+
+const PRIVATE_FILTER_STORAGE_KEY = 'dashboard_private_filters'
+const CATEGORY_OPTIONS = [
+  'Döner',
+  'Burger',
+  'Pizza',
+  'Asiatisch',
+  'Bratwurst',
+  'Glühwein',
+  'Sushi',
+  'Steak',
+  'Fast Food',
+  'Streetfood',
+  'Deutsche Küche',
+  'Bier'
+]
 
 // Hook to check for unread social notifications (including list invitations)
 const useSocialNotifications = () => {
@@ -96,12 +112,30 @@ function Dashboard() {
       setSearchParams({}, { replace: true })
     }
   }, [listView, setSearchParams])
+
   const [sharedLists, setSharedLists] = useState([])
   const [sharedListsLoading, setSharedListsLoading] = useState(false)
   
   // State für Gesamtzählung aller sichtbaren Listen (für Routing-Logik)
   const [totalListsCount, setTotalListsCount] = useState(0)
   const [isCountingLists, setIsCountingLists] = useState(true)
+  const [privateFilters, setPrivateFilters] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = sessionStorage.getItem(PRIVATE_FILTER_STORAGE_KEY)
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          return {
+            city: parsed?.city || '',
+            category: parsed?.category || ''
+          }
+        }
+      } catch (error) {
+        console.warn('[Dashboard] Failed to load private filters from sessionStorage', error)
+      }
+    }
+    return { city: '', category: '' }
+  })
   
   // Initialize with optimistic list from sessionStorage if available
   const [lists, setLists] = useState(() => {
@@ -145,6 +179,12 @@ function Dashboard() {
   const hasLoadedPrivateListsRef = useRef(false)
   const hasLoadedSharedListsRef = useRef(false)
   const isInitialMountRef = useRef(true)
+  const privateFiltersRef = useRef(privateFilters)
+  const lastPrivateFilterKeyRef = useRef(`${(privateFilters.city || '').toLowerCase()}|${privateFilters.category || ''}`)
+  const privateFilterDebounceRef = useRef(null)
+  const handleResetFilters = () => {
+    setPrivateFilters({ city: '', category: '' })
+  }
   
   // Track ob gerade ein Fetch läuft (verhindert parallele Fetches)
   const isFetchingPrivateRef = useRef(false)
@@ -165,7 +205,7 @@ function Dashboard() {
   // Diese Funktion zeigt ALLE Listen des Users an, genau wie vorher
   // OPTIMIERT: forceRefresh Parameter - wenn false, wird nicht neu geladen wenn bereits vorhanden
   // OPTIMIERT: backgroundRefresh Parameter - wenn true, kein Loading-State (Hintergrund-Update)
-  const fetchPrivateLists = async (forceRefresh = false, backgroundRefresh = false) => {
+  const fetchPrivateLists = async (forceRefresh = false, backgroundRefresh = false, appliedFilters = privateFiltersRef.current) => {
       if (!user) return
       
     // Verhindere parallele Fetches
@@ -174,17 +214,23 @@ function Dashboard() {
       return
     }
     
+    const normalizedFilters = {
+      city: appliedFilters?.city?.trim() || '',
+      category: appliedFilters?.category || ''
+    }
+    const filterKey = `${normalizedFilters.city.toLowerCase()}|${normalizedFilters.category}`
+
     // Wenn bereits geladen und nicht forciert, überspringe (verhindert Doppelladen)
     // WICHTIG: Prüfe sowohl Ref als auch State (für Navigation zurück)
     // OPTIMIERT: Prüfe zuerst State (schneller), dann Ref
     if (!forceRefresh) {
-      if (lists.length > 0) {
-        console.log('[Dashboard] fetchPrivateLists: Skipping - data in state (lists:', lists.length, ')')
+      if (lists.length > 0 && lastPrivateFilterKeyRef.current === filterKey) {
+        console.log('[Dashboard] fetchPrivateLists: Skipping - data in state (lists:', lists.length, ') for same filters')
         hasLoadedPrivateListsRef.current = true // Update Ref für zukünftige Prüfungen
         return
       }
-      if (hasLoadedPrivateListsRef.current) {
-        console.log('[Dashboard] fetchPrivateLists: Skipping - already loaded (ref)')
+      if (hasLoadedPrivateListsRef.current && lastPrivateFilterKeyRef.current === filterKey) {
+        console.log('[Dashboard] fetchPrivateLists: Skipping - already loaded (ref) for current filters')
         return
       }
     }
@@ -194,11 +240,20 @@ function Dashboard() {
       setLoading(true)
     }
       try {
-      // URSPRÜNGLICHE QUERY: Einfach alle Listen des Users abrufen
-        const { data: listsData, error: listsError } = await supabase
+      // URSPRÜNGLICHE QUERY: Einfach alle Listen des Users abrufen (jetzt mit Filtern)
+        let listsQuery = supabase
           .from('lists')
           .select('*')
           .eq('user_id', user.id)
+
+        if (normalizedFilters.city) {
+          listsQuery = listsQuery.ilike('city', `%${normalizedFilters.city}%`)
+        }
+        if (normalizedFilters.category) {
+          listsQuery = listsQuery.eq('category', normalizedFilters.category)
+        }
+
+        const { data: listsData, error: listsError } = await listsQuery
           .order('created_at', { ascending: false })
 
         if (listsError) {
@@ -335,6 +390,7 @@ function Dashboard() {
 
       setLists(mergedLists)
       hasLoadedPrivateListsRef.current = true
+      lastPrivateFilterKeyRef.current = filterKey
       
       // Update count nach privatem Fetch (kein weiterer Supabase-Call)
       await countAllVisibleLists(mergedLists, sharedLists)
@@ -348,6 +404,34 @@ function Dashboard() {
       }
     }
   }
+
+  useEffect(() => {
+    privateFiltersRef.current = privateFilters
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem(PRIVATE_FILTER_STORAGE_KEY, JSON.stringify(privateFilters))
+      } catch (error) {
+        console.warn('[Dashboard] Failed to persist private filters', error)
+      }
+    }
+
+    if (!user || isInitialMountRef.current) return
+
+    if (privateFilterDebounceRef.current) {
+      clearTimeout(privateFilterDebounceRef.current)
+    }
+
+    privateFilterDebounceRef.current = setTimeout(() => {
+      hasLoadedPrivateListsRef.current = false
+      fetchPrivateLists(true, false, privateFiltersRef.current)
+    }, 350)
+
+    return () => {
+      if (privateFilterDebounceRef.current) {
+        clearTimeout(privateFilterDebounceRef.current)
+      }
+    }
+  }, [privateFilters, user])
 
   // Count all visible lists for routing logic (keine zusätzlichen Supabase-Calls)
   // Optional: privateListsOverride / sharedListsOverride verwenden, um direkt mit frisch geladenen Daten zu zählen
@@ -1179,6 +1263,11 @@ function Dashboard() {
   }
 
   const currentLists = listView === 'meine' ? lists : sharedLists
+  const normalizedPrivateFilters = {
+    city: privateFilters.city.trim(),
+    category: privateFilters.category
+  }
+  const hasActivePrivateFilters = Boolean(normalizedPrivateFilters.city) || Boolean(normalizedPrivateFilters.category)
   // OPTIMIERT: Loading nur anzeigen wenn wirklich noch nichts geladen wurde
   // Wenn bereits Daten vorhanden sind, kein Loading beim Tab-Wechsel
   const currentLoading = listView === 'meine' 
@@ -1373,7 +1462,104 @@ function Dashboard() {
             {/* Private Lists View */}
             {listView === 'meine' && (
               <>
+                <div className="max-w-5xl mx-auto w-full mb-6">
+                  <div className={`rounded-2xl border shadow-sm px-4 py-4 sm:px-5 sm:py-5 ${
+                    isDark ? 'bg-gray-800/80 border-gray-700/60' : 'bg-white/80 border-gray-200/60'
+                  }`}>
+                    <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+                      <div className="flex-1 min-w-[180px]">
+                        <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${
+                          isDark ? 'text-gray-300' : 'text-gray-600'
+                        }`}>
+                          Ort
+                        </label>
+                        <input
+                          type="text"
+                          value={privateFilters.city}
+                          onChange={(e) => setPrivateFilters(prev => ({ ...prev, city: e.target.value }))}
+                          placeholder="Ort oder Stadtteil (z. B. München)"
+                          maxLength={100}
+                          autoComplete="off"
+                          className={`w-full px-4 py-3 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 ${
+                            isDark
+                              ? 'bg-gray-900/60 border-gray-700 text-white placeholder:text-gray-500 focus:ring-[#FF9357]/20'
+                              : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
+                          }`}
+                        />
+                      </div>
+
+                      <div className="w-full sm:w-56">
+                        <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${
+                          isDark ? 'text-gray-300' : 'text-gray-600'
+                        }`}>
+                          Kategorie
+                        </label>
+                        <select
+                          value={privateFilters.category}
+                          onChange={(e) => setPrivateFilters(prev => ({ ...prev, category: e.target.value }))}
+                          className={`w-full px-4 py-3 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 ${
+                            isDark
+                              ? 'bg-gray-900/60 border-gray-700 text-white focus:ring-[#FF9357]/20'
+                              : 'bg-white border-gray-200 text-gray-900 focus:ring-[#FF7E42]/20'
+                          }`}
+                        >
+                          <option value="">Alle Kategorien</option>
+                          {CATEGORY_OPTIONS.map((category) => (
+                            <option key={category} value={category}>
+                              {category}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex sm:flex-col sm:items-end gap-3">
+                        <button
+                          onClick={handleResetFilters}
+                          disabled={!hasActivePrivateFilters}
+                          className={`px-4 py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.98] ${
+                            hasActivePrivateFilters
+                              ? isDark
+                                ? 'bg-gray-700 hover:bg-gray-600 text-gray-100'
+                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                              : isDark
+                                ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          }`}
+                        >
+                          Filter löschen
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {lists.length === 0 && !loading ? (
+                  hasActivePrivateFilters ? (
+                    <div className="flex flex-col items-center justify-center min-h-[40vh] text-center px-4">
+                      <div className="text-4xl mb-4">🔍</div>
+                      <h3 className={`text-xl font-semibold mb-2 ${
+                        isDark ? 'text-gray-200' : 'text-gray-900'
+                      }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        Keine Listen für diese Filter
+                      </h3>
+                      <p className={`text-sm mb-6 ${
+                        isDark ? 'text-gray-400' : 'text-gray-600'
+                      }`}>
+                        Passe deine Suche an oder setze die Filter zurück.
+                      </p>
+                      <button
+                        onClick={handleResetFilters}
+                        className={`px-5 py-3 rounded-xl font-semibold text-sm transition-all active:scale-[0.98] ${
+                          isDark
+                            ? 'bg-gray-700 hover:bg-gray-600 text-gray-100'
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                        }`}
+                        style={{ fontFamily: "'Poppins', sans-serif" }}
+                      >
+                        Filter zurücksetzen
+                      </button>
+                    </div>
+                  ) : (
                   // Leerzustand im Tab "Meine Listen" - nur einfacher Button, kein Welcome Card
                   <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
                     <div className="mb-6">
@@ -1413,6 +1599,7 @@ function Dashboard() {
                       Liste hinzufügen
                     </button>
               </div>
+                  )
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: `${gap}px` }}>
                 {lists.map((list, index) => (

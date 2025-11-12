@@ -135,7 +135,7 @@ function App() {
             }
           />
         </Routes>
-      </BrowserRouter>
+          </BrowserRouter>
         </ProfileProvider>
       </AuthProvider>
     </ThemeProvider>

@@ -158,16 +158,10 @@ function AddSharedFoodspot() {
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [listCategory, setListCategory] = useState(null)
   const [showCategorySelection, setShowCategorySelection] = useState(!isEditMode)
-  const [locationQuery, setLocationQuery] = useState('')
-  const [locationSuggestions, setLocationSuggestions] = useState([])
-  const autocompleteService = useRef(null)
-  const geocoder = useRef(null)
 
   const [formData, setFormData] = useState({
     name: '',
     address: '',
-    latitude: null,
-    longitude: null,
     ratings: {}
   })
   const [sharedDescription, setSharedDescription] = useState('')
@@ -178,12 +172,6 @@ function AddSharedFoodspot() {
   const photoInputRef = useRef(null)
   const photoEntriesRef = useRef([])
 
-  useEffect(() => {
-    if (window.google?.maps) {
-      autocompleteService.current = new window.google.maps.places.AutocompleteService()
-      geocoder.current = new window.google.maps.Geocoder()
-    }
-  }, [])
 
   useEffect(() => {
     if (!user || !id) return
@@ -248,11 +236,8 @@ function AddSharedFoodspot() {
             ...prev,
             name: spotData.name || '',
             address: spotData.address || '',
-            latitude: spotData.latitude || null,
-            longitude: spotData.longitude || null,
             ratings: {}
           }))
-          setLocationQuery(spotData.address || '')
 
           const { data: ratingData, error: ratingError } = await supabase
             .from('foodspot_ratings')
@@ -285,7 +270,6 @@ function AddSharedFoodspot() {
             initialRatings[criterion] = 0
           })
           setFormData(prev => ({ ...prev, ratings: initialRatings }))
-          setLocationQuery('')
         }
       } catch (error) {
         console.error('Error loading shared list data:', error)
@@ -363,46 +347,6 @@ function AddSharedFoodspot() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleLocationSearch = (query) => {
-    setLocationQuery(query)
-
-    if (!query || query.length < 3 || !autocompleteService.current) {
-      setLocationSuggestions([])
-      return
-    }
-
-    autocompleteService.current.getPlacePredictions(
-      {
-        input: query,
-        types: ['establishment', 'geocode']
-      },
-      (predictions, status) => {
-        if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
-          setLocationSuggestions(predictions)
-        } else {
-          setLocationSuggestions([])
-        }
-      }
-    )
-  }
-
-  const handleLocationSelect = (place) => {
-    if (!geocoder.current) return
-
-    geocoder.current.geocode({ placeId: place.place_id }, (results, status) => {
-      if (status === 'OK' && results[0]) {
-        const location = results[0].geometry.location
-        setFormData(prev => ({
-          ...prev,
-          address: place.description,
-          latitude: location.lat(),
-          longitude: location.lng()
-        }))
-        setLocationQuery(place.description)
-        setLocationSuggestions([])
-      }
-    })
-  }
 
   const handleDelete = async () => {
     if (!spotId || !canEdit) {
@@ -433,39 +377,6 @@ function AddSharedFoodspot() {
     }
   }
 
-  const handleCurrentPosition = () => {
-    if (!navigator.geolocation) {
-      alert('Geolocation wird von deinem Browser nicht unterstützt')
-      return
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords
-        
-        if (geocoder.current) {
-          geocoder.current.geocode(
-            { location: { lat: latitude, lng: longitude } },
-            (results, status) => {
-              if (status === 'OK' && results[0]) {
-                const address = results[0].formatted_address
-                setFormData(prev => ({
-                  ...prev,
-                  address: address,
-                  latitude: latitude,
-                  longitude: longitude
-                }))
-                setLocationQuery(address)
-              }
-            }
-          )
-        }
-      },
-      (error) => {
-        alert('Fehler beim Abrufen des Standorts: ' + error.message)
-      }
-    )
-  }
 
   const handleCategorySelect = (category) => {
     setSelectedCategory(category)
@@ -590,8 +501,6 @@ function AddSharedFoodspot() {
         p_description: sharedDescription.trim() ? sharedDescription.trim() : null,
         p_category: selectedCategory || listCategory,
         p_address: formData.address.trim() || null,
-        p_latitude: formData.latitude,
-        p_longitude: formData.longitude,
         p_cover_photo: preservedCoverUrl,
         p_phone: null,
         p_website: null
@@ -829,57 +738,35 @@ function AddSharedFoodspot() {
 
             {/* Location */}
             <div className="rounded-[20px] shadow-lg border p-6 bg-white/80 dark:bg-gray-900/80 border-gray-200/60 dark:border-gray-800/60">
-              <label className="block text-sm font-semibold mb-2">Adresse (optional)</label>
-              <div className="flex gap-3">
-                <div className="flex-1 relative">
-                  <input
-                    type="text"
-                    value={locationQuery}
-                    onChange={(e) => handleLocationSearch(e.target.value)}
-                    placeholder="Suche nach Adresse oder Ort"
-                    className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
-                      isDark
-                        ? 'bg-gray-800 border-gray-700 text-white focus:ring-[#FF9357]/20'
-                        : 'bg-white border-gray-200 text-gray-900 focus:ring-[#FF7E42]/20'
-                    }`}
-                  />
-                  {locationSuggestions.length > 0 && (
-                    <div className={`absolute left-0 right-0 mt-2 rounded-2xl shadow-xl border max-h-60 overflow-y-auto z-20 ${
-                      isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'
-                    }`}>
-                      {locationSuggestions.map(place => (
-                        <button
-                          key={place.place_id}
-                          onClick={() => handleLocationSelect(place)}
-                          className={`w-full text-left px-4 py-2 text-sm ${
-                            isDark
-                              ? 'hover:bg-gray-800 text-gray-300'
-                              : 'hover:bg-gray-100 text-gray-700'
-                          }`}
-                        >
-                          {place.description}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCurrentPosition}
-                  className={`px-4 py-3 rounded-[14px] font-semibold ${
-                    isDark
-                      ? 'bg-gray-800 border border-gray-700 hover:bg-gray-700'
-                      : 'bg-white border border-gray-200 hover:bg-gray-100'
-                  }`}
-                >
-                  Aktuelle Position
-                </button>
-              </div>
+              <label className={`block text-sm font-semibold mb-2 flex items-center gap-2 ${
+                isDark ? 'text-gray-200' : 'text-gray-700'
+              }`}>
+                <span className="text-lg">📍</span>
+                Adresse / Stadtteil <span className={`font-normal ${
+                  isDark ? 'text-gray-400' : 'text-gray-500'
+                }`}>(Optional)</span>
+              </label>
+              
+              <input
+                type="text"
+                value={formData.address || ''}
+                onChange={(e) => setFormData(prev => ({ 
+                  ...prev, 
+                  address: e.target.value.trim().replace(/\s+/g, ' ').replace(/[<>]/g, '') 
+                }))}
+                placeholder="z. B. Hauptstr. 5, Gilching oder nur Gilching"
+                maxLength={200}
+                className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
+                  isDark
+                    ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
+                    : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
+                }`}
+              />
             </div>
 
             {/* Ratings */}
-            <div className="rounded-[20px] shadow-lg border p-6 bg-white/80 dark:bg-gray-900/80 border-gray-200/60 dark:border-gray-800/60">
-              <div className="flex items-center justify-between mb-4">
+            <div className="rounded-[20px] shadow-lg border p-4 sm:p-6 bg-white/80 dark:bg-gray-900/80 border-gray-200/60 dark:border-gray-800/60">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
                 <h3 className="text-lg font-semibold">Bewertungskriterien</h3>
                 <span className="text-xs text-gray-500">Mindestens 3 Kriterien bewerten</span>
               </div>
@@ -892,24 +779,24 @@ function AddSharedFoodspot() {
                     : `1 - ${ratingScale} Punkte`
 
                   return (
-                    <div key={criterion} className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 p-5">
+                    <div key={criterion} className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 p-4 sm:p-5">
                       {/* Header mit Icon, Label und Skala-Info */}
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
                         <div className="flex items-center gap-2.5">
                           <span className="text-xl">
                             {CRITERIA_ICONS[criterion] || '⭐'}
                           </span>
                           <h4 className="font-semibold text-base">{criterion}</h4>
                         </div>
-                        <span className="text-xs text-gray-500 font-medium">{ratingLabel}</span>
+                        <span className="text-xs text-gray-500 font-medium whitespace-nowrap">{ratingLabel}</span>
                       </div>
                       
-                      {/* Rating Buttons - perfekt ausgerichtet */}
+                      {/* Rating Buttons - responsive grid */}
                       <div
-                        className="grid gap-2.5"
+                        className="grid gap-2 sm:gap-2.5"
                         style={{ 
                           gridTemplateColumns: `repeat(${ratingScale <= 5 ? ratingScale : 5}, 1fr)`,
-                          maxWidth: ratingScale <= 5 ? '320px' : '100%'
+                          maxWidth: '100%'
                         }}
                       >
                         {ratingValues.map((value) => (
@@ -924,7 +811,7 @@ function AddSharedFoodspot() {
                               }
                             }))}
                             className={`
-                              aspect-square rounded-xl font-bold text-base
+                              aspect-square rounded-xl font-bold text-sm sm:text-base
                               transition-all duration-200 ease-out
                               ${formData.ratings[criterion] >= value
                                 ? 'bg-gradient-to-r from-[#FF9357] to-[#FFB25A] text-white shadow-lg transform scale-105'
@@ -934,8 +821,8 @@ function AddSharedFoodspot() {
                               }
                             `}
                             style={{
-                              minWidth: '52px',
-                              minHeight: '52px'
+                              minWidth: '48px',
+                              minHeight: '48px'
                             }}
                           >
                             {value}

@@ -22,12 +22,6 @@ const CATEGORIES = {
   'Bier': { emoji: '🍺', color: '#FFB25A' }
 }
 
-const CITIES = [
-  'München', 'Berlin', 'Hamburg', 'Frankfurt', 'Köln', 'Stuttgart', 
-  'Düsseldorf', 'Dortmund', 'Amsterdam', 'Barcelona', 'Brussels', 'Budapest', 
-  'Copenhagen', 'Dublin', 'Lisbon', 'London', 'Madrid', 'Milan', 'Oslo', 
-  'Paris', 'Prague', 'Rome', 'Stockholm', 'Vienna', 'Warsaw', 'Zurich'
-]
 
 function CreateSharedList({ onClose }) {
   const { user } = useAuth()
@@ -61,10 +55,6 @@ function CreateSharedList({ onClose }) {
     coverImageFile: null,
     coverImageUrl: null
   })
-  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false)
-  const [citySearchTerm, setCitySearchTerm] = useState('')
-  const cityDropdownRef = useRef(null)
-  const cityInputRef = useRef(null)
   const [uploadingImage, setUploadingImage] = useState(false)
   
   // Allgemein
@@ -87,15 +77,13 @@ function CreateSharedList({ onClose }) {
     }
   }, [step, user])
   
-  // City filtering
-  const filteredCities = useMemo(() => {
-    if (!citySearchTerm.trim()) return CITIES
-    const search = citySearchTerm.toLowerCase()
-    return CITIES.filter(city => 
-      city.toLowerCase().includes(search) ||
-      city.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').includes(search)
-    )
-  }, [citySearchTerm])
+  // Normalize city input
+  const normalizeCity = (value) => {
+    return value
+      .trim()
+      .replace(/\s+/g, ' ')
+      .replace(/[<>]/g, '')
+  }
   
   // Fetch friends
   const fetchFriends = async (forceRefresh = false) => {
@@ -228,20 +216,17 @@ function CreateSharedList({ onClose }) {
     }
   }, [searchQuery, filterFriends])
   
-  // Click outside handlers
+  // Click outside handler for friend suggestions
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showSuggestions && suggestionsRef.current && !suggestionsRef.current.contains(event.target) && inputRef.current && !inputRef.current.contains(event.target)) {
         setShowSuggestions(false)
       }
-      if (isCityDropdownOpen && cityDropdownRef.current && !cityDropdownRef.current.contains(event.target) && cityInputRef.current && !cityInputRef.current.contains(event.target)) {
-        setIsCityDropdownOpen(false)
-      }
     }
     
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [showSuggestions, isCityDropdownOpen])
+  }, [showSuggestions])
   
   // Select friend
   const selectFriend = (friend) => {
@@ -665,44 +650,17 @@ function CreateSharedList({ onClose }) {
       {/* City */}
       <div>
         <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
-          Stadt <span className="text-red-500">*</span>
+          Stadt / Ort <span className="text-red-500">*</span>
         </label>
-        <div className="relative">
-          <input
-            ref={cityInputRef}
-            type="text"
-            value={listDetails.city}
-            onChange={(e) => {
-              setListDetails({ ...listDetails, city: e.target.value })
-              setCitySearchTerm(e.target.value)
-              setIsCityDropdownOpen(true)
-            }}
-            onFocus={() => setIsCityDropdownOpen(true)}
-            placeholder="z. B. München"
-            className={`w-full px-4 py-3 pr-10 rounded-xl border ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200 text-gray-900'} outline-none focus:ring-2 focus:ring-[#FF7E42]/20`}
-          />
-          {isCityDropdownOpen && filteredCities.length > 0 && (
-            <div
-              ref={cityDropdownRef}
-              className={`absolute z-50 w-full mt-2 rounded-xl shadow-xl border max-h-64 overflow-y-auto ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}
-            >
-              {filteredCities.map((city) => (
-                <button
-                  key={city}
-                  type="button"
-                  onClick={() => {
-                    setListDetails({ ...listDetails, city })
-                    setCitySearchTerm('')
-                    setIsCityDropdownOpen(false)
-                  }}
-                  className={`w-full px-4 py-3 text-left ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}
-                >
-                  {city}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <input
+          type="text"
+          value={listDetails.city}
+          onChange={(e) => setListDetails({ ...listDetails, city: normalizeCity(e.target.value) })}
+          placeholder="z. B. Gilching oder München"
+          minLength={2}
+          maxLength={100}
+          className={`w-full px-4 py-3 rounded-xl border ${isDark ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400' : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400'} outline-none focus:ring-2 focus:ring-[#FF7E42]/20`}
+        />
       </div>
       
       {/* Category */}

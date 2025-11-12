@@ -901,6 +901,15 @@ function SharedTierList() {
                                   {spot.name}
                                 </h3>
                                 
+                                {/* Address (if available) */}
+                                {spot.address && (
+                                  <p className={`text-xs truncate mb-1 ${
+                                    isDark ? 'text-gray-400' : 'text-gray-500'
+                                  }`}>
+                                    📍 {spot.address}
+                                  </p>
+                                )}
+                                
                                 {/* Row 2: Rating, Category, Badge */}
                                 <div className="flex items-center gap-2 flex-wrap mb-2">
                                   <span className="text-sm">

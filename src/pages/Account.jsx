@@ -812,7 +812,7 @@ function Account() {
 
   const topSpotsTitle = '🏆 Top 10'
 
-  const renderParticipantAvatars = (userIds = [], ownerIds = []) => {
+  const renderParticipantAvatars = (userIds = [], ownerIds = [], maxVisible = 4) => {
     const filteredIds = (userIds || []).filter(Boolean)
     if (!filteredIds.length) return null
 
@@ -829,11 +829,11 @@ function Account() {
       return nameA.localeCompare(nameB)
     })
 
-    const visible = sorted.slice(0, 4)
+    const visible = sorted.slice(0, maxVisible)
     const extra = sorted.length - visible.length
 
-    return (
-      <div className="flex items-center gap-2">
+  return (
+      <div className="flex items-center">
         <div className="flex -space-x-2">
           {visible.map((id, index) => {
             const profile = getProfile(id)
@@ -868,16 +868,16 @@ function Account() {
               </div>
             )
           })}
+          {extra > 0 && (
+            <div
+              className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-[10px] font-bold ${
+                isDark ? 'border-gray-900 bg-gray-700 text-gray-300' : 'border-white bg-gray-200 text-gray-600'
+              }`}
+            >
+              +{extra}
+            </div>
+          )}
         </div>
-        {extra > 0 && (
-          <div
-            className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-              isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'
-            }`}
-          >
-            +{extra}
-          </div>
-        )}
       </div>
     )
   }
@@ -965,17 +965,17 @@ function Account() {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                      </div>
+              </div>
                     )}
-                    <input
+              <input
                       id="avatar-upload"
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="hidden"
-                      disabled={uploading}
-                    />
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+                disabled={uploading}
+              />
                   </div>
                 </label>
               </div>
@@ -1008,9 +1008,9 @@ function Account() {
                     </span>
                   </div>
                 )}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
                   className={`mt-4 px-4 py-2 rounded-[14px] text-sm font-medium transition-all active:scale-[0.98] disabled:opacity-50 ${
                     isDark
                       ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
@@ -1174,7 +1174,7 @@ function Account() {
                         isDark ? 'text-gray-200' : 'text-gray-700'
                       }`}>
                         {category}
-                      </span>
+                  </span>
                       <span className={`text-xs font-bold ${
                         isDark ? 'text-gray-400' : 'text-gray-500'
                       }`}>
@@ -1203,7 +1203,7 @@ function Account() {
                   <button
                     key={`${spot.id}-${index}`}
                     onClick={() => handleSpotClick(spot)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all active:scale-[0.98] ${
+                    className={`w-full flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl transition-all active:scale-[0.98] ${
                       isDark
                         ? 'hover:bg-gray-700'
                         : 'hover:bg-gray-50'
@@ -1213,7 +1213,8 @@ function Account() {
                       animationDelay: `${index * 40}ms`
                     }}
                   >
-                    <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
+                    {/* Ranking Badge */}
+                    <div className={`flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-xs sm:text-sm ${
                       spot.rank <= 3
                         ? 'bg-gradient-to-br from-[#FF7E42] to-[#FFB25A] text-white'
                         : isDark
@@ -1222,57 +1223,74 @@ function Account() {
                     }`}>
                       {spot.rank}
                     </div>
+
+                    {/* Cover Photo */}
                     {spot.cover_photo_url ? (
                       <img
                         src={spot.cover_photo_url}
                         alt={spot.name}
-                        className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                        className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover flex-shrink-0"
                       />
                     ) : (
-                      <div className={`w-12 h-12 rounded-lg flex-shrink-0 ${
+                      <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex-shrink-0 ${
                         isDark ? 'bg-gray-700' : 'bg-gray-200'
                       }`} />
                     )}
-                    <div className="flex-1 min-w-0 text-left">
-                      <div className={`font-semibold text-sm truncate ${
+
+                    {/* Text Content - Priority: Always visible */}
+                    <div className="flex-1 min-w-0 text-left flex flex-col justify-center">
+                      <div className={`font-semibold text-sm truncate leading-tight ${
                         isDark ? 'text-white' : 'text-gray-900'
                       }`}>
                         {spot.name}
                       </div>
-                      <div className={`text-xs truncate ${
+                      <div className={`text-xs truncate leading-tight mt-0.5 ${
                         isDark ? 'text-gray-400' : 'text-gray-500'
                       }`}>
                         {spot.city}
                       </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        {spot.category && (
-                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                      {spot.category && (
+                        <div className="mt-1">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium leading-tight ${
                             isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'
                           }`}>
                             {spot.category}
                           </span>
-                        )}
-                        <div className="ml-auto">
-                          {renderParticipantAvatars(spot.participants, spot.ownerIds)}
                         </div>
+                      )}
+                    </div>
+
+                    {/* Right side: Avatars & Rating - beide immer sichtbar, adaptive Größe */}
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 min-w-0">
+                      {/* Avatars - adaptive: 1 auf xs, 2 auf sm, 3 auf md+ */}
+                      <div className="flex sm:hidden">
+                        {renderParticipantAvatars(spot.participants, spot.ownerIds, 1)}
+                      </div>
+                      <div className="hidden sm:flex md:hidden">
+                        {renderParticipantAvatars(spot.participants, spot.ownerIds, 2)}
+                      </div>
+                      <div className="hidden md:flex">
+                        {renderParticipantAvatars(spot.participants, spot.ownerIds, 3)}
+                      </div>
+                      
+                      {/* Rating - Always visible, priority */}
+                      <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
+                        <span className="text-xs sm:text-sm">⭐</span>
+                        <span className={`font-bold text-xs sm:text-sm whitespace-nowrap ${
+                          isDark ? 'text-white' : 'text-gray-900'
+                        }`}>
+                          {(() => {
+                            const scoreValue = spot.avgScore ?? spot.rating
+                            const formatted = formatNumber(scoreValue, 1)
+                            return formatted === '–' ? '–' : `${formatted}/10`
+                          })()}
+                        </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <span className="text-sm">⭐</span>
-                      <span className={`font-bold text-sm ${
-                        isDark ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        {(() => {
-                          const scoreValue = spot.avgScore ?? spot.rating
-                          const formatted = formatNumber(scoreValue, 1)
-                          return formatted === '–' ? '–' : `${formatted}/10`
-                        })()}
-                      </span>
-                    </div>
-                  </button>
+              </button>
                 ))}
-              </div>
             </div>
+          </div>
           )}
 
           {/* Top Cities */}
@@ -1286,8 +1304,8 @@ function Account() {
                 isDark ? 'text-white' : 'text-gray-900'
               }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
                 Am meisten getestet in
-              </h3>
-              <div className="space-y-3">
+            </h3>
+            <div className="space-y-3">
                 {stats.topCities.map((item, index) => (
                   <div
                     key={item.city}
@@ -1381,10 +1399,10 @@ function Account() {
                         month: '2-digit'
                       })}
                     </div>
-                  </button>
+              </button>
                 ))}
-              </div>
             </div>
+          </div>
           )}
 
           {/* Category Mix */}
@@ -1506,7 +1524,7 @@ function Account() {
               Aktionen
             </h3>
             <div className="space-y-3">
-              <button
+          <button
                 onClick={() => navigate('/settings')}
                 className={`w-full text-left py-3 px-4 rounded-[14px] transition-all active:scale-[0.98] ${
                   isDark
@@ -1520,7 +1538,7 @@ function Account() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </div>
-              </button>
+          </button>
               <button
                 onClick={() => {
                   showToast('Feature kommt bald!', 'info')

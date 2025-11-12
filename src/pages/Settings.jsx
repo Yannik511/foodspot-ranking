@@ -81,19 +81,12 @@ function Settings() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [accentColor, setAccentColor] = useState('orange') // 'orange' | 'neutral'
-  const [locationEnabled, setLocationEnabled] = useState(false)
-  const [locationPrecision, setLocationPrecision] = useState('city') // 'city' | 'approximate'
-  const [locationOnlyDuringUse, setLocationOnlyDuringUse] = useState(true)
   const [notificationsNewRatings, setNotificationsNewRatings] = useState(true)
   const [notificationsSharedLists, setNotificationsSharedLists] = useState(true)
   const [notificationsFriendRequests, setNotificationsFriendRequests] = useState(true)
   const [profileVisibility, setProfileVisibility] = useState('private') // 'private' | 'friends'
   const [pullToRefresh, setPullToRefresh] = useState(true)
   const [autoSync, setAutoSync] = useState(true)
-  const [language, setLanguage] = useState('de') // 'de' | 'en'
-  const [dateFormat, setDateFormat] = useState('dd.mm.yyyy') // 'dd.mm.yyyy' | 'mm/dd/yyyy' | 'yyyy-mm-dd'
-  const [numberFormat, setNumberFormat] = useState('de-DE') // 'de-DE' | 'en-US'
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
   const [loading, setLoading] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
@@ -358,15 +351,6 @@ function Settings() {
     hapticFeedback.light()
     // TODO: Open feedback form or email
     window.location.href = 'mailto:feedback@rankify.app?subject=Rankify Feedback'
-  }
-
-  const handleSignOutAllDevices = async () => {
-    hapticFeedback.medium()
-    if (!window.confirm('Möchtest du dich wirklich von allen Geräten abmelden?')) {
-      return
-    }
-    // TODO: Implement sign out from all devices
-    alert('Abmelden von allen Geräten... (bald verfügbar)')
   }
 
   const handleClearCache = async () => {
@@ -851,58 +835,6 @@ function Settings() {
                 </p>
               )}
             </div>
-
-            {/* Two-Factor Authentication */}
-            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p 
-                    className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
-                    style={{ fontFamily: "'Poppins', sans-serif" }}
-                  >
-                    2-Faktor-Authentifizierung
-                  </p>
-                  <p 
-                    className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
-                    style={{ fontFamily: "'Inter', sans-serif" }}
-                  >
-                    E-Mail-Code für zusätzliche Sicherheit
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    hapticFeedback.light()
-                    if (!twoFactorEnabled) {
-                      // TODO: Implement 2FA setup
-                      alert('2-Faktor-Authentifizierung wird aktiviert... (bald verfügbar)')
-                    } else {
-                      setTwoFactorEnabled(false)
-                    }
-                  }}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${
-                    twoFactorEnabled ? 'bg-[#FF7E42]' : isDark ? 'bg-gray-600' : 'bg-gray-300'
-                  }`}
-                  disabled={!twoFactorEnabled}
-                >
-                  <div
-                    className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                      twoFactorEnabled ? 'translate-x-6' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-              </div>
-            </div>
-
-            {/* Sign Out All Devices */}
-            <button
-              onClick={handleSignOutAllDevices}
-              className={`w-full text-left py-3 pt-4 border-t border-gray-200 dark:border-gray-700 ${
-                isDark ? 'text-red-400' : 'text-red-600'
-              } hover:opacity-80 transition-opacity`}
-              style={{ fontFamily: "'Poppins', sans-serif" }}
-            >
-              Abmelden von allen Geräten
-            </button>
           </div>
         </section>
         
@@ -1034,14 +966,14 @@ function Settings() {
           </div>
         </section>
 
-        {/* Privacy & Location Section */}
+        {/* Privacy Section */}
         <section className={`${isDark ? 'bg-gray-800' : 'bg-white'} mt-4 mx-4 rounded-2xl overflow-hidden shadow-sm`}>
           <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
             <h2 
               className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-semibold`}
               style={{ fontFamily: "'Poppins', sans-serif", fontSize: '14px' }}
             >
-              Datenschutz & Standort
+              Datenschutz
             </h2>
           </div>
           
@@ -1080,131 +1012,6 @@ function Settings() {
                 />
               </button>
             </div>
-
-            <div className="pt-4 border-t border-gray-200 dark:border-gray-700"></div>
-            
-            {/* Location Enabled */}
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p 
-                  className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
-                  Standortfreigabe
-                </p>
-                <p 
-                  className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
-                  style={{ fontFamily: "'Inter', sans-serif" }}
-                >
-                  Erlaube der App Zugriff auf deinen Standort
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  hapticFeedback.light()
-                  setLocationEnabled(!locationEnabled)
-                }}
-                className={`relative w-12 h-6 rounded-full transition-colors ${
-                  locationEnabled ? 'bg-[#FF7E42]' : isDark ? 'bg-gray-600' : 'bg-gray-300'
-                }`}
-              >
-                <div
-                  className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                    locationEnabled ? 'translate-x-6' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-
-            {locationEnabled && (
-              <>
-                {/* Location Precision */}
-                <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <div className="flex-1">
-                    <p 
-                      className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
-                      style={{ fontFamily: "'Poppins', sans-serif" }}
-                    >
-                      Präzision
-                    </p>
-                    <p 
-                      className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
-                      style={{ fontFamily: "'Inter', sans-serif" }}
-                    >
-                      {locationPrecision === 'city' && 'Stadt/ungefähr'}
-                      {locationPrecision === 'approximate' && 'Ungefähr'}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        hapticFeedback.light()
-                        setLocationPrecision('city')
-                      }}
-                      className={`px-4 py-2 rounded-xl font-medium transition-all text-sm ${
-                        locationPrecision === 'city'
-                          ? 'bg-[#FF7E42] text-white'
-                          : isDark
-                          ? 'bg-gray-700 text-gray-300'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}
-                      style={{ fontFamily: "'Poppins', sans-serif" }}
-                    >
-                      Stadt
-                    </button>
-                    <button
-                      onClick={() => {
-                        hapticFeedback.light()
-                        setLocationPrecision('approximate')
-                      }}
-                      className={`px-4 py-2 rounded-xl font-medium transition-all text-sm ${
-                        locationPrecision === 'approximate'
-                          ? 'bg-[#FF7E42] text-white'
-                          : isDark
-                          ? 'bg-gray-700 text-gray-300'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}
-                      style={{ fontFamily: "'Poppins', sans-serif" }}
-                    >
-                      Ungefähr
-                    </button>
-                  </div>
-                </div>
-
-                {/* Location Only During Use */}
-                <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <div className="flex-1">
-                    <p 
-                      className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
-                      style={{ fontFamily: "'Poppins', sans-serif" }}
-                    >
-                      Nur während Nutzung
-                    </p>
-                    <p 
-                      className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
-                      style={{ fontFamily: "'Inter', sans-serif" }}
-                    >
-                      Standort nur bei aktiver Nutzung verwenden
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      hapticFeedback.light()
-                      setLocationOnlyDuringUse(!locationOnlyDuringUse)
-                    }}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
-                      locationOnlyDuringUse ? 'bg-[#FF7E42]' : isDark ? 'bg-gray-600' : 'bg-gray-300'
-                    }`}
-                  >
-                    <div
-                      className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                        locationOnlyDuringUse ? 'translate-x-6' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </>
-            )}
           </div>
         </section>
 
@@ -1412,18 +1219,18 @@ function Settings() {
           </div>
         </section>
 
-        {/* Language & Region Section */}
+        {/* Language Section */}
         <section className={`${isDark ? 'bg-gray-800' : 'bg-white'} mt-4 mx-4 rounded-2xl overflow-hidden shadow-sm`}>
           <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
             <h2 
               className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-semibold`}
               style={{ fontFamily: "'Poppins', sans-serif", fontSize: '14px' }}
             >
-              Sprache & Region
+              App-Sprache
             </h2>
           </div>
           
-          <div className="px-4 py-4 space-y-4">
+          <div className="px-4 py-4">
             {/* Language */}
             <div>
               <label 
@@ -1434,140 +1241,22 @@ function Settings() {
               </label>
               <div className="flex gap-2">
                 <button
-                  onClick={() => {
-                    hapticFeedback.light()
-                    setLanguage('de')
-                  }}
-                  className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all ${
-                    language === 'de'
-                      ? 'bg-[#FF7E42] text-white'
-                      : isDark
-                      ? 'bg-gray-700 text-gray-300'
-                      : 'bg-gray-100 text-gray-700'
-                  }`}
+                  disabled
+                  className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all bg-[#FF7E42] text-white opacity-50 cursor-not-allowed`}
                   style={{ fontFamily: "'Poppins', sans-serif" }}
                 >
                   Deutsch
                 </button>
                 <button
-                  onClick={() => {
-                    hapticFeedback.light()
-                    setLanguage('en')
-                  }}
+                  disabled
                   className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all ${
-                    language === 'en'
-                      ? 'bg-[#FF7E42] text-white'
-                      : isDark
+                    isDark
                       ? 'bg-gray-700 text-gray-300'
                       : 'bg-gray-100 text-gray-700'
-                  }`}
+                  } opacity-50 cursor-not-allowed`}
                   style={{ fontFamily: "'Poppins', sans-serif" }}
                 >
-                  English
-                </button>
-              </div>
-            </div>
-
-            {/* Date Format */}
-            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-              <label 
-                className={`block ${isDark ? 'text-gray-300' : 'text-gray-700'} text-sm font-medium mb-2`}
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-              >
-                Datumsformat
-              </label>
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={() => {
-                    hapticFeedback.light()
-                    setDateFormat('dd.mm.yyyy')
-                  }}
-                  className={`px-4 py-2 rounded-xl font-medium transition-all text-sm ${
-                    dateFormat === 'dd.mm.yyyy'
-                      ? 'bg-[#FF7E42] text-white'
-                      : isDark
-                      ? 'bg-gray-700 text-gray-300'
-                      : 'bg-gray-100 text-gray-700'
-                  }`}
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
-                  TT.MM.JJJJ
-                </button>
-                <button
-                  onClick={() => {
-                    hapticFeedback.light()
-                    setDateFormat('mm/dd/yyyy')
-                  }}
-                  className={`px-4 py-2 rounded-xl font-medium transition-all text-sm ${
-                    dateFormat === 'mm/dd/yyyy'
-                      ? 'bg-[#FF7E42] text-white'
-                      : isDark
-                      ? 'bg-gray-700 text-gray-300'
-                      : 'bg-gray-100 text-gray-700'
-                  }`}
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
-                  MM/TT/JJJJ
-                </button>
-                <button
-                  onClick={() => {
-                    hapticFeedback.light()
-                    setDateFormat('yyyy-mm-dd')
-                  }}
-                  className={`px-4 py-2 rounded-xl font-medium transition-all text-sm ${
-                    dateFormat === 'yyyy-mm-dd'
-                      ? 'bg-[#FF7E42] text-white'
-                      : isDark
-                      ? 'bg-gray-700 text-gray-300'
-                      : 'bg-gray-100 text-gray-700'
-                  }`}
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
-                  JJJJ-MM-TT
-                </button>
-              </div>
-            </div>
-
-            {/* Number Format */}
-            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-              <label 
-                className={`block ${isDark ? 'text-gray-300' : 'text-gray-700'} text-sm font-medium mb-2`}
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-              >
-                Zahlenformat
-              </label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    hapticFeedback.light()
-                    setNumberFormat('de-DE')
-                  }}
-                  className={`flex-1 px-4 py-2 rounded-xl font-medium transition-all text-sm ${
-                    numberFormat === 'de-DE'
-                      ? 'bg-[#FF7E42] text-white'
-                      : isDark
-                      ? 'bg-gray-700 text-gray-300'
-                      : 'bg-gray-100 text-gray-700'
-                  }`}
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
-                  Deutsch (1.234,56)
-                </button>
-                <button
-                  onClick={() => {
-                    hapticFeedback.light()
-                    setNumberFormat('en-US')
-                  }}
-                  className={`flex-1 px-4 py-2 rounded-xl font-medium transition-all text-sm ${
-                    numberFormat === 'en-US'
-                      ? 'bg-[#FF7E42] text-white'
-                      : isDark
-                      ? 'bg-gray-700 text-gray-300'
-                      : 'bg-gray-100 text-gray-700'
-                  }`}
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
-                  English (1,234.56)
+                  English (bald verfügbar)
                 </button>
               </div>
             </div>

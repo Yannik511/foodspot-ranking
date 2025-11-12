@@ -47,7 +47,8 @@ function FriendProfile() {
     topSpots: [],
     recentSpots: [],
     cityHeatmap: [],
-    sharedLists: []
+    topSharedSpots: [],
+    topSharedLists: []
   })
   const [error, setError] = useState(null)
   const [isFriend, setIsFriend] = useState(false)
@@ -59,52 +60,6 @@ function FriendProfile() {
     if (!id || !currentUser) return
     ensureProfiles([id, currentUser.id])
     fetchFriendProfile()
-    
-    // Subscribe to realtime updates for foodspots and lists
-    const foodspotsChannel = supabase
-      .channel(`friend_foodspots_${id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'foodspots',
-        filter: `user_id=eq.${id}`
-      }, () => {
-        fetchFriendProfile()
-      })
-      .subscribe()
-
-    const listsChannel = supabase
-      .channel(`friend_lists_${id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'lists',
-        filter: `user_id=eq.${id}`
-      }, () => {
-        fetchFriendProfile()
-      })
-      .subscribe()
-
-    // Subscribe to user metadata changes (profile_visibility)
-    // Check on window focus for real-time updates when user changes visibility in settings
-    const handleVisibilityCheck = () => {
-      fetchFriendProfile()
-    }
-    
-    window.addEventListener('focus', handleVisibilityCheck)
-    // Also check periodically (every 10 seconds) when tab is active
-    const checkVisibilityInterval = setInterval(() => {
-      if (document.hasFocus()) {
-        fetchFriendProfile()
-      }
-    }, 10000)
-
-    return () => {
-      supabase.removeChannel(foodspotsChannel)
-      supabase.removeChannel(listsChannel)
-      window.removeEventListener('focus', handleVisibilityCheck)
-      clearInterval(checkVisibilityInterval)
-    }
   }, [id, currentUser, ensureProfiles])
 
   const fetchFriendProfile = async () => {
@@ -205,7 +160,8 @@ function FriendProfile() {
           topSpots: [],
           recentSpots: [],
           cityHeatmap: [],
-          sharedLists: []
+          topSharedSpots: [],
+          topSharedLists: []
         })
         setLoading(false)
         setRefreshing(false)
@@ -238,6 +194,122 @@ function FriendProfile() {
         top_spots: []
       }
 
+      // Fetch Top 5 Shared Spots (where friend is a participant)
+      let topSharedSpots = []
+      try {
+        const { data: sharedSpotsData, error: sharedError } = await supabase
+          .from('foodspot_ratings')
+          .select(`
+            foodspot_id,
+            score,
+            foodspots!inner (
+              id,
+              name,
+              category,
+              address,
+              avg_score,
+              cover_photo_url,
+              lists!inner (
+                id,
+                list_name,
+                city
+              )
+            )
+          `)
+          .eq('user_id', id)
+          .not('foodspots.lists.user_id', 'eq', id)
+          .order('score', { ascending: false })
+          .limit(5)
+
+        if (!sharedError && sharedSpotsData) {
+          topSharedSpots = sharedSpotsData
+            .filter(item => item.foodspots && item.foodspots.lists)
+            .map(item => ({
+              id: item.foodspots.id,
+              name: item.foodspots.name,
+              category: item.foodspots.category,
+              address: item.foodspots.address,
+              city: item.foodspots.lists.city,
+              avgScore: item.foodspots.avg_score || item.score,
+              userScore: item.score,
+              cover_photo_url: item.foodspots.cover_photo_url,
+              list_name: item.foodspots.lists.list_name,
+              list_id: item.foodspots.lists.id
+            }))
+        }
+      } catch (err) {
+        console.error('Error fetching shared spots:', err)
+      }
+
+      // Fetch Top 5 Shared Lists (where friend is owner or editor, but NOT private lists)
+      let topSharedLists = []
+      try {
+        // First, get all lists where the friend is a member
+        const { data: sharedListsData, error: listsError } = await supabase
+          .from('list_members')
+          .select(`
+            list_id,
+            role,
+            lists!inner (
+              id,
+              list_name,
+              city,
+              cover_photo_url,
+              created_at,
+              updated_at
+            )
+          `)
+          .eq('user_id', id)
+          .order('lists(updated_at)', { ascending: false })
+          .limit(20) // Fetch more to filter later
+
+        if (!listsError && sharedListsData && sharedListsData.length > 0) {
+          const listIds = sharedListsData.map(item => item.lists.id)
+          
+          // Fetch all members for these lists to determine which are truly shared
+          const { data: membersData } = await supabase
+            .from('list_members')
+            .select('list_id, user_id, role')
+            .in('list_id', listIds)
+
+          // Fetch spot count and avg score for each list
+          const { data: spotStatsData } = await supabase
+            .from('foodspots')
+            .select('list_id, avg_score')
+            .in('list_id', listIds)
+
+          // Filter: Only lists with MORE than 1 member (= truly shared)
+          const sharedListsOnly = sharedListsData
+            .filter(item => {
+              const listMembers = membersData?.filter(m => m.list_id === item.lists.id) || []
+              return listMembers.length > 1 // Must have at least 2 members
+            })
+            .slice(0, 5) // Take top 5
+
+          topSharedLists = sharedListsOnly.map(item => {
+            const listMembers = membersData?.filter(m => m.list_id === item.lists.id) || []
+            const listSpots = spotStatsData?.filter(s => s.list_id === item.lists.id) || []
+            const avgScore = listSpots.length > 0
+              ? listSpots.reduce((sum, s) => sum + (s.avg_score || 0), 0) / listSpots.length
+              : 0
+
+            return {
+              id: item.lists.id,
+              list_name: item.lists.list_name,
+              city: item.lists.city,
+              cover_photo_url: item.lists.cover_photo_url,
+              role: item.role,
+              spotCount: listSpots.length,
+              avgScore: avgScore,
+              members: listMembers,
+              updated_at: item.lists.updated_at,
+              created_at: item.lists.created_at
+            }
+          })
+        }
+      } catch (err) {
+        console.error('Error fetching shared lists:', err)
+      }
 
       // Transform server-side stats to component state format
       setStats({
@@ -260,7 +332,8 @@ function FriendProfile() {
           city: spot.city || ''
         })),
         cityHeatmap: [],
-        sharedLists: []
+        topSharedSpots,
+        topSharedLists
       })
     } catch (error) {
       console.error('Error fetching friend profile:', error)
@@ -685,7 +758,7 @@ function FriendProfile() {
                 Zuletzt bewertet
               </h3>
               <div className="space-y-3">
-                {stats.recentSpots.map((spot) => {
+                {stats.recentSpots.slice(0, 5).map((spot) => {
                   const date = new Date(spot.updated_at || spot.created_at)
                   const dateStr = date.toLocaleDateString('de-DE', { 
                     day: '2-digit', 
@@ -730,6 +803,15 @@ function FriendProfile() {
                         }`}>
                           {spot.city} · {dateStr}
                         </div>
+                        {spot.category && (
+                          <div className="mt-1">
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                              isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'
+                            }`}>
+                              {CATEGORY_EMOJIS[spot.category] || '🍽️'} {spot.category}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <span className="text-sm">⭐</span>
@@ -746,7 +828,7 @@ function FriendProfile() {
             </div>
           )}
 
-          {/* Top Spots - Only if stats are visible and not loading (Top 3) */}
+          {/* Top Spots - Only if stats are visible and not loading (Top 10) */}
           {canViewStats && !loading && !error && stats.topSpots && stats.topSpots.length > 0 && (
             <div className={`rounded-[20px] shadow-lg border p-6 ${
               isDark
@@ -756,10 +838,10 @@ function FriendProfile() {
               <h3 className={`text-lg font-bold mb-4 ${
                 isDark ? 'text-white' : 'text-gray-900'
               }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-                🏆 Top Spots
+                🏆 Top 10 Spots
               </h3>
               <div className="space-y-3">
-                {stats.topSpots.slice(0, 3).map((spot, index) => (
+                {stats.topSpots.slice(0, 10).map((spot, index) => (
                   <button
                     key={spot.id}
                     onClick={() => handleSpotClick(spot)}
@@ -805,6 +887,15 @@ function FriendProfile() {
                       }`}>
                         {spot.city}
                       </div>
+                      {spot.category && (
+                        <div className="mt-1">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                            isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'
+                          }`}>
+                            {CATEGORY_EMOJIS[spot.category] || '🍽️'} {spot.category}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <span className="text-sm">⭐</span>
@@ -852,6 +943,200 @@ function FriendProfile() {
                     </span>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Top 5 Geteilte Spots - Only if stats are visible */}
+          {canViewStats && stats.topSharedSpots && stats.topSharedSpots.length > 0 && (
+            <div className={`rounded-[20px] shadow-lg border p-6 ${
+              isDark
+                ? 'bg-gray-800 border-gray-700'
+                : 'bg-white border-gray-100'
+            }`}>
+              <h3 className={`text-lg font-bold mb-4 ${
+                isDark ? 'text-white' : 'text-gray-900'
+              }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                🤝 Top 5 geteilte Spots
+              </h3>
+              <div className="space-y-3">
+                {stats.topSharedSpots.map((spot, index) => (
+                  <button
+                    key={spot.id}
+                    onClick={() => navigate(`/shared/tierlist/${spot.list_id}`)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all active:scale-[0.98] ${
+                      isDark
+                        ? 'hover:bg-gray-700'
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    {/* Rank Badge */}
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
+                      index < 3
+                        ? 'bg-gradient-to-br from-[#FF7E42] to-[#FFB25A] text-white'
+                        : isDark
+                          ? 'bg-gray-700 text-gray-300'
+                          : 'bg-gray-200 text-gray-700'
+                    }`}>
+                      {index + 1}
+                    </div>
+
+                    {/* Cover Photo */}
+                    {spot.cover_photo_url ? (
+                      <img
+                        src={spot.cover_photo_url}
+                        alt={spot.name}
+                        className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className={`w-12 h-12 rounded-lg flex-shrink-0 ${
+                        isDark ? 'bg-gray-700' : 'bg-gray-200'
+                      }`} />
+                    )}
+
+                    {/* Text Content */}
+                    <div className="flex-1 min-w-0 text-left">
+                      <div className={`font-semibold text-sm truncate ${
+                        isDark ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {spot.name}
+                      </div>
+                      <div className={`text-xs truncate ${
+                        isDark ? 'text-gray-400' : 'text-gray-500'
+                      }`}>
+                        {spot.list_name} • {spot.city}
+                      </div>
+                      {spot.category && (
+                        <div className="mt-1">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                            isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'
+                          }`}>
+                            {CATEGORY_EMOJIS[spot.category] || '🍽️'} {spot.category}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Rating */}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <span className="text-sm">⭐</span>
+                      <span className={`font-bold text-sm whitespace-nowrap ${
+                        isDark ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {spot.userScore ? `${spot.userScore.toFixed(1)}/10` : '–'}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Top 5 Geteilte Listen - Only if stats are visible */}
+          {canViewStats && stats.topSharedLists && stats.topSharedLists.length > 0 && (
+            <div className={`rounded-[20px] shadow-lg border p-6 ${
+              isDark
+                ? 'bg-gray-800 border-gray-700'
+                : 'bg-white border-gray-100'
+            }`}>
+              <h3 className={`text-lg font-bold mb-4 ${
+                isDark ? 'text-white' : 'text-gray-900'
+              }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                📋 Top 5 geteilte Listen
+              </h3>
+              <div className="space-y-3">
+                {stats.topSharedLists.map((list, index) => {
+                  // Get owner and other members
+                  const owners = list.members.filter(m => m.role === 'owner')
+                  const editors = list.members.filter(m => m.role === 'editor')
+                  const allMembers = [...owners, ...editors]
+                  const visibleMembers = allMembers.slice(0, 4)
+                  const remainingCount = allMembers.length - 4
+
+                  return (
+                    <button
+                      key={list.id}
+                      onClick={() => navigate(`/shared/tierlist/${list.id}`)}
+                      className={`w-full flex items-center gap-2.5 p-3 rounded-xl transition-all active:scale-[0.98] ${
+                        isDark
+                          ? 'hover:bg-gray-700'
+                          : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      {/* Cover Photo */}
+                      {list.cover_photo_url ? (
+                        <img
+                          src={list.cover_photo_url}
+                          alt={list.list_name}
+                          className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className={`w-12 h-12 rounded-lg flex-shrink-0 flex items-center justify-center text-xl ${
+                          isDark ? 'bg-gray-700' : 'bg-gray-200'
+                        }`}>
+                          📋
+                        </div>
+                      )}
+
+                      {/* Text Content */}
+                      <div className="flex-1 min-w-0 text-left">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <div className={`font-semibold text-sm truncate ${
+                            isDark ? 'text-white' : 'text-gray-900'
+                          }`}>
+                            {list.list_name}
+                          </div>
+                          {/* Role Badge */}
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold flex-shrink-0 ${
+                            list.role === 'owner'
+                              ? 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A] text-white'
+                              : isDark
+                                ? 'bg-gray-700 text-gray-300'
+                                : 'bg-gray-200 text-gray-700'
+                          }`}>
+                            {list.role === 'owner' ? 'OWNER' : 'EDITOR'}
+                          </span>
+                        </div>
+                        <div className={`text-xs truncate ${
+                          isDark ? 'text-gray-400' : 'text-gray-500'
+                        }`}>
+                          {list.city} • {list.spotCount} Spots
+                        </div>
+                        
+                        {/* Members Avatars */}
+                        <div className="flex items-center gap-1 mt-1.5">
+                          {visibleMembers.map((member) => (
+                            <UserAvatar
+                              key={member.user_id}
+                              userId={member.user_id}
+                              size="xs"
+                              showTooltip={false}
+                            />
+                          ))}
+                          {remainingCount > 0 && (
+                            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold ${
+                              isDark
+                                ? 'bg-gray-700 text-gray-300'
+                                : 'bg-gray-200 text-gray-700'
+                            }`}>
+                              +{remainingCount}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Avg Score */}
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <span className="text-sm">⭐</span>
+                        <span className={`font-bold text-sm whitespace-nowrap ${
+                          isDark ? 'text-white' : 'text-gray-900'
+                        }`}>
+                          {list.avgScore > 0 ? `${list.avgScore.toFixed(1)}/10` : '–'}
+                        </span>
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}

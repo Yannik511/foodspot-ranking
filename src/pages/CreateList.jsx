@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
@@ -6,7 +6,6 @@ import { supabase } from '../services/supabase'
 
 function CreateList() {
   const { user } = useAuth()
-  const { isDark } = useTheme()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   
@@ -37,61 +36,7 @@ function CreateList() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [toast, setToast] = useState(null)
 
-  // City dropdown state
-  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false)
-  const [citySearchTerm, setCitySearchTerm] = useState('')
-  const cityDropdownRef = useRef(null)
-  const cityInputRef = useRef(null)
-
-  // City suggestions - German cities + European capitals/metropolitan areas
-  const allCities = useMemo(() => {
-    const cities = [
-      // German cities
-      'München', 'Berlin', 'Hamburg', 'Frankfurt', 'Köln', 'Stuttgart', 
-      'Düsseldorf', 'Dortmund',
-      // European capitals and metropolitan areas
-      'Amsterdam', 'Barcelona', 'Brussels', 'Budapest', 'Copenhagen', 'Dublin',
-      'Lisbon', 'London', 'Madrid', 'Milan', 'Oslo', 'Paris', 'Prague', 
-      'Rome', 'Stockholm', 'Vienna', 'Warsaw', 'Zurich'
-    ]
-    // Remove duplicates and sort alphabetically
-    return [...new Set(cities)].sort((a, b) => {
-      // Normalize for German umlauts
-      const normalize = (str) => str
-        .toLowerCase()
-        .replace(/ä/g, 'ae')
-        .replace(/ö/g, 'oe')
-        .replace(/ü/g, 'ue')
-      return normalize(a).localeCompare(normalize(b), 'de')
-    })
-  }, [])
-
-  // Filtered cities based on search term
-  const filteredCities = useMemo(() => {
-    if (!citySearchTerm.trim()) return allCities
-    const search = citySearchTerm.toLowerCase()
-    return allCities.filter(city => 
-      city.toLowerCase().includes(search) ||
-      city.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').includes(search)
-    )
-  }, [citySearchTerm, allCities])
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        cityDropdownRef.current &&
-        !cityDropdownRef.current.contains(event.target) &&
-        cityInputRef.current &&
-        !cityInputRef.current.contains(event.target)
-      ) {
-        setIsCityDropdownOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  const { isDark } = useTheme()
 
   // Auto-save to localStorage
   useEffect(() => {
@@ -111,9 +56,6 @@ function CreateList() {
       try {
         const parsed = JSON.parse(savedData)
         setFormData(prev => ({ ...prev, ...parsed }))
-        if (parsed.city) {
-          setCitySearchTerm(parsed.city)
-        }
       } catch (e) {
         console.error('Error loading draft:', e)
       }
@@ -149,41 +91,26 @@ function CreateList() {
     return Object.keys(newErrors).length === 0
   }
 
+  // Normalisiere Stadt-Eingabe
+  const normalizeCity = (value) => {
+    return value
+      .trim()
+      .replace(/\s+/g, ' ') // Mehrfache Leerzeichen → eins
+      .replace(/[<>]/g, '') // HTML-Tags verbieten
+  }
+
   // Handle input change
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+    // Bei Stadt: Normalisierung anwenden
+    const normalizedValue = field === 'city' ? normalizeCity(value) : value
+    
+    setFormData(prev => ({ ...prev, [field]: normalizedValue }))
     if (errors[field]) {
       setErrors(prev => {
         const newErrors = { ...prev }
         delete newErrors[field]
         return newErrors
       })
-    }
-  }
-
-  // Handle city input change
-  const handleCityInputChange = (value) => {
-    setCitySearchTerm(value)
-    handleInputChange('city', value)
-    setIsCityDropdownOpen(true)
-  }
-
-  // Handle city input focus
-  const handleCityFocus = () => {
-    // If there's a city value, use it as search term; otherwise show all cities
-    if (formData.city && !citySearchTerm) {
-      setCitySearchTerm(formData.city)
-    }
-    setIsCityDropdownOpen(true)
-  }
-
-  // Handle city selection from dropdown
-  const handleCitySelect = (city) => {
-    handleInputChange('city', city)
-    setCitySearchTerm('')
-    setIsCityDropdownOpen(false)
-    if (cityInputRef.current) {
-      cityInputRef.current.blur()
     }
   }
 
@@ -346,31 +273,19 @@ function CreateList() {
   }
 
   return (
-    <div className={`min-h-screen ${
-      isDark 
-        ? 'bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900' 
-        : 'bg-gradient-to-b from-white via-[#FFF2EB] to-white'
-    }`}>
+    <div className="min-h-screen bg-gradient-to-b from-white via-[#FFF2EB] to-white">
       {/* Loading Overlay - Only show if submitting and not navigating */}
       {isSubmitting && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className={`rounded-3xl p-8 text-center shadow-2xl max-w-sm mx-4 ${
-            isDark ? 'bg-gray-800' : 'bg-white'
-          }`}>
+          <div className="bg-white rounded-3xl p-8 text-center shadow-2xl max-w-sm mx-4">
             <div className="relative w-16 h-16 mx-auto mb-4">
-              <div className={`absolute inset-0 border-4 rounded-full ${
-                isDark ? 'border-[#FF9357]/20' : 'border-[#FF7E42]/20'
-              }`}></div>
-              <div className={`absolute inset-0 border-4 border-t-transparent rounded-full animate-spin ${
-                isDark ? 'border-[#FF9357]' : 'border-[#FF7E42]'
-              }`}></div>
+              <div className="absolute inset-0 border-4 border-[#FF7E42]/20 rounded-full dark:border-[#FF9357]/20"></div>
+              <div className="absolute inset-0 border-4 border-[#FF7E42] border-t-transparent rounded-full animate-spin dark:border-[#FF9357]"></div>
             </div>
-            <h3 className={`text-xl font-bold mb-2 ${
-              isDark ? 'text-white' : 'text-gray-900'
-            }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+            <h3 className="text-xl font-bold mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
               Liste wird erstellt...
             </h3>
-            <p className={isDark ? 'text-gray-300' : 'text-gray-600'} style={{ fontFamily: "'Inter', sans-serif" }}>
+            <p className="text-gray-600" style={{ fontFamily: "'Inter', sans-serif" }}>
               Einen Moment bitte
             </p>
           </div>
@@ -378,30 +293,20 @@ function CreateList() {
       )}
 
       {/* Header */}
-      <header className={`backdrop-blur-[12px] border-b px-4 py-3 flex items-center justify-between sticky top-0 z-10 ${
-        isDark
-          ? 'bg-gray-800/70 border-gray-700/30'
-          : 'bg-white/70 border-gray-200/30'
-      }`}>
+      <header className="bg-white/70 backdrop-blur-[12px] border-b border-gray-200/30 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
         <button
           onClick={() => navigate('/select-category')}
-          className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
-            isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-          }`}
+          className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
         >
-          <svg className={`w-6 h-6 ${isDark ? 'text-gray-200' : 'text-gray-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
 
-        <h1 className={`text-lg font-bold ${
-          isDark ? 'text-white' : 'text-gray-900'
-        }`} style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700 }}>
+        <h1 className="text-lg font-bold" style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700 }}>
           Neue Liste erstellen
           {selectedCategory && (
-            <span className={`ml-2 text-sm font-normal ${
-              isDark ? 'text-gray-400' : 'text-gray-500'
-            }`}>
+            <span className="ml-2 text-sm font-normal text-gray-500">
               ({selectedCategory})
             </span>
           )}
@@ -414,14 +319,8 @@ function CreateList() {
       <main className="px-4 py-6 pb-8">
         <div className="space-y-6 max-w-2xl mx-auto">
           {/* List Name */}
-          <div className={`rounded-[20px] shadow-lg border overflow-hidden p-6 ${
-            isDark
-              ? 'bg-gray-800 border-gray-700'
-              : 'bg-white border-gray-100'
-          }`}>
-            <label className={`block text-sm font-semibold mb-2 ${
-              isDark ? 'text-gray-200' : 'text-gray-700'
-            }`}>
+          <div className="bg-white rounded-[20px] shadow-lg border border-gray-100 overflow-hidden p-6">
+            <label className="block text-sm font-semibold mb-2 text-gray-700">
               Listenname <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -435,9 +334,7 @@ function CreateList() {
                     ? 'border-red-400 focus:ring-red-200' 
                     : validationState.list_name === 'valid'
                     ? 'border-green-400 focus:ring-green-200'
-                    : isDark
-                      ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
-                      : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
+                    : 'border-gray-200 focus:ring-[#FF7E42]/20 dark:focus:ring-[#FF9357]/20'
                 }`}
               />
               {validationState.list_name === 'valid' && (
@@ -458,17 +355,17 @@ function CreateList() {
             <label className={`block text-sm font-semibold mb-2 ${
               isDark ? 'text-gray-200' : 'text-gray-700'
             }`}>
-              Stadt <span className="text-red-500">*</span>
+              Stadt / Ort <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
-                ref={cityInputRef}
                 type="text"
                 value={formData.city}
-                onChange={(e) => handleCityInputChange(e.target.value)}
-                onFocus={handleCityFocus}
-                placeholder="z. B. München"
-                className={`w-full px-4 py-3 pr-10 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
+                onChange={(e) => handleInputChange('city', e.target.value)}
+                placeholder="z. B. Gilching oder München"
+                minLength={2}
+                maxLength={100}
+                className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
                   errors.city 
                     ? 'border-red-400 focus:ring-red-200' 
                     : validationState.city === 'valid'
@@ -478,99 +375,19 @@ function CreateList() {
                       : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
                 }`}
               />
-              <button
-                type="button"
-                onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
-                className={`absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors z-10 ${
-                  isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                <svg 
-                  className={`w-5 h-5 transition-transform ${isCityDropdownOpen ? 'rotate-180' : ''}`}
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              {validationState.city === 'valid' && !isCityDropdownOpen && (
-                <svg className="absolute right-10 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500 z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {validationState.city === 'valid' && (
+                <svg className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
-              )}
-              
-              {/* Custom Dropdown */}
-              {isCityDropdownOpen && (
-                <div 
-                  ref={cityDropdownRef}
-                  className={`absolute z-[100] w-full mt-2 rounded-[14px] shadow-xl border max-h-64 overflow-y-auto ${
-                    isDark
-                      ? 'bg-gray-800 border-gray-700'
-                      : 'bg-white border-gray-200'
-                  }`}
-                  style={{
-                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-                  }}
-                >
-                  {filteredCities.length > 0 ? (
-                    <div className="py-2">
-                      {filteredCities.map((city, index) => (
-                        <button
-                          key={city}
-                          type="button"
-                          onClick={() => handleCitySelect(city)}
-                          className={`w-full px-4 py-3 text-left transition-colors ${
-                            index === 0 ? 'rounded-t-[14px]' : ''
-                          } ${
-                            index === filteredCities.length - 1 ? 'rounded-b-[14px]' : ''
-                          } ${
-                            formData.city === city 
-                              ? isDark
-                                ? 'bg-[#B85C2C]/30 text-[#FF9357] font-medium'
-                                : 'bg-[#FFE4C3]/50 text-[#FF7E42] font-medium'
-                              : isDark
-                                ? 'text-gray-200 hover:bg-gray-700 active:bg-gray-600'
-                                : 'text-gray-700 hover:bg-gray-50 active:bg-gray-100'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <svg className={`w-4 h-4 ${
-                              isDark ? 'text-gray-400' : 'text-gray-400'
-                            }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            <span className="text-sm">{city}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className={`px-4 py-6 text-center text-sm ${
-                      isDark ? 'text-gray-400' : 'text-gray-500'
-                    }`}>
-                      Keine Städte gefunden
-                    </div>
-                  )}
-                </div>
               )}
             </div>
             {errors.city && <p className="mt-2 text-sm text-red-500">{errors.city}</p>}
           </div>
 
           {/* Description */}
-          <div className={`rounded-[20px] shadow-lg border overflow-hidden p-6 ${
-            isDark
-              ? 'bg-gray-800 border-gray-700'
-              : 'bg-white border-gray-100'
-          }`}>
-            <label className={`block text-sm font-semibold mb-2 ${
-              isDark ? 'text-gray-200' : 'text-gray-700'
-            }`}>
-              Beschreibung <span className={`text-xs font-normal ${
-                isDark ? 'text-gray-400' : 'text-gray-500'
-              }`}>(optional)</span>
+          <div className="bg-white rounded-[20px] shadow-lg border border-gray-100 overflow-hidden p-6">
+            <label className="block text-sm font-semibold mb-2 text-gray-700">
+              Beschreibung <span className="text-gray-500 text-xs font-normal">(optional)</span>
             </label>
             <textarea
               value={formData.description}
@@ -578,26 +395,14 @@ function CreateList() {
               placeholder="Kurze Beschreibung deiner Liste"
               rows="3"
               maxLength="250"
-              className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 resize-none ${
-                isDark
-                  ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
-                  : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
-              }`}
+              className="w-full px-4 py-3 rounded-[14px] border border-gray-200 transition-all focus:outline-none focus:ring-2 focus:ring-[#FF7E42]/20 dark:focus:ring-[#FF9357]/20 resize-none"
             />
-            <p className={`text-sm mt-2 text-right ${
-              isDark ? 'text-gray-400' : 'text-gray-500'
-            }`}>{formData.description.length}/250</p>
+            <p className="text-sm text-gray-500 mt-2 text-right">{formData.description.length}/250</p>
           </div>
 
           {/* Cover Image */}
-          <div className={`rounded-[20px] shadow-lg border overflow-hidden p-6 ${
-            isDark
-              ? 'bg-gray-800 border-gray-700'
-              : 'bg-white border-gray-100'
-          }`}>
-            <label className={`block text-sm font-semibold mb-2 ${
-              isDark ? 'text-gray-200' : 'text-gray-700'
-            }`}>
+          <div className="bg-white rounded-[20px] shadow-lg border border-gray-100 overflow-hidden p-6">
+            <label className="block text-sm font-semibold mb-2 text-gray-700">
               Titelbild
             </label>
             
@@ -616,18 +421,10 @@ function CreateList() {
             ) : (
               <label className="block cursor-pointer">
                 <input type="file" accept="image/*" onChange={handleCoverImageChange} className="hidden" />
-                <div className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
-                  isDark
-                    ? 'border-gray-600 hover:border-[#FF9357] hover:bg-[#B85C2C]/20'
-                    : 'border-gray-300 hover:border-[#FF7E42] hover:bg-[#FFE4C3]/30'
-                }`}>
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-[#FF7E42] hover:bg-[#FFE4C3]/30 transition-all dark:hover:border-[#FF9357] dark:hover:bg-[#B85C2C]/20">
                   <div className="text-4xl mb-2">📸</div>
-                  <p className={`font-medium ${
-                    isDark ? 'text-gray-300' : 'text-gray-600'
-                  }`}>Bild auswählen</p>
-                  <p className={`text-sm mt-1 ${
-                    isDark ? 'text-gray-400' : 'text-gray-500'
-                  }`}>PNG, JPG bis 5MB</p>
+                  <p className="text-gray-600 font-medium">Bild auswählen</p>
+                  <p className="text-sm text-gray-500 mt-1">PNG, JPG bis 5MB</p>
                 </div>
               </label>
             )}
@@ -635,17 +432,9 @@ function CreateList() {
 
           {/* Live Preview */}
           {formData.list_name && formData.city && (
-            <div className={`rounded-[20px] shadow-lg border overflow-hidden p-6 ${
-              isDark
-                ? 'bg-gray-800 border-gray-700'
-                : 'bg-white border-gray-100'
-            }`}>
-              <h2 className={`text-xl font-bold mb-4 ${
-                isDark ? 'text-white' : 'text-gray-900'
-              }`}>Vorschau</h2>
-              <div className={`rounded-2xl overflow-hidden shadow-md border relative h-48 ${
-                isDark ? 'border-gray-700' : 'border-gray-100'
-              }`}>
+            <div className="bg-white rounded-[20px] shadow-lg border border-gray-100 overflow-hidden p-6">
+              <h2 className="text-xl font-bold mb-4">Vorschau</h2>
+              <div className="rounded-2xl overflow-hidden shadow-md border border-gray-100 relative h-48">
                 {/* Background Image */}
                 {formData.coverImageUrl ? (
                   <div 
@@ -653,11 +442,7 @@ function CreateList() {
                     style={{ backgroundImage: `url(${formData.coverImageUrl})` }}
                   />
                 ) : (
-                  <div className={`absolute inset-0 bg-gradient-to-br ${
-                    isDark
-                      ? 'from-gray-700 to-gray-800'
-                      : 'from-gray-100 to-gray-200'
-                  }`} />
+                  <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200" />
                 )}
 
                 {/* Gradient Overlay for text */}
@@ -686,14 +471,8 @@ function CreateList() {
             disabled={!isFormValid() || isSubmitting}
             className={`w-full py-4 rounded-[20px] font-semibold text-lg transition-all ${
               isFormValid() && !isSubmitting
-                ? `text-white shadow-lg hover:shadow-xl active:scale-[0.98] ${
-                    isDark
-                      ? 'bg-gradient-to-r from-[#FF9357] to-[#B85C2C] hover:from-[#FF9C68] hover:to-[#C86B3A]'
-                      : 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A] hover:from-[#FF8E53] hover:to-[#FFB970]'
-                  }`
-                : isDark
-                  ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                ? 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A] text-white shadow-lg hover:shadow-xl active:scale-[0.98] dark:from-[#FF9357] dark:to-[#B85C2C]'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}
           >
             🍽️ Liste erstellen
