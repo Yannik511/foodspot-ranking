@@ -1188,7 +1188,7 @@ function AddFoodspot() {
                         className={`
                           aspect-square rounded-xl font-bold text-base
                           transition-all duration-200 ease-out
-                          ${(formData.ratings[criterion] || 0) === value
+                          ${(formData.ratings[criterion] || 0) >= value
                             ? `text-white shadow-lg transform scale-105 ${
                                 isDark
                                   ? 'bg-[#FF9357]'

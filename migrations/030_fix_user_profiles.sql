@@ -77,3 +77,5 @@ ON CONFLICT (id) DO NOTHING;
 -- SUCCESS: User Profiles Table Created
 -- =============================================
 
+
+

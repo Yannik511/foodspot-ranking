@@ -116,21 +116,52 @@ function SharedTierList() {
     setTimeout(() => setToast(null), 3000)
   }
 
-  const fetchProfilesForIds = useCallback(async (ids) => {
+  const fetchProfilesForIds = useCallback(async (ids, retryCount = 0) => {
     if (!ids || ids.length === 0) return {}
     const uniqueIds = Array.from(new Set(ids.filter(Boolean)))
     if (uniqueIds.length === 0) return {}
 
-    await ensureProfiles(uniqueIds)
-
-    const result = {}
-    uniqueIds.forEach(id => {
-      const profile = getProfile(id)
-      if (profile) {
-        result[id] = profile
+    try {
+      // Add a small delay on first load to prevent race conditions
+      if (retryCount === 0) {
+        await new Promise(resolve => setTimeout(resolve, 500))
       }
-    })
-    return result
+
+      await ensureProfiles(uniqueIds)
+
+      const result = {}
+      const missingProfiles = []
+      
+      uniqueIds.forEach(id => {
+        const profile = getProfile(id)
+        if (profile) {
+          result[id] = profile
+        } else {
+          missingProfiles.push(id)
+        }
+      })
+
+      // Retry logic: if some profiles are missing and we haven't exceeded retry limit
+      if (missingProfiles.length > 0 && retryCount < 2) {
+        // Wait a bit longer before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        const retryResult = await fetchProfilesForIds(missingProfiles, retryCount + 1)
+        Object.assign(result, retryResult)
+      }
+
+      return result
+    } catch (error) {
+      console.warn('[SharedTierList] Error fetching profiles:', error)
+      // Return partial result instead of failing completely
+      const result = {}
+      uniqueIds.forEach(id => {
+        const profile = getProfile(id)
+        if (profile) {
+          result[id] = profile
+        }
+      })
+      return result
+    }
   }, [ensureProfiles, getProfile])
 
   const fetchTierData = useCallback(async ({ background = false } = {}) => {

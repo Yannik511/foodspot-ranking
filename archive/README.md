@@ -1,34 +1,44 @@
-# 📦 Archive
+# Archive
 
-Dieser Ordner enthält archivierte Dateien, die nicht mehr aktiv verwendet werden, aber aus historischen Gründen aufbewahrt werden.
+Dieses Verzeichnis enthält archivierte Dateien aus vorherigen Entwicklungsphasen.
 
-## 📁 Struktur
+## Struktur
 
-### `sql-scripts/`
-Alte SQL-Skripte, die nicht mehr verwendet werden oder durch neuere Versionen ersetzt wurden:
-- `DELETE_SHARED_LISTS.sql` - Alte Lösch-Query (ersetzt durch RESTORE_BASIC_FUNCTIONS.sql)
-- `FIX_RLS_*.sql` - Alte RLS-Fix-Versuche
-- `COMPLETE_RESET.sql` - Alte Reset-Query
-- `supabase_*.sql` - Alte Schema-Definitionen
+### `/docs/` - Alte Fix-Dokumentationen
+Dokumentationen von Fehlerbehebungen und Analysen aus früheren Entwicklungsphasen:
+- RLS-Fixes
+- Mobile-App Fixes  
+- Vite-App Status
+- Feature-Analysen
 
-### `docs/`
-Temporäre Dokumentationsdateien, die während des Debuggings/Entwickelns entstanden sind:
-- `FIX_ANLEITUNG.md` - Temporäre Fix-Anleitung
-- `ZUSAMMENFASSUNG_FIX.md` - Temporäre Zusammenfassung
-- `FEHLER_ANALYSE_*.md` - Fehleranalyse-Dokumente
-- `MOBILE_FIX_ANLEITUNG.md` - Mobile-spezifische Fixes
-- `VITE_APP_STATUS.md` - Temporärer Status-Report
+### `/sql-scripts/` - Alte SQL-Skripte
+Frühere SQL-Skripte für:
+- User Stats
+- Avatar Setup
+- Storage Policies
+- Social Schema
+- RLS-Fixes
 
-## ⚠️ Wichtig
+Diese wurden durch die strukturierten Migrations im `/migrations/` Ordner ersetzt.
 
-**Diese Dateien sollten NICHT mehr verwendet werden!**
+### `/cleanup-YYYYMMDD/` - Bereinigungs-Archive
+Dateien die bei Projekt-Bereinigungen archiviert wurden:
+- Deaktivierte Migrations (*.DISABLED)
+- Alte READMEs
+- Temporäre Restore-Skripte
 
-Für aktuelle SQL-Skripte siehe:
-- `RESTORE_BASIC_FUNCTIONS.sql` (im Root-Verzeichnis)
-- `migrations/` Ordner (für Datenbank-Migrationen)
+## Wichtig
 
-Für aktuelle Dokumentation siehe:
-- `README.md` (Hauptdokumentation)
-- `docs/` Ordner (aktuelle Setup-Anleitungen)
-- `SCHNELLSTART_SUPABASE.md` (Setup-Anleitung)
+⚠️ **Diese Dateien sind nur zur Referenz**
+- Verwende immer die aktuellen Migrations aus `/migrations/`
+- Dokumentationen im Hauptverzeichnis sind aktuell
+- Archive-Dateien werden nicht mehr aktiv gewartet
 
+## Mobile Archive
+
+`/mobile-archive/foodspot-ranking-mobile/` enthält die React Native Mobile App.
+
+**Status:** Archiviert - Web-App ist Fokus
+**Grund:** Web-First Strategie, Mobile später optional
+
+Die Mobile-App kann bei Bedarf reaktiviert werden.
