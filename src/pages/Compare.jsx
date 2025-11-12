@@ -416,7 +416,7 @@ function Compare() {
                   : 'bg-white border-gray-100'
               }`}>
                 <div className="flex items-center justify-center gap-6">
-                  <div className="flex-1 text-center">
+                  <div className="flex-1 flex flex-col items-center justify-center">
                     <UserAvatar user={currentUser} size={64} />
                     <p className={`mt-2 font-semibold text-sm ${
                       isDark ? 'text-white' : 'text-gray-900'
@@ -425,7 +425,7 @@ function Compare() {
                     </p>
                   </div>
                   <div className="text-2xl">VS</div>
-                  <div className="flex-1 text-center">
+                  <div className="flex-1 flex flex-col items-center justify-center">
                     <UserAvatar user={friendUser} size={64} />
                     <p className={`mt-2 font-semibold text-sm ${
                       isDark ? 'text-white' : 'text-gray-900'
