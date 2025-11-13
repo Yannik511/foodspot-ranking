@@ -2216,25 +2216,6 @@ function Dashboard() {
           <button 
             onClick={() => {
               hapticFeedback.light()
-              navigate('/discover')
-            }}
-            className="flex flex-col items-center gap-1 active:scale-95 transition-transform"
-            style={{
-              minWidth: '44px',
-              minHeight: '44px',
-            }}
-            aria-label="Entdecken"
-          >
-            <svg className="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19a8 8 0 100-16 8 8 0 000 16z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35" />
-            </svg>
-            <span className="text-xs font-medium text-gray-400 dark:text-gray-500" style={{ fontFamily: "'Poppins', sans-serif" }}>Entdecken</span>
-          </button>
-
-          <button 
-            onClick={() => {
-              hapticFeedback.light()
               navigate('/account')
             }}
             className="flex flex-col items-center gap-1 active:scale-95 transition-transform"
