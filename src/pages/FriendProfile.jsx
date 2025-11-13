@@ -19,7 +19,8 @@ const CATEGORY_EMOJIS = {
   'Fast Food': '🍔',
   'Streetfood': '🌯',
   'Deutsche Küche': '🥨',
-  'Bier': '🍺'
+  'Bier': '🍺',
+  'Leberkässemmel': '🥪'
 }
 
 function FriendProfile() {

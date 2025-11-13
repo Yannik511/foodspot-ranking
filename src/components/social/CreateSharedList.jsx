@@ -19,7 +19,8 @@ const CATEGORIES = {
   'Fast Food': { emoji: '🍔', color: '#FFB25A' },
   Streetfood: { emoji: '🌯', color: '#FF7E42' },
   'Deutsche Küche': { emoji: '🥨', color: '#FF9C68' },
-  'Bier': { emoji: '🍺', color: '#FFB25A' }
+  'Bier': { emoji: '🍺', color: '#FFB25A' },
+  'Leberkässemmel': { emoji: '🥪', color: '#FF7E42' }
 }
 
 

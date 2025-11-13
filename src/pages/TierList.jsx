@@ -1080,6 +1080,9 @@ function TierList() {
                               {spot.category === 'Glühwein' && '🍷'}
                               {spot.category === 'Deutsche Küche' && '🥨'}
                               {spot.category === 'Bier' && '🍺'}
+                              {spot.category === 'Leberkässemmel' && '🥪'}
+                              {spot.category === 'Bier' && '🍺'}
+                              {spot.category === 'Leberkässemmel' && '🥪'}
                             </span>
                             <span className={`text-sm font-medium ${
                               isDark ? 'text-gray-300' : 'text-gray-600'

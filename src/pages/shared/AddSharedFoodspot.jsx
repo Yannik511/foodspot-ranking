@@ -15,12 +15,12 @@ const DEFAULT_SCALE = 5
 const CATEGORIES = {
   Döner: {
     imageUrl: '/images/categories/doener.jpg',
-    criteria: ['Brot', 'Fleisch', 'Soße', 'Frische', 'Location'],
+    criteria: ['Brot', 'Fleisch', 'Soße', 'Frische', 'Preis-Leistung'],
     scale: DEFAULT_SCALE
   },
   Burger: {
     imageUrl: '/images/categories/burger.jpg',
-    criteria: ['Bun', 'Patty', 'Toppings/Cheese', 'Geschmack', 'Location'],
+    criteria: ['Bun', 'Patty', 'Toppings/Cheese', 'Soßen', 'Preis-Leistung'],
     scale: DEFAULT_SCALE
   },
   Pizza: {
@@ -39,7 +39,7 @@ const CATEGORIES = {
       'Geschmack & Würze',
       'Bratgrad & Textur',
       'Beilage & Sauce',
-      'Authentizität & Atmosphäre',
+      'Semmel',
       'Preis-Leistungs-Verhältnis'
     ],
     scale: DEFAULT_SCALE
@@ -66,7 +66,7 @@ const CATEGORIES = {
   },
   Steak: {
     imageUrl: '/images/categories/steak.jpg',
-    criteria: ['Fleischqualität', 'Gargrad & Zubereitung', 'Beilagen & Saucen', 'Ambiente & Service', 'Preis-Leistung'],
+    criteria: ['Fleischqualität', 'Gargrad & Zubereitung', 'Beilagen & Saucen', 'Konsistenz', 'Preis-Leistung'],
     scale: DEFAULT_SCALE
   },
   'Fast Food': {
@@ -78,6 +78,11 @@ const CATEGORIES = {
     imageUrl: '/images/categories/streetfood.jpg',
     criteria: ['Authentizität & Geschmack', 'Kreativität & Vielfalt', 'Frische & Qualität', 'Atmosphäre & Erlebnis', 'Preis-Leistung'],
     scale: DEFAULT_SCALE
+  },
+  Leberkässemmel: {
+    imageUrl: '/images/categories/leberkaessemmel.jpg',
+    criteria: ['Semmel', 'Soßen', 'Leberkäs-Sorte', 'Rand / Knusprigkeit', 'Preis-Leistung'],
+    scale: DEFAULT_SCALE
   }
 }
 
@@ -85,6 +90,7 @@ const CRITERIA_ICONS = {
   'Brot': '🍞',
   'Fleisch': '🥩',
   'Soße': '🥫',
+  'Soßen': '🥫',
   'Frische': '🥗',
   'Location': '📍',
   'Bun': '🍞',
@@ -121,6 +127,7 @@ const CRITERIA_ICONS = {
   'Gargrad & Zubereitung': '🔥',
   'Beilagen & Saucen': '🥄',
   'Ambiente & Service': '🛎️',
+  'Konsistenz': '🧈',
   'Geschmack & Frische': '😋',
   'Schnelligkeit & Service': '⚡',
   'Sauberkeit & Ordnung': '🧼',
@@ -132,6 +139,9 @@ const CRITERIA_ICONS = {
   'Bratgrad & Textur': '🔥',
   'Beilage & Sauce': '🥖',
   'Authentizität & Atmosphäre': '🎪',
+  'Semmel': '🥯',
+  'Leberkäs-Sorte': '🥩',
+  'Rand / Knusprigkeit': '🥨',
   'Preis-Leistungs-Verhältnis': '💰'
 }
 

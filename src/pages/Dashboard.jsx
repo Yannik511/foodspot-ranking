@@ -22,8 +22,26 @@ const CATEGORY_OPTIONS = [
   'Fast Food',
   'Streetfood',
   'Deutsche Küche',
-  'Bier'
+  'Bier',
+  'Leberkässemmel'
 ]
+
+const CATEGORY_EMOJIS = {
+  'Döner': '🥙',
+  'Burger': '🍔',
+  'Pizza': '🍕',
+  'Asiatisch': '🍜',
+  'Bratwurst': '🥓',
+  'Glühwein': '🍷',
+  'Sushi': '🍣',
+  'Steak': '🥩',
+  'Fast Food': '🍔',
+  'Streetfood': '🌯',
+  'Deutsche Küche': '🥨',
+  'Bier': '🍺',
+  'Grillgerichte': '🔥',
+  'Leberkässemmel': '🥪'
+}
 
 // Hook to check for unread social notifications (including list invitations)
 const useSocialNotifications = () => {
@@ -1526,6 +1544,7 @@ function Dashboard() {
                                   ? 'bg-gray-900/60 border-gray-700 text-white placeholder:text-gray-500 focus:ring-[#FF9357]/20'
                                   : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
                               }`}
+                              style={{ fontSize: '16px', lineHeight: '24px' }}
                             />
                           </div>
 
@@ -1543,6 +1562,7 @@ function Dashboard() {
                                   ? 'bg-gray-900/60 border-gray-700 text-white focus:ring-[#FF9357]/20'
                                   : 'bg-white border-gray-200 text-gray-900 focus:ring-[#FF7E42]/20'
                               }`}
+                              style={{ fontSize: '16px', lineHeight: '24px' }}
                             >
                               <option value="">Alle Kategorien</option>
                               {CATEGORY_OPTIONS.map((category) => (
@@ -1660,7 +1680,19 @@ function Dashboard() {
                   )
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: `${gap}px` }}>
-                {lists.map((list, index) => (
+                {lists.map((list, index) => {
+                  const { label: categoryLabel, emoji: categoryEmoji } = (() => {
+                    if (!list.category || list.category === 'all' || (typeof list.category === 'string' && list.category.trim().length === 0)) {
+                      return { label: 'Alle Kategorien', emoji: '🍽️' }
+                    }
+                    const trimmed = typeof list.category === 'string' ? list.category.trim() : list.category
+                    return {
+                      label: trimmed,
+                      emoji: CATEGORY_EMOJIS[trimmed] || '🍽️'
+                    }
+                  })()
+
+                  return (
               <div
                 key={list.id}
                 onMouseDown={() => handleLongPressStart(list.id)}
@@ -1740,6 +1772,18 @@ function Dashboard() {
                     >
                       🧾 {formatEntryCount(list.entryCount || 0)}
                     </p>
+                    <div className="mt-2 flex justify-start">
+                      <span
+                        className="inline-flex items-center px-3 py-1 rounded-full bg-white/20 text-white font-semibold backdrop-blur-sm"
+                        style={{
+                          fontSize: `${Math.max(11, subtitleSize - 3)}px`,
+                          lineHeight: `${Math.max(11, subtitleSize - 3) * 1.4}px`,
+                        }}
+                      >
+                        <span className="mr-1">{categoryEmoji}</span>
+                        {categoryLabel}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -1796,7 +1840,8 @@ function Dashboard() {
                   )}
                 </div>
               </div>
-            ))}
+                  )
+                })}
 
             {/* CTA: Create Another List */}
             <button
@@ -1866,7 +1911,19 @@ function Dashboard() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: `${gap}px` }}>
-                {sharedLists.map((list, index) => (
+                {sharedLists.map((list, index) => {
+                  const { label: sharedCategoryLabel, emoji: sharedCategoryEmoji } = (() => {
+                    if (!list.category || list.category === 'all' || (typeof list.category === 'string' && list.category.trim().length === 0)) {
+                      return { label: 'Alle Kategorien', emoji: '🍽️' }
+                    }
+                    const trimmed = typeof list.category === 'string' ? list.category.trim() : list.category
+                    return {
+                      label: trimmed,
+                      emoji: CATEGORY_EMOJIS[trimmed] || '🍽️'
+                    }
+                  })()
+
+                  return (
                   <div
                     key={list.id}
                     onClick={(e) => {
@@ -1927,10 +1984,22 @@ function Dashboard() {
                         </button>
 
                         {!list.isPending && (
-                          <div className={`px-3 py-1.5 rounded-full backdrop-blur-sm text-white text-xs font-semibold shadow-lg ${
-                            list.isOwner ? 'bg-blue-500/90' : 'bg-green-500/90'
-                          }`}>
-                            {list.isOwner ? 'Owner' : list.membershipRole === 'editor' ? 'Editor' : 'Viewer'}
+                          <div className="flex flex-col items-end gap-2">
+                            <div className={`px-3 py-1.5 rounded-full backdrop-blur-sm text-white text-xs font-semibold shadow-lg ${
+                              list.isOwner ? 'bg-blue-500/90' : 'bg-green-500/90'
+                            }`}>
+                              {list.isOwner ? 'Owner' : list.membershipRole === 'editor' ? 'Editor' : 'Viewer'}
+                            </div>
+                            <span
+                              className="inline-flex items-center px-3 py-1 rounded-full bg-white/20 text-white font-semibold backdrop-blur-sm"
+                              style={{
+                                fontSize: `${Math.max(11, subtitleSize - 3)}px`,
+                                lineHeight: `${Math.max(11, subtitleSize - 3) * 1.4}px`,
+                              }}
+                            >
+                              <span className="mr-1">{sharedCategoryEmoji}</span>
+                              {sharedCategoryLabel}
+                            </span>
                           </div>
                         )}
 
@@ -2030,14 +2099,6 @@ function Dashboard() {
                           </svg>
                           <span className="break-words">{list.city}</span>
                         </p>
-                        {list.description && (
-                          <p 
-                            className="text-white/80 mb-1 drop-shadow-md break-words"
-                            style={{ fontSize: `${Math.max(12, subtitleSize - 2)}px` }}
-                          >
-                            {list.description}
-                          </p>
-                        )}
                         <p 
                           className="text-white/80 drop-shadow-md transition-all duration-300"
                           style={{ fontSize: `${Math.max(12, subtitleSize - 2)}px` }}
@@ -2080,7 +2141,8 @@ function Dashboard() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </>
@@ -2353,6 +2415,7 @@ function EditSharedListModal({ list, onClose, onSave }) {
   const [formData, setFormData] = useState({
     list_name: list.list_name,
     city: list.city,
+    description: list.description || '',
     coverImageUrl: list.cover_image_url,
     coverImageFile: null,
   })
@@ -2424,6 +2487,7 @@ function EditSharedListModal({ list, onClose, onSave }) {
       ...list,
       list_name: formData.list_name.trim(),
       city: formData.city.trim(),
+      description: formData.description.trim() || null,
       cover_image_url: formData.coverImageUrl || list.cover_image_url,
     }
     
@@ -2469,6 +2533,7 @@ function EditSharedListModal({ list, onClose, onSave }) {
         .update({
           list_name: formData.list_name.trim(),
           city: formData.city.trim(),
+          description: formData.description.trim() || null,
           cover_image_url: imageUrl,
         })
         .eq('id', list.id)
@@ -2942,6 +3007,30 @@ function EditSharedListModal({ list, onClose, onSave }) {
                 </div>
               </label>
             )}
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className={`block text-sm font-semibold mb-2 ${
+              isDark ? 'text-gray-200' : 'text-gray-700'
+            }`}>
+              Beschreibung (optional)
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => handleInputChange('description', e.target.value)}
+              maxLength={250}
+              rows={3}
+              className={`w-full px-4 py-3 rounded-[14px] border transition-all resize-none focus:outline-none focus:ring-2 ${
+                isDark
+                  ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
+                  : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
+              }`}
+              placeholder="z.B. Wochenendtrip nach München mit Freunden..."
+            />
+            <p className={`mt-1 text-xs text-right ${
+              isDark ? 'text-gray-400' : 'text-gray-500'
+            }`}>{formData.description.length}/250</p>
           </div>
 
           {/* Teilnehmerverwaltung */}

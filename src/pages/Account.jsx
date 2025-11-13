@@ -19,7 +19,8 @@ const CATEGORY_EMOJIS = {
   'Fast Food': '🍔',
   'Streetfood': '🌯',
   'Deutsche Küche': '🥨',
-  'Bier': '🍺'
+  'Bier': '🍺',
+  'Leberkässemmel': '🥪'
 }
 
 // Helper function to compress image
@@ -109,7 +110,7 @@ function Account() {
     shared: createEmptyStats(),
     overall: createEmptyStats()
   })
-  const [activeContext, setActiveContext] = useState('overall')
+  const [activeContext, setActiveContext] = useState('private')
   const [listSummary, setListSummary] = useState({
     total: 0,
     private: 0,

@@ -64,6 +64,11 @@ const CATEGORIES = {
     emoji: '🍺',
     description: 'Bewerte verschiedene Biersorten – vom Hellen bis zum Craft Beer.',
     color: '#FFB25A'
+  },
+  Leberkässemmel: {
+    emoji: '🥪',
+    description: 'Finde die beste Leberkässemmel – von Semmel bis Preis-Leistung.',
+    color: '#FF7E42'
   }
 }
 
