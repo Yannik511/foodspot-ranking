@@ -82,21 +82,35 @@ function DiscoverDetail() {
       }
 
       // 4. Hole alle Spots mit diesem Key aus privaten Listen
-      // WICHTIG: Spaltenname ist 'name' nicht 'foodspot_name'
+      // WICHTIG: city ist in lists, nicht in foodspots
       const { data: allSpots, error: spotsError } = await supabase
         .from('foodspots')
-        .select('id, name, city, category, rating, created_at, list_id')
+        .select(`
+          id, 
+          name, 
+          category, 
+          rating, 
+          created_at, 
+          list_id,
+          lists!inner(city)
+        `)
         .in('list_id', privateListIds)
         .ilike('name', name)
-        .ilike('city', city)
         .not('rating', 'is', null)
 
       if (spotsError) throw spotsError
       
+      // Flache die city aus dem lists-Objekt und filtere nach Stadt
+      const spotsWithCity = allSpots?.map(spot => ({
+        ...spot,
+        city: spot.lists?.city,
+        lists: undefined
+      })).filter(spot => spot.city?.toLowerCase() === city.toLowerCase())
+      
       // Filter nach Kategorie (wenn vorhanden und nicht 'uncategorized')
-      let filteredSpots = allSpots
+      let filteredSpots = spotsWithCity
       if (category && category !== 'uncategorized') {
-        filteredSpots = allSpots?.filter(s => 
+        filteredSpots = spotsWithCity?.filter(s => 
           s.category?.toLowerCase() === category.toLowerCase()
         )
       }

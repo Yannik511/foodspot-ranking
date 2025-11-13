@@ -82,10 +82,18 @@ function Discover() {
       console.log(`Found ${privateListIds.length} private lists from public users`)
 
       // 4. Hole alle Foodspots aus diesen privaten Listen
-      // WICHTIG: Spaltenname ist 'name' nicht 'foodspot_name'
+      // WICHTIG: city ist in lists, nicht in foodspots - daher JOIN nötig
       const { data: allSpots, error: spotsError } = await supabase
         .from('foodspots')
-        .select('id, name, city, category, rating, created_at, list_id')
+        .select(`
+          id, 
+          name, 
+          category, 
+          rating, 
+          created_at, 
+          list_id,
+          lists!inner(city)
+        `)
         .in('list_id', privateListIds)
         .not('rating', 'is', null)
         .order('created_at', { ascending: true })
@@ -94,8 +102,15 @@ function Discover() {
         console.error('Error fetching spots:', spotsError)
         throw spotsError
       }
+      
+      // Flache die city aus dem lists-Objekt
+      const spotsWithCity = allSpots?.map(spot => ({
+        ...spot,
+        city: spot.lists?.city,
+        lists: undefined // Entferne das nested Objekt
+      }))
 
-      if (!allSpots || allSpots.length === 0) {
+      if (!spotsWithCity || spotsWithCity.length === 0) {
         setTop10Spots([])
         setLoading(false)
         return
@@ -104,7 +119,7 @@ function Discover() {
       // 5. Spots nach Name + Stadt + Kategorie gruppieren (mergen)
       const mergedSpots = {}
       
-      for (const spot of allSpots) {
+      for (const spot of spotsWithCity) {
         // Normalisiere den Key (lowercase für case-insensitive matching)
         const key = `${spot.name?.toLowerCase()}|${spot.city?.toLowerCase()}|${spot.category?.toLowerCase() || 'uncategorized'}`
         

@@ -42,3 +42,5 @@ COMMENT ON COLUMN lists.is_public IS 'Ob die Liste öffentlich sichtbar ist';
 
 
 
+
+
