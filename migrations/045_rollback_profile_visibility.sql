@@ -101,17 +101,28 @@ ON user_profiles FOR INSERT TO authenticated
 WITH CHECK (auth.uid() = id);
 
 -- 6. Synchronisiere user_profiles mit auth.users
--- (Falls Einträge fehlen)
-INSERT INTO user_profiles (id, email, username)
+-- (Falls Einträge fehlen ODER profile_image_url fehlt)
+INSERT INTO user_profiles (id, email, username, profile_image_url)
 SELECT 
   id, 
   email,
-  COALESCE(raw_user_meta_data->>'username', email)
+  COALESCE(raw_user_meta_data->>'username', email),
+  raw_user_meta_data->>'profileImageUrl'
 FROM auth.users
 ON CONFLICT (id) DO UPDATE
 SET 
   email = EXCLUDED.email,
-  username = COALESCE(user_profiles.username, EXCLUDED.username);
+  username = COALESCE(user_profiles.username, EXCLUDED.username),
+  profile_image_url = COALESCE(EXCLUDED.profile_image_url, user_profiles.profile_image_url);
+
+-- 6b. Update bestehende user_profiles mit profile_image_url aus auth.users.user_metadata
+-- (Falls profile_image_url in der Tabelle fehlt, aber in auth.users.user_metadata vorhanden ist)
+UPDATE user_profiles up
+SET profile_image_url = au.raw_user_meta_data->>'profileImageUrl'
+FROM auth.users au
+WHERE up.id = au.id
+  AND (up.profile_image_url IS NULL OR up.profile_image_url = '')
+  AND au.raw_user_meta_data->>'profileImageUrl' IS NOT NULL;
 
 -- 7. Update get_user_profile RPC Function
 -- Wichtig: profile_visibility muss aus auth.users.user_metadata kommen!

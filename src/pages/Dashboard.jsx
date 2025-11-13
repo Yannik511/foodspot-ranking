@@ -607,11 +607,21 @@ function Dashboard() {
             membersData.forEach(m => allUserIds.add(m.user_id))
           }
 
-          // Profile für alle User laden
-          const { data: allProfiles } = await supabase
-            .from('user_profiles')
-            .select('id, username, profile_image_url')
-            .in('id', Array.from(allUserIds))
+          // Profile für alle User laden (über RPC-Funktion)
+          // WICHTIG: get_user_profile() liest profile_image_url aus auth.users oder user_profiles korrekt
+          const userIdsArray = Array.from(allUserIds)
+          const allProfiles = []
+          
+          for (const userId of userIdsArray) {
+            try {
+              const { data, error } = await supabase.rpc('get_user_profile', { user_id: userId })
+              if (!error && data && data.length > 0) {
+                allProfiles.push(data[0])
+              }
+            } catch (err) {
+              console.warn('Could not fetch profile for user:', userId, err)
+            }
+          }
 
           // Build members array: Owner first, dann Rest
           const members = []

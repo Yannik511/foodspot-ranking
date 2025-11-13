@@ -465,6 +465,18 @@ function Settings() {
 
       if (updateError) throw updateError
 
+      // WICHTIG: Auch user_profiles Tabelle aktualisieren!
+      // (Damit Freunde und geteilte Listen das Avatar sehen)
+      try {
+        await supabase
+          .from('user_profiles')
+          .update({ profile_image_url: imageUrlWithCache })
+          .eq('id', user.id)
+      } catch (profileUpdateErr) {
+        console.warn('Could not update user_profiles table:', profileUpdateErr)
+        // Nicht kritisch - auth.users ist die Hauptquelle
+      }
+
       hapticFeedback.success()
       setSuccess('Profilbild erfolgreich aktualisiert!')
       
