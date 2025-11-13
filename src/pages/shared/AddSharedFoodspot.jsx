@@ -71,7 +71,7 @@ const CATEGORIES = {
   },
   'Fast Food': {
     imageUrl: '/images/categories/fast-food.jpg',
-    criteria: ['Geschmack & Frische', 'Schnelligkeit & Service', 'Sauberkeit & Ordnung', 'Preis-Leistung', 'Markenerlebnis'],
+    criteria: ['Pommes', 'Sauberkeit & Ordnung', 'Preis / Leistung', 'Burger', 'Chicken Nuggets / Beilagen'],
     scale: DEFAULT_SCALE
   },
   Streetfood: {
@@ -142,7 +142,11 @@ const CRITERIA_ICONS = {
   'Semmel': '🥯',
   'Leberkäs-Sorte': '🥩',
   'Rand / Knusprigkeit': '🥨',
-  'Preis-Leistungs-Verhältnis': '💰'
+  'Preis-Leistungs-Verhältnis': '💰',
+  'Pommes': '🍟',
+  'Preis / Leistung': '💰',
+  'Burger': '🍔',
+  'Chicken Nuggets / Beilagen': '🍗'
 }
 
 const getCategoryScale = (category) => CATEGORIES[category]?.scale || DEFAULT_SCALE
@@ -690,39 +694,107 @@ function AddSharedFoodspot() {
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
         {/* Kategorie Auswahl */}
         {showCategorySelection && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-bold" style={{ fontFamily: "'Poppins', sans-serif" }}>
-              Kategorie wählen
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {Object.keys(CATEGORIES).map((category) => (
+          <div className={`rounded-[24px] shadow-lg border p-8 ${
+            isDark
+              ? 'bg-gray-800 border-gray-700'
+              : 'bg-white border-gray-100'
+          }`}>
+            <div className="flex items-center gap-3 mb-6">
+              <span className="text-3xl">📝</span>
+              <h2 className={`text-xl font-bold ${
+                isDark ? 'text-white' : 'text-gray-900'
+              }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                Kategorie wählen:
+              </h2>
+            </div>
+
+            <div className="space-y-3">
+              {Object.entries(CATEGORIES).map(([category, { imageUrl }]) => (
                 <button
                   key={category}
                   onClick={() => handleCategorySelect(category)}
-                  className={`overflow-hidden rounded-[20px] shadow-lg text-left transition-all border ${
+                  className={`w-full border-2 rounded-[20px] p-6 transition-all active:scale-[0.98] flex items-center gap-4 group ${
                     isDark
-                      ? 'bg-gray-800 border-gray-700 hover:scale-[1.02]'
-                      : 'bg-white border-transparent hover:scale-[1.02]'
+                      ? 'bg-gray-700 hover:bg-gray-600 border-gray-600 hover:border-[#FF9357]'
+                      : 'bg-white hover:bg-gray-50 border-gray-200 hover:border-[#FF7E42]'
                   }`}
-                  style={{ boxShadow: '0 12px 30px rgba(0, 0, 0, 0.12)' }}
                 >
-                  <img
-                    src={CATEGORIES[category].imageUrl}
-                    alt={category}
-                    className="w-full h-32 object-cover"
-                  />
-                  <div className="p-5">
-                    <h3 className="text-lg font-semibold mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center overflow-hidden transition-colors relative ${
+                    isDark
+                      ? 'bg-gray-600 group-hover:bg-[#B85C2C]/30'
+                      : 'bg-gray-100 group-hover:bg-[#FFE4C3]/50'
+                  }`}>
+                    <img
+                      src={imageUrl}
+                      alt={category}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const fallbackEmojis = {
+                          'Döner': '🥙',
+                          'Burger': '🍔',
+                          'Pizza': '🍕',
+                          'Asiatisch': '🍜',
+                          'Bratwurst': '🥓',
+                          'Glühwein': '🍷',
+                          'Sushi': '🍣',
+                          'Deutsche Küche': '🥨',
+                          'Bier': '🍺',
+                          'Steak': '🥩',
+                          'Fast Food': '🍔',
+                          'Streetfood': '🌯',
+                          'Leberkässemmel': '🥪'
+                        }
+                        e.target.style.display = 'none'
+                        const emoji = fallbackEmojis[category] || '🍔'
+                        e.target.parentElement.innerHTML = `<span class="text-4xl">${emoji}</span>`
+                      }}
+                    />
+                  </div>
+                  <div className="flex-1 flex flex-col">
+                    <span className={`text-lg font-semibold transition-colors ${
+                      isDark
+                        ? 'text-white group-hover:text-[#FF9357]'
+                        : 'text-gray-900 group-hover:text-[#FF7E42]'
+                    }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
                       {category}
-                    </h3>
-                    <p className={`text-sm ${
+                    </span>
+                    <span className={`text-sm ${
                       isDark ? 'text-gray-400' : 'text-gray-500'
                     }`}>
                       {CATEGORIES[category].criteria.slice(0, 3).join(' · ')}
-                    </p>
+                    </span>
                   </div>
                 </button>
               ))}
+
+              <button
+                onClick={() => handleCategorySelect('Eigene Kategorie')}
+                className={`w-full border-2 border-dashed rounded-[20px] p-6 transition-all active:scale-[0.98] flex items-center gap-4 group ${
+                  isDark
+                    ? 'bg-gray-700 hover:bg-gray-600 border-gray-600 hover:border-[#FF9357]'
+                    : 'bg-white hover:bg-gray-50 border-gray-300 hover:border-[#FF7E42]'
+                }`}
+              >
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl transition-colors ${
+                  isDark
+                    ? 'bg-gray-600 group-hover:bg-[#B85C2C]/30 text-white'
+                    : 'bg-gray-100 group-hover:bg-[#FFE4C3]/50 text-[#FF7E42]'
+                }`}>
+                  ➕
+                </div>
+                <div className="flex-1">
+                  <span className={`text-lg font-semibold ${
+                    isDark ? 'text-white' : 'text-gray-900'
+                  }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                    Eigene Kategorie
+                  </span>
+                  <p className={`text-sm ${
+                    isDark ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                    Erstelle eine Liste mit deinen eigenen Bewertungskriterien
+                  </p>
+                </div>
+              </button>
             </div>
           </div>
         )}

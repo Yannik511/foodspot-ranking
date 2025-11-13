@@ -66,7 +66,7 @@ const CATEGORIES = {
   },
   'Fast Food': {
     imageUrl: '/images/categories/fast-food.jpg',
-    criteria: ['Geschmack & Frische', 'Schnelligkeit & Service', 'Sauberkeit & Ordnung', 'Preis-Leistung', 'Markenerlebnis'],
+    criteria: ['Pommes', 'Sauberkeit & Ordnung', 'Preis / Leistung', 'Burger', 'Chicken Nuggets / Beilagen'],
     scale: DEFAULT_SCALE
   },
   Streetfood: {
@@ -138,7 +138,11 @@ const CRITERIA_ICONS = {
   'Semmel': '🥯',
   'Leberkäs-Sorte': '🥩',
   'Rand / Knusprigkeit': '🥨',
-  'Preis-Leistungs-Verhältnis': '💰'
+  'Preis-Leistungs-Verhältnis': '💰',
+  'Pommes': '🍟',
+  'Preis / Leistung': '💰',
+  'Burger': '🍔',
+  'Chicken Nuggets / Beilagen': '🍗'
 }
 
 const getCategoryScale = (category) => CATEGORIES[category]?.scale || DEFAULT_SCALE
@@ -891,7 +895,8 @@ function AddFoodspot() {
                             'Bier': '🍺',
                             'Steak': '🥩',
                             'Fast Food': '🍔',
-                            'Streetfood': '🌯'
+                          'Streetfood': '🌯',
+                          'Leberkässemmel': '🥪'
                           }
                           e.target.style.display = 'none'
                           const emoji = fallbackEmojis[category] || '🍔'

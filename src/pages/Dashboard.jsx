@@ -613,73 +613,137 @@ function Dashboard() {
             console.error('Error fetching count for shared list:', list.id, countError)
           }
 
-          // ALLE Members laden (inkl. Owner falls in list_members)
-          const { data: membersData } = await supabase
-            .from('list_members')
-            .select('user_id, role, joined_at')
-            .eq('list_id', list.id)
+          let members = []
+          let totalMembers = 0
+          let usedRpc = false
 
-          // Alle eindeutigen User-IDs sammeln (Owner + Members)
-          const allUserIds = new Set([list.user_id]) // Owner immer dabei
-          if (membersData) {
-            membersData.forEach(m => allUserIds.add(m.user_id))
-          }
+          try {
+            const { data: rpcMembers, error: rpcError } = await supabase.rpc('get_shared_list_members', { p_list_id: list.id })
+            if (!rpcError && Array.isArray(rpcMembers) && rpcMembers.length > 0) {
+              usedRpc = true
+              const uniqueMembers = new Map()
 
-          // Profile für alle User laden (über RPC-Funktion)
-          // WICHTIG: get_user_profile() liest profile_image_url aus auth.users oder user_profiles korrekt
-          const userIdsArray = Array.from(allUserIds)
-          const allProfiles = []
-          
-          for (const userId of userIdsArray) {
-            try {
-              const { data, error } = await supabase.rpc('get_user_profile', { user_id: userId })
-              if (!error && data && data.length > 0) {
-                allProfiles.push(data[0])
-              }
-            } catch (err) {
-              console.warn('Could not fetch profile for user:', userId, err)
-            }
-          }
+              rpcMembers.forEach(member => {
+                if (!member?.user_id) return
+                const username =
+                  member.username ||
+                  (member.email ? member.email.split('@')[0] : '') ||
+                  member.user_id.substring(0, 8)
 
-          // Build members array: Owner first, dann Rest
-          const members = []
-          const processedIds = new Set()
-          
-          // 1. Owner IMMER zuerst
-          const ownerProfile = allProfiles?.find(p => p.id === list.user_id)
-          if (ownerProfile) {
-            members.push({
-              user_id: ownerProfile.id,
-              role: 'owner',
-              username: ownerProfile.username,
-              profile_image_url: ownerProfile.profile_image_url
-            })
-            processedIds.add(ownerProfile.id)
-          }
-
-          // 2. Alle anderen Members (keine Duplikate)
-          if (membersData) {
-            membersData.forEach(m => {
-              if (!processedIds.has(m.user_id)) {
-                const profile = allProfiles?.find(p => p.id === m.user_id)
-                members.push({
-                  user_id: m.user_id,
-                  role: m.role,
-                  username: profile?.username,
-                  profile_image_url: profile?.profile_image_url
+                uniqueMembers.set(member.user_id, {
+                  user_id: member.user_id,
+                  role: member.role || (member.user_id === list.user_id ? 'owner' : 'viewer'),
+                  username,
+                  profile_image_url: member.profile_image_url || null
                 })
-                processedIds.add(m.user_id)
+              })
+
+              // Sicherstellen, dass Owner vorhanden ist
+              if (!uniqueMembers.has(list.user_id)) {
+                let fallbackUsername = 'Owner'
+                let fallbackAvatar = null
+                try {
+                  const { data: ownerProfileData, error: ownerProfileError } = await supabase.rpc('get_user_profile', { user_id: list.user_id })
+                  if (!ownerProfileError && ownerProfileData && ownerProfileData.length > 0) {
+                    fallbackUsername = ownerProfileData[0].username || fallbackUsername
+                    fallbackAvatar = ownerProfileData[0].profile_image_url || null
+                  }
+                } catch (ownerErr) {
+                  console.warn('get_user_profile failed for owner', list.user_id, ownerErr)
+                }
+
+                uniqueMembers.set(list.user_id, {
+                  user_id: list.user_id,
+                  role: 'owner',
+                  username: fallbackUsername,
+                  profile_image_url: fallbackAvatar
+                })
               }
-            })
+
+              const ownerEntry = uniqueMembers.get(list.user_id)
+              const otherEntries = Array.from(uniqueMembers.values()).filter(m => m.user_id !== list.user_id)
+              members = ownerEntry ? [ownerEntry, ...otherEntries] : [...otherEntries]
+              totalMembers = members.length
+
+              if (members.length > 0) {
+                upsertProfiles(
+                  members.map(m => ({
+                    id: m.user_id,
+                    username: m.username,
+                    profile_image_url: m.profile_image_url
+                  }))
+                )
+              }
+            }
+          } catch (rpcError) {
+            console.error('[Dashboard] fetchSharedLists: RPC get_shared_list_members failed', rpcError)
           }
 
-          console.log(`[Dashboard] List "${list.list_name}": ${members.length} total members`)
+          if (!usedRpc) {
+            // Fallback auf ursprüngliche Logik (Owner + list_members + user_profiles)
+            const { data: membersData } = await supabase
+              .from('list_members')
+              .select('user_id, role, joined_at')
+              .eq('list_id', list.id)
 
-          return { 
-            ...list, 
+            const allUserIds = new Set([list.user_id])
+            if (membersData) {
+              membersData.forEach(m => allUserIds.add(m.user_id))
+            }
+
+            const userIdsArray = Array.from(allUserIds)
+            const allProfiles = []
+
+            for (const userId of userIdsArray) {
+              try {
+                const { data, error } = await supabase.rpc('get_user_profile', { user_id: userId })
+                if (!error && data && data.length > 0) {
+                  allProfiles.push(data[0])
+                }
+              } catch (err) {
+                console.warn('Could not fetch profile for user:', userId, err)
+              }
+            }
+
+            const processedIds = new Set()
+            const fallbackMembers = []
+            const ownerProfile = allProfiles?.find(p => p.id === list.user_id)
+            if (ownerProfile) {
+              fallbackMembers.push({
+                user_id: ownerProfile.id,
+                role: 'owner',
+                username: ownerProfile.username,
+                profile_image_url: ownerProfile.profile_image_url
+              })
+              processedIds.add(ownerProfile.id)
+            }
+
+            if (membersData) {
+              membersData.forEach(m => {
+                if (!processedIds.has(m.user_id)) {
+                  const profile = allProfiles?.find(p => p.id === m.user_id)
+                  fallbackMembers.push({
+                    user_id: m.user_id,
+                    role: m.role,
+                    username: profile?.username,
+                    profile_image_url: profile?.profile_image_url
+                  })
+                  processedIds.add(m.user_id)
+                }
+              })
+            }
+
+            members = fallbackMembers
+            totalMembers = fallbackMembers.length
+          }
+
+          console.log(`[Dashboard] List "${list.list_name}": ${totalMembers} total members`)
+
+          return {
+            ...list,
             entryCount: count || 0,
-            members: members,
-            totalMembers: members.length
+            members,
+            totalMembers
           }
         })
       )

@@ -273,7 +273,11 @@ function CreateList() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-[#FFF2EB] to-white">
+    <div className={`min-h-screen ${
+      isDark
+        ? 'bg-gradient-to-b from-gray-900 via-gray-900 to-gray-800 text-white'
+        : 'bg-gradient-to-b from-white via-[#FFF2EB] to-white text-gray-900'
+    }`}>
       {/* Loading Overlay - Only show if submitting and not navigating */}
       {isSubmitting && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
@@ -293,17 +297,23 @@ function CreateList() {
       )}
 
       {/* Header */}
-      <header className="bg-white/70 backdrop-blur-[12px] border-b border-gray-200/30 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+      <header className={`backdrop-blur-[12px] border-b px-4 py-3 flex items-center justify-between sticky top-0 z-10 ${
+        isDark ? 'bg-gray-900/80 border-gray-800' : 'bg-white/70 border-gray-200/30'
+      }`}>
         <button
           onClick={() => navigate('/select-category')}
-          className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
+          className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
+            isDark ? 'hover:bg-gray-800 text-gray-200' : 'hover:bg-gray-100 text-gray-700'
+          }`}
         >
-          <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
 
-        <h1 className="text-lg font-bold" style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700 }}>
+        <h1 className={`text-lg font-bold ${
+          isDark ? 'text-white' : 'text-gray-900'
+        }`} style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700 }}>
           Neue Liste erstellen
           {selectedCategory && (
             <span className="ml-2 text-sm font-normal text-gray-500">
@@ -319,8 +329,12 @@ function CreateList() {
       <main className="px-4 py-6 pb-8">
         <div className="space-y-6 max-w-2xl mx-auto">
           {/* List Name */}
-          <div className="bg-white rounded-[20px] shadow-lg border border-gray-100 overflow-hidden p-6">
-            <label className="block text-sm font-semibold mb-2 text-gray-700">
+          <div className={`rounded-[20px] shadow-lg border overflow-hidden p-6 ${
+            isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
+          }`}>
+            <label className={`block text-sm font-semibold mb-2 ${
+              isDark ? 'text-gray-200' : 'text-gray-700'
+            }`}>
               Listenname <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -330,15 +344,19 @@ function CreateList() {
                 onChange={(e) => handleInputChange('list_name', e.target.value)}
                 placeholder="z. B. Beste Burger Münchens"
                 className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
-                  errors.list_name 
-                    ? 'border-red-400 focus:ring-red-200' 
+                  errors.list_name
+                    ? 'border-red-400 focus:ring-red-200'
                     : validationState.list_name === 'valid'
-                    ? 'border-green-400 focus:ring-green-200'
-                    : 'border-gray-200 focus:ring-[#FF7E42]/20 dark:focus:ring-[#FF9357]/20'
+                      ? 'border-green-400 focus:ring-green-200'
+                      : isDark
+                        ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
+                        : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
                 }`}
               />
               {validationState.list_name === 'valid' && (
-                <svg className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
+                  isDark ? 'text-green-400' : 'text-green-500'
+                }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
               )}
@@ -377,9 +395,15 @@ function CreateList() {
           </div>
 
           {/* Description */}
-          <div className="bg-white rounded-[20px] shadow-lg border border-gray-100 overflow-hidden p-6">
-            <label className="block text-sm font-semibold mb-2 text-gray-700">
-              Beschreibung <span className="text-gray-500 text-xs font-normal">(optional)</span>
+          <div className={`rounded-[20px] shadow-lg border overflow-hidden p-6 ${
+            isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
+          }`}>
+            <label className={`block text-sm font-semibold mb-2 ${
+              isDark ? 'text-gray-200' : 'text-gray-700'
+            }`}>
+              Beschreibung <span className={`text-xs font-normal ${
+                isDark ? 'text-gray-400' : 'text-gray-500'
+              }`}>(optional)</span>
             </label>
             <textarea
               value={formData.description}
@@ -387,14 +411,24 @@ function CreateList() {
               placeholder="Kurze Beschreibung deiner Liste"
               rows="3"
               maxLength="250"
-              className="w-full px-4 py-3 rounded-[14px] border border-gray-200 transition-all focus:outline-none focus:ring-2 focus:ring-[#FF7E42]/20 dark:focus:ring-[#FF9357]/20 resize-none"
+              className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 resize-none ${
+                isDark
+                  ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
+                  : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
+              }`}
             />
-            <p className="text-sm text-gray-500 mt-2 text-right">{formData.description.length}/250</p>
+            <p className={`text-sm mt-2 text-right ${
+              isDark ? 'text-gray-400' : 'text-gray-500'
+            }`}>{formData.description.length}/250</p>
           </div>
 
           {/* Cover Image */}
-          <div className="bg-white rounded-[20px] shadow-lg border border-gray-100 overflow-hidden p-6">
-            <label className="block text-sm font-semibold mb-2 text-gray-700">
+          <div className={`rounded-[20px] shadow-lg border overflow-hidden p-6 ${
+            isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
+          }`}>
+            <label className={`block text-sm font-semibold mb-2 ${
+              isDark ? 'text-gray-200' : 'text-gray-700'
+            }`}>
               Titelbild
             </label>
             
@@ -413,13 +447,33 @@ function CreateList() {
             ) : (
               <label className="block cursor-pointer">
                 <input type="file" accept="image/*" onChange={handleCoverImageChange} className="hidden" />
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-[#FF7E42] hover:bg-[#FFE4C3]/30 transition-all dark:hover:border-[#FF9357] dark:hover:bg-[#B85C2C]/20">
+                <div className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
+                  isDark
+                    ? 'border-gray-600 hover:border-[#FF9357] hover:bg-[#B85C2C]/20'
+                    : 'border-gray-300 hover:border-[#FF7E42] hover:bg-[#FFE4C3]/30'
+                }`}>
                   <div className="text-4xl mb-2">📸</div>
-                  <p className="text-gray-600 font-medium">Bild auswählen</p>
-                  <p className="text-sm text-gray-500 mt-1">PNG, JPG bis 5MB</p>
+                  <p className={`font-medium ${
+                    isDark ? 'text-gray-200' : 'text-gray-600'
+                  }`}>Bild auswählen</p>
+                  <p className={`text-sm mt-1 ${
+                    isDark ? 'text-gray-400' : 'text-gray-500'
+                  }`}>PNG, JPG bis 5MB</p>
                 </div>
               </label>
             )}
+
+            <button
+              type="button"
+              onClick={() => handleInputChange('coverImageUrl', null)}
+              className={`mt-4 w-full px-4 py-3 rounded-[14px] border transition-all ${
+                isDark
+                  ? 'border-gray-600 text-gray-200 hover:border-[#FF9357] hover:bg-[#B85C2C]/20'
+                  : 'border-gray-200 text-gray-600 hover:border-orange-300 hover:bg-orange-50'
+              }`}
+            >
+              Kein Titelbild
+            </button>
           </div>
 
           {/* Live Preview */}

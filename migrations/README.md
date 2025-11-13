@@ -4,10 +4,12 @@ Dieses Verzeichnis enthält alle Datenbank-Migrationen für die Foodspot Ranking
 
 ## Letzte Migration
 
-**043_fix_merge_foodspot_null_score.sql** - NULL Score Handling & Description Fix
-- Behebt 400 Bad Request Fehler beim Bearbeiten von Beschreibungen
-- Speichert Beschreibungen in korrekte `description` Spalte
-- Rating wird nur eingefügt wenn Score vorhanden ist
+**045_rollback_profile_visibility.sql** – Rollback des experimentellen Profile-Visibility-Features
+- Stellt die ursprüngliche Freundeslogik wieder her
+- Entfernt die zusätzliche `profile_visibility`-Spalte aus `user_profiles`
+- Setzt RLS/Policies auf den stabilen Zustand zurück
+
+> Hinweis: Die optionale RPC-Funktion `046_create_get_shared_list_members_function_up.sql` sorgt dafür, dass Editoren alle Mitglieder sehen können. Sie kann nach Bedarf via Supabase SQL Editor ausgeführt werden (Down-Datei vorhanden).
 
 Siehe `APPLY_MIGRATION_043.md` im Hauptverzeichnis für Details.
 

@@ -220,11 +220,11 @@ npm run build
 ## 📦 Aktuelle Version
 
 **Status:** Production Ready (außer Standort & Entdecken)  
-**Latest Migration:** `043_fix_merge_foodspot_null_score.sql`  
+**Latest Migration:** `045_rollback_profile_visibility.sql`  
 **Letzte Updates:**
-- ✅ Rating Display Fix (progressive highlighting)
-- ✅ Description Editing Fix (shared lists)
-- ✅ Avatar Loading Retry Logic (shared lists)
+- ✅ Shared-List Member RPC (`get_shared_list_members`) für zuverlässige Avatare
+- ✅ Neue Kategorie „Leberkässemmel“ + aktualisierte Fast-Food-Kriterien
+- ✅ Dark-Mode Styling für Erstellen/Bearbeiten von Listen vereinheitlicht
 
 ---
 

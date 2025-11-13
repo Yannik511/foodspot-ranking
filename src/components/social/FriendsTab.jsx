@@ -1160,68 +1160,124 @@ function FriendsTab() {
       // Fetch member counts and member avatars for each list
       const sharedListsWithDetails = await Promise.all(
         uniqueSharedLists.map(async (list) => {
-          // ALLE Members laden (inkl. Owner falls in list_members)
-          const { data: membersData } = await supabase
-            .from('list_members')
-            .select('user_id, role, joined_at')
-            .eq('list_id', list.id)
+          let memberProfiles = []
+          let usedRpc = false
 
-          // Alle eindeutigen User-IDs sammeln (Owner + Members)
-          const allUserIds = new Set([list.user_id]) // Owner immer dabei
-          if (membersData) {
-            membersData.forEach(m => allUserIds.add(m.user_id))
-          }
+          try {
+            const { data: rpcMembers, error: rpcError } = await supabase.rpc('get_shared_list_members', { p_list_id: list.id })
+            if (!rpcError && Array.isArray(rpcMembers) && rpcMembers.length > 0) {
+              usedRpc = true
+              const uniqueMembers = new Map()
 
-          // Profile für alle User laden
-          const { data: allProfiles } = await supabase
-            .from('user_profiles')
-            .select('id, username, profile_image_url')
-            .in('id', Array.from(allUserIds))
+              rpcMembers.forEach(member => {
+                if (!member?.user_id) return
+                const username =
+                  member.username ||
+                  (member.email ? member.email.split('@')[0] : '') ||
+                  member.user_id.substring(0, 8)
 
-          // Build member profiles array: Owner first, dann Rest
-          const memberProfiles = []
-          const processedIds = new Set()
-          
-          // 1. Owner IMMER zuerst
-          const ownerProfile = allProfiles?.find(p => p.id === list.user_id)
-          if (ownerProfile) {
-            memberProfiles.push({
-              id: ownerProfile.id,
-              username: ownerProfile.username || ownerProfile.id.substring(0, 8),
-              profileImageUrl: ownerProfile.profile_image_url,
-              role: 'owner'
-            })
-            processedIds.add(ownerProfile.id)
-          }
-
-          // 2. Alle anderen Members (keine Duplikate)
-          if (membersData) {
-            membersData.forEach(m => {
-              if (!processedIds.has(m.user_id)) {
-                const profile = allProfiles?.find(p => p.id === m.user_id)
-                memberProfiles.push({
-                  id: m.user_id,
-                  username: profile?.username || m.user_id.substring(0, 8),
-                  profileImageUrl: profile?.profile_image_url,
-                  role: m.role
+                uniqueMembers.set(member.user_id, {
+                  id: member.user_id,
+                  username,
+                  profileImageUrl: member.profile_image_url || null,
+                  role: member.role || (member.user_id === list.user_id ? 'owner' : 'viewer')
                 })
-                processedIds.add(m.user_id)
+              })
+
+              if (!uniqueMembers.has(list.user_id)) {
+                let fallbackUsername = list.user_id.substring(0, 8)
+                let fallbackAvatar = null
+                try {
+                  const { data: ownerProfileData, error: ownerProfileError } = await supabase.rpc('get_user_profile', { user_id: list.user_id })
+                  if (!ownerProfileError && ownerProfileData && ownerProfileData.length > 0) {
+                    fallbackUsername = ownerProfileData[0].username || fallbackUsername
+                    fallbackAvatar = ownerProfileData[0].profile_image_url || null
+                  }
+                } catch (ownerErr) {
+                  console.warn('[FriendsTab] get_user_profile failed for owner', list.user_id, ownerErr)
+                }
+
+                uniqueMembers.set(list.user_id, {
+                  id: list.user_id,
+                  username: fallbackUsername,
+                  profileImageUrl: fallbackAvatar,
+                  role: 'owner'
+                })
               }
-            })
+
+              const ownerEntry = uniqueMembers.get(list.user_id)
+              const otherEntries = Array.from(uniqueMembers.values()).filter(m => m.id !== list.user_id)
+              memberProfiles = ownerEntry ? [ownerEntry, ...otherEntries] : [...otherEntries]
+
+              if (memberProfiles.length > 0) {
+                upsertProfiles(memberProfiles.map(p => ({
+                  id: p.id,
+                  username: p.username,
+                  profile_image_url: p.profileImageUrl
+                })))
+              }
+            }
+          } catch (rpcError) {
+            console.error('[FriendsTab] fetchSharedLists: RPC get_shared_list_members failed', rpcError)
           }
 
-          // Update profile cache
-          if (memberProfiles.length > 0) {
-            upsertProfiles(memberProfiles.map(p => ({
-              id: p.id,
-              username: p.username,
-              profile_image_url: p.profileImageUrl
-            })))
+          if (!usedRpc) {
+            const { data: membersData } = await supabase
+              .from('list_members')
+              .select('user_id, role, joined_at')
+              .eq('list_id', list.id)
+
+            const allUserIds = new Set([list.user_id])
+            if (membersData) {
+              membersData.forEach(m => allUserIds.add(m.user_id))
+            }
+
+            const { data: allProfiles } = await supabase
+              .from('user_profiles')
+              .select('id, username, profile_image_url')
+              .in('id', Array.from(allUserIds))
+
+            const processedIds = new Set()
+            const fallbackMembers = []
+            const ownerProfile = allProfiles?.find(p => p.id === list.user_id)
+            if (ownerProfile) {
+              fallbackMembers.push({
+                id: ownerProfile.id,
+                username: ownerProfile.username || ownerProfile.id.substring(0, 8),
+                profileImageUrl: ownerProfile.profile_image_url,
+                role: 'owner'
+              })
+              processedIds.add(ownerProfile.id)
+            }
+
+            if (membersData) {
+              membersData.forEach(m => {
+                if (!processedIds.has(m.user_id)) {
+                  const profile = allProfiles?.find(p => p.id === m.user_id)
+                  fallbackMembers.push({
+                    id: m.user_id,
+                    username: profile?.username || m.user_id.substring(0, 8),
+                    profileImageUrl: profile?.profile_image_url,
+                    role: m.role
+                  })
+                  processedIds.add(m.user_id)
+                }
+              })
+            }
+
+            memberProfiles = fallbackMembers
+
+            if (memberProfiles.length > 0) {
+              upsertProfiles(memberProfiles.map(p => ({
+                id: p.id,
+                username: p.username,
+                profile_image_url: p.profileImageUrl
+              })))
+            }
           }
 
           console.log(`[FriendsTab] List "${list.list_name}": ${memberProfiles.length} total members`)
 
-          // Get foodspot count
           const { count } = await supabase
             .from('foodspots')
             .select('*', { count: 'exact', head: true })
