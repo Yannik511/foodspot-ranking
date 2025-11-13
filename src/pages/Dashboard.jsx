@@ -2965,11 +2965,11 @@ function EditSharedListModal({ list, onClose, onSave }) {
                         key={friendId}
                         className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}
                       >
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                          isDark ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700'
-                        }`}>
-                          {getUsername(friend).charAt(0).toUpperCase()}
-                        </div>
+                        <Avatar
+                          user={friend}
+                          size="sm"
+                          className="w-6 h-6"
+                        />
                         <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
                           {getUsername(friend)}
                         </span>
@@ -3037,11 +3037,11 @@ function EditSharedListModal({ list, onClose, onSave }) {
                                 : isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
                             }`}
                           >
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${
-                              isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'
-                            }`}>
-                              {displayName.charAt(0).toUpperCase()}
-                            </div>
+                            <Avatar
+                              user={friend}
+                              size="md"
+                              className="w-10 h-10"
+                            />
                             <div className="flex-1 min-w-0">
                               <p className={`font-semibold text-sm truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                 {highlightMatch(displayName, searchQuery)}
@@ -3078,11 +3078,11 @@ function EditSharedListModal({ list, onClose, onSave }) {
                   return (
                     <div key={friendId} className={`flex items-center justify-between p-2 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-50'}`}>
                       <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                          isDark ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700'
-                        }`}>
-                          {getUsername(friend).charAt(0).toUpperCase()}
-                        </div>
+                        <Avatar
+                          user={friend}
+                          size="sm"
+                          className="w-8 h-8"
+                        />
                         <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
                           {getUsername(friend)}
                         </span>
@@ -3133,11 +3133,11 @@ function EditSharedListModal({ list, onClose, onSave }) {
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${
-                          isDark ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700'
-                        }`}>
-                          {getUsername(invitation.users).charAt(0).toUpperCase()}
-                        </div>
+                        <Avatar
+                          user={invitation.users}
+                          size="md"
+                          className="w-10 h-10"
+                        />
                         <div>
                           <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
                             {getUsername(invitation.users)}
@@ -3175,17 +3175,17 @@ function EditSharedListModal({ list, onClose, onSave }) {
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${
-                          isDark ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700'
-                        }`}>
-                          {getUsername(member.users).charAt(0).toUpperCase()}
-                        </div>
+                        <Avatar
+                          user={member.users}
+                          size="md"
+                          className="w-10 h-10"
+                        />
                         <div>
                           <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
                             {getUsername(member.users)}
                           </p>
                           <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                            Beigetreten {new Date(member.joined_at).toLocaleDateString('de-DE')}
+                            {member.role === 'owner' ? 'Ersteller' : `Beigetreten ${new Date(member.joined_at).toLocaleDateString('de-DE')}`}
                           </p>
                         </div>
                       </div>
