@@ -45,3 +45,4 @@ COMMENT ON COLUMN foodspots.rating IS 'Gesamt-Rating (0.00 - 5.00)';
 
 
 
+

@@ -2079,7 +2079,8 @@ function Dashboard() {
         )}
       </main>
 
-      {listView === 'meine' && (
+      {/* FAB: Nur anzeigen wenn listView === 'meine' UND nicht im Welcome-Screen (!isEmpty) */}
+      {listView === 'meine' && !isEmpty && (
         <button
           onClick={() => {
             if (loading) return

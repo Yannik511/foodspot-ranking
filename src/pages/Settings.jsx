@@ -84,7 +84,8 @@ function Settings() {
   const [notificationsNewRatings, setNotificationsNewRatings] = useState(true)
   const [notificationsSharedLists, setNotificationsSharedLists] = useState(true)
   const [notificationsFriendRequests, setNotificationsFriendRequests] = useState(true)
-  const [profileVisibility, setProfileVisibility] = useState('private') // 'private' | 'friends'
+  const [profileVisibility, setProfileVisibility] = useState('private') // 'private' | 'friends' | 'public'
+  const [discoverVisibility, setDiscoverVisibility] = useState(false) // Entdecken-Tab Sichtbarkeit
   const [pullToRefresh, setPullToRefresh] = useState(true)
   const [autoSync, setAutoSync] = useState(true)
   const [hasChanges, setHasChanges] = useState(false)
@@ -111,7 +112,9 @@ function Settings() {
       setDisplayName(getDisplayNameFromUser())
       // Load profile visibility (default: 'private')
       const visibility = user?.user_metadata?.profile_visibility || 'private'
-      setProfileVisibility(visibility)
+      setProfileVisibility(visibility === 'public' ? 'friends' : visibility)
+      // Load discover visibility
+      setDiscoverVisibility(visibility === 'public')
     }
   }, [user])
   
@@ -155,15 +158,17 @@ function Settings() {
     const originalUsername = getUsername()
     
     const originalVisibility = user?.user_metadata?.profile_visibility || 'private'
+    const originalDiscoverVisibility = originalVisibility === 'public'
     
     const changed = 
       (displayName !== originalDisplayName && displayName.trim() !== '') ||
       (username !== originalUsername && username.trim() !== '' && !usernameError) ||
       (currentPassword !== '' && newPassword !== '' && !passwordError) ||
-      (profileVisibility !== originalVisibility)
+      (profileVisibility !== (originalVisibility === 'public' ? 'friends' : originalVisibility)) ||
+      (discoverVisibility !== originalDiscoverVisibility)
     
     setHasChanges(changed)
-  }, [displayName, username, currentPassword, newPassword, confirmPassword, usernameError, passwordError, profileVisibility, user])
+  }, [displayName, username, currentPassword, newPassword, confirmPassword, usernameError, passwordError, profileVisibility, discoverVisibility, user])
   
   const handleSave = async () => {
     if (!hasChanges || loading) return
@@ -217,8 +222,10 @@ function Settings() {
       }
       
       const originalVisibility = user?.user_metadata?.profile_visibility || 'private'
-      if (profileVisibility !== originalVisibility) {
-        metadataUpdates.profile_visibility = profileVisibility
+      // Kombiniere profileVisibility und discoverVisibility zu einem Wert
+      const newVisibility = discoverVisibility ? 'public' : profileVisibility
+      if (newVisibility !== originalVisibility) {
+        metadataUpdates.profile_visibility = newVisibility
         hasMetadataUpdate = true
       }
       
@@ -256,6 +263,20 @@ function Settings() {
             return
           }
           
+          // Auch user_profiles Tabelle updaten (für profile_visibility)
+          if (metadataUpdates.profile_visibility) {
+            await supabase
+              .from('user_profiles')
+              .update({ profile_visibility: metadataUpdates.profile_visibility })
+              .eq('id', user.id)
+          }
+          if (metadataUpdates.username) {
+            await supabase
+              .from('user_profiles')
+              .update({ username: metadataUpdates.username })
+              .eq('id', user.id)
+          }
+          
           // Then update password
           const { error: passwordUpdateError } = await supabase.auth.updateUser({
             password: newPassword
@@ -282,6 +303,20 @@ function Settings() {
             hapticFeedback.error()
             setLoading(false)
             return
+          }
+          
+          // Auch user_profiles Tabelle updaten (für profile_visibility)
+          if (metadataUpdates.profile_visibility) {
+            await supabase
+              .from('user_profiles')
+              .update({ profile_visibility: metadataUpdates.profile_visibility })
+              .eq('id', user.id)
+          }
+          if (metadataUpdates.username) {
+            await supabase
+              .from('user_profiles')
+              .update({ username: metadataUpdates.username })
+              .eq('id', user.id)
           }
         } else if (hasPasswordUpdate) {
           // Only password update
@@ -1008,6 +1043,41 @@ function Settings() {
                 <div
                   className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
                     profileVisibility === 'friends' ? 'translate-x-6' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Discover Visibility */}
+            <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex-1">
+                <p 
+                  className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
+                  style={{ fontFamily: "'Poppins', sans-serif" }}
+                >
+                  Im Entdecken-Tab sichtbar
+                </p>
+                <p 
+                  className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
+                  style={{ fontFamily: "'Inter', sans-serif" }}
+                >
+                  {discoverVisibility
+                    ? 'Deine privaten Bewertungen fließen in die Top 10 ein'
+                    : 'Deine Bewertungen sind nur für dich und deine Freunde sichtbar'}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  hapticFeedback.light()
+                  setDiscoverVisibility(!discoverVisibility)
+                }}
+                className={`relative w-12 h-6 rounded-full transition-colors ${
+                  discoverVisibility ? 'bg-[#FF7E42]' : isDark ? 'bg-gray-600' : 'bg-gray-300'
+                }`}
+              >
+                <div
+                  className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                    discoverVisibility ? 'translate-x-6' : 'translate-x-0'
                   }`}
                 />
               </button>

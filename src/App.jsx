@@ -19,6 +19,7 @@ import Social from './pages/Social'
 import FriendProfile from './pages/FriendProfile'
 import Compare from './pages/Compare'
 import Discover from './pages/Discover'
+import DiscoverDetail from './pages/DiscoverDetail'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -132,6 +133,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Discover />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/discover/:spotKey"
+            element={
+              <ProtectedRoute>
+                <DiscoverDetail />
               </ProtectedRoute>
             }
           />
