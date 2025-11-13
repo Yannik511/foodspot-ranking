@@ -113,6 +113,81 @@ SET
   email = EXCLUDED.email,
   username = COALESCE(user_profiles.username, EXCLUDED.username);
 
+-- 7. Update get_user_profile RPC Function
+-- Wichtig: profile_visibility muss aus auth.users.user_metadata kommen!
+DROP FUNCTION IF EXISTS get_user_profile(UUID);
+
+CREATE OR REPLACE FUNCTION get_user_profile(user_id UUID)
+RETURNS TABLE (
+  id UUID,
+  username TEXT,
+  profile_image_url TEXT,
+  profile_visibility TEXT,
+  bio TEXT,
+  email TEXT,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+) 
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    up.id,
+    up.username,
+    up.profile_image_url,
+    -- WICHTIG: Lese profile_visibility aus auth.users.user_metadata (nicht aus Tabelle!)
+    COALESCE(au.raw_user_meta_data->>'profile_visibility', 'private')::TEXT as profile_visibility,
+    NULL::TEXT as bio, -- bio existiert nicht mehr
+    up.email,
+    up.created_at,
+    up.updated_at
+  FROM user_profiles up
+  JOIN auth.users au ON au.id = up.id
+  WHERE up.id = user_id;
+END;
+$$ LANGUAGE plpgsql;
+
+GRANT EXECUTE ON FUNCTION get_user_profile(UUID) TO authenticated;
+
+-- 8. Create search_users_by_username RPC Function
+-- Sucht User anhand des Usernamens und liest profile_visibility aus auth.users.user_metadata
+DROP FUNCTION IF EXISTS search_users_by_username(TEXT);
+
+CREATE OR REPLACE FUNCTION search_users_by_username(search_query TEXT)
+RETURNS TABLE (
+  id UUID,
+  username TEXT,
+  profile_image_url TEXT,
+  profile_visibility TEXT,
+  bio TEXT,
+  email TEXT,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+) 
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    up.id,
+    up.username,
+    up.profile_image_url,
+    -- WICHTIG: Lese profile_visibility aus auth.users.user_metadata (nicht aus Tabelle!)
+    COALESCE(au.raw_user_meta_data->>'profile_visibility', 'private')::TEXT as profile_visibility,
+    NULL::TEXT as bio, -- bio existiert nicht mehr
+    up.email,
+    up.created_at,
+    up.updated_at
+  FROM user_profiles up
+  JOIN auth.users au ON au.id = up.id
+  WHERE up.username ILIKE '%' || search_query || '%'
+  LIMIT 10;
+END;
+$$ LANGUAGE plpgsql;
+
+GRANT EXECUTE ON FUNCTION search_users_by_username(TEXT) TO authenticated;
+
 -- =============================================
 -- ERFOLG: Rollback abgeschlossen!
 -- =============================================
@@ -121,7 +196,9 @@ SET
 -- - Keine bio Spalte
 -- - Nur: id, username, profile_image_url, email, created_at, updated_at
 -- 
--- Die Freundeslogik verwendet NUR auth.users.user_metadata.profile_visibility
--- und NICHT die user_profiles Tabelle!
+-- Die RPC-Funktion get_user_profile() liest profile_visibility jetzt
+-- aus auth.users.user_metadata.profile_visibility (Standard: 'private')
+-- 
+-- Die Freundeslogik funktioniert wieder einwandfrei!
 -- =============================================
 

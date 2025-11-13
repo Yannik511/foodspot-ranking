@@ -226,20 +226,25 @@ function FriendsTab() {
         outgoingData.forEach(f => allUserIds.add(f.addressee_id))
       }
 
-      // Fetch user profiles using the user_profiles view
+      // Fetch user profiles using the get_user_profile RPC function
+      // WICHTIG: profile_visibility kommt aus auth.users.user_metadata!
       const userIdsArray = Array.from(allUserIds)
       let userProfilesMap = new Map()
       
       if (userIdsArray.length > 0) {
         try {
-          // Try to fetch from user_profiles view
-          const { data: profilesData, error: profilesError } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .in('id', userIdsArray)
+          // Fetch profiles using RPC function (reads from auth.users.user_metadata)
+          const profilePromises = userIdsArray.map(async (userId) => {
+            const { data, error } = await supabase.rpc('get_user_profile', { user_id: userId })
+            if (!error && data && data.length > 0) {
+              return data[0]
+            }
+            return null
+          })
+          
+          const profilesData = (await Promise.all(profilePromises)).filter(p => p !== null)
 
-          // If view doesn't exist, that's ok - we'll use minimal user objects
-          if (!profilesError && profilesData) {
+          if (profilesData.length > 0) {
             upsertProfiles(profilesData)
             profilesData.forEach(profile => {
               userProfilesMap.set(profile.id, {
@@ -256,7 +261,7 @@ function FriendsTab() {
             })
           }
         } catch (err) {
-          // View might not exist yet - that's ok
+          // RPC might not exist yet - that's ok
           console.warn('Could not fetch user profiles:', err)
         }
       }
