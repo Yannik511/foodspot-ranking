@@ -26,6 +26,20 @@ function Landing() {
     return () => clearTimeout(timer)
   }, [])
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const previousBodyValue = document.body.style.getPropertyValue('--safe-area-bg-current')
+    document.body.style.setProperty('--safe-area-bg-current', 'transparent')
+
+    return () => {
+      if (previousBodyValue) {
+        document.body.style.setProperty('--safe-area-bg-current', previousBodyValue)
+      } else {
+        document.body.style.removeProperty('--safe-area-bg-current')
+      }
+    }
+  }, [])
+
   if (loading) {
     return null
   }

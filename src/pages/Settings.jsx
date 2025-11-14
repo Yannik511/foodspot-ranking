@@ -512,7 +512,7 @@ function Settings() {
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
       {/* Header */}
-      <header 
+      <header
         className={`${isDark ? 'bg-gray-800' : 'bg-white'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between sticky top-0 z-10`}
         style={{
           paddingLeft: 'clamp(16px, 4vw, 24px)',

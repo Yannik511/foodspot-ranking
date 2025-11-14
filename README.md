@@ -195,6 +195,15 @@ npm run build
 3. Environment Variables hinzufügen
 4. Deploy!
 
+### PWA & Live-Betrieb
+- `public/manifest.webmanifest` + Head-Meta-Tags erlauben „Zum Home-Bildschirm hinzufügen“ auf iOS/Android (Dark-Mode-Statusbar via `apple-mobile-web-app-status-bar-style`).
+- Aktuell **kein** Service Worker aktiv → Verhalten identisch zum normalen Web (Supabase-Auth bleibt unverändert). Optionaler SW kann später ergänzt werden.
+- Nach Deployment auf Vercel:
+  - Build: `npm run build`, Output: `dist`.
+  - Nutzer öffnen die Vercel-URL (z. B. `https://rankify.vercel.app`), loggen sich mit Supabase Auth ein und erhalten ihre eigenen privaten Datenbanken.
+  - iOS: Safari → Teilen → „Zum Home-Bildschirm“; Android: Chrome-Menü → „Installieren“.
+  - Manifest/Icon-Pfade sind relativ (`/manifest.webmanifest`, `/pwa/...`), funktionieren lokal wie auf Vercel.
+
 ### Netlify
 1. [netlify.com](https://netlify.com) → New Site
 2. GitHub Repository verbinden

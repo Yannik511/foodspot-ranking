@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- PWA: Manifest + Icons -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/pwa/icon-192.png" />
+    <!-- PWA: Theme Colors (separate for Light/Dark) -->
+    <meta name="theme-color" content="#FF7E42" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
+    <!-- iOS: Vollbild & Statusbar (wirkt nur wenn aus Homescreen gestartet) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- Android Chrome: Entfernt Browser-Chrome im Homescreen-Modus -->
+    <meta name="mobile-web-app-capable" content="yes" />
     <title>Rankify</title>
     <!-- Google Fonts - Poppins for premium look -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
