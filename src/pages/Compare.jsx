@@ -213,16 +213,14 @@ function Compare() {
   // Don't render until we have both stats or an error
   if (loading || (!myStats && !error) || (!friendStats && !error && canCompare)) {
     return (
-      <div className={`min-h-screen flex flex-col ${
-        isDark ? 'bg-gray-900' : 'bg-gray-50'
-      }`}>
+      <div className={`min-h-screen flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
         {/* Header */}
-        <header className={`border-b sticky top-0 z-20 ${
+        <header className={`header-safe border-b sticky top-0 z-20 ${
           isDark
             ? 'bg-gray-800 border-gray-700'
             : 'bg-white border-gray-200'
         }`}>
-          <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center justify-between px-4 py-2">
             <button
               onClick={() => navigate(`/friend/${friendId}`)}
               className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
@@ -308,16 +306,14 @@ function Compare() {
   // Error state
   if (error) {
     return (
-      <div className={`min-h-screen flex flex-col ${
-        isDark ? 'bg-gray-900' : 'bg-gray-50'
-      }`}>
+      <div className={`min-h-screen flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
         {/* Header */}
-        <header className={`border-b sticky top-0 z-20 ${
+        <header className={`header-safe border-b sticky top-0 z-20 ${
           isDark
             ? 'bg-gray-800 border-gray-700'
             : 'bg-white border-gray-200'
         }`}>
-          <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center justify-between px-4 py-2">
             <button
               onClick={() => navigate(`/friend/${friendId}`)}
               className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
@@ -373,16 +369,14 @@ function Compare() {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col ${
-      isDark ? 'bg-gray-900' : 'bg-gray-50'
-    }`}>
+    <div className={`min-h-screen flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
       {/* Header */}
-      <header className={`border-b sticky top-0 z-20 ${
+      <header className={`header-safe border-b sticky top-0 z-20 ${
         isDark
           ? 'bg-gray-800 border-gray-700'
           : 'bg-white border-gray-200'
       }`}>
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between px-4 py-2">
           <button
             onClick={() => navigate(`/friend/${friendId}`)}
             className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${

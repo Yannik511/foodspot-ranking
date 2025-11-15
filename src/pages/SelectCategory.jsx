@@ -89,13 +89,9 @@ function SelectCategory() {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col ${
-      isDark 
-        ? 'bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900' 
-        : 'bg-gradient-to-b from-white via-[#FFF2EB] to-white'
-    }`}>
+    <div className={`min-h-screen flex flex-col ${isDark ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
       {/* Header */}
-      <header className={`backdrop-blur-[12px] border-b px-4 py-3 flex items-center justify-between sticky top-0 z-10 ${
+      <header className={`header-safe backdrop-blur-[12px] border-b px-4 flex items-center justify-between sticky top-0 z-10 ${
         isDark
           ? 'bg-gray-800/70 border-gray-700/30'
           : 'bg-white/70 border-gray-200/30'

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
+import { scrollFieldIntoView } from '../utils/keyboard'
 
 function CreateList() {
   const { user } = useAuth()
@@ -37,6 +38,7 @@ function CreateList() {
   const [toast, setToast] = useState(null)
 
   const { isDark } = useTheme()
+  const handleFieldFocus = (event) => scrollFieldIntoView(event.currentTarget)
 
   // Auto-save to localStorage
   useEffect(() => {
@@ -208,6 +210,7 @@ function CreateList() {
 
       // Store optimistic list in sessionStorage for Dashboard to pick up
       sessionStorage.setItem('newList', JSON.stringify(optimisticList))
+      sessionStorage.setItem('scrollTargetListId', tempListId)
 
       // Clear draft
       localStorage.removeItem('createListDraft')
@@ -236,9 +239,10 @@ function CreateList() {
       if (insertError) {
         console.error('Insert error details:', insertError)
         if (insertError.code === '23505') {
-            // Remove optimistic list on duplicate error
-            sessionStorage.removeItem('newList')
-            // Real-time subscription will handle sync
+          // Remove optimistic list auf Duplikat
+          sessionStorage.removeItem('newList')
+          sessionStorage.removeItem('scrollTargetListId')
+          // Real-time subscription wird syncen
           return
         }
         throw insertError
@@ -251,6 +255,7 @@ function CreateList() {
             entryCount: 0,
           }
           sessionStorage.setItem('newList', JSON.stringify(realList))
+          sessionStorage.setItem('scrollTargetListId', realList.id)
         }
         
         // Real-time subscription will sync automatically
@@ -258,6 +263,7 @@ function CreateList() {
         console.error('Error creating list in background:', error)
         // Remove optimistic list on error
         sessionStorage.removeItem('newList')
+        sessionStorage.removeItem('scrollTargetListId')
         // Real-time subscription will handle sync
       }
     } catch (error) {
@@ -273,11 +279,7 @@ function CreateList() {
   }
 
   return (
-    <div className={`min-h-screen ${
-      isDark
-        ? 'bg-gradient-to-b from-gray-900 via-gray-900 to-gray-800 text-white'
-        : 'bg-gradient-to-b from-white via-[#FFF2EB] to-white text-gray-900'
-    }`}>
+    <div className={`min-h-screen ${isDark ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
       {/* Loading Overlay - Only show if submitting and not navigating */}
       {isSubmitting && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
@@ -297,7 +299,7 @@ function CreateList() {
       )}
 
       {/* Header */}
-      <header className={`backdrop-blur-[12px] border-b px-4 py-3 flex items-center justify-between sticky top-0 z-10 ${
+      <header className={`header-safe backdrop-blur-[12px] border-b px-4 flex items-center justify-between sticky top-0 z-10 ${
         isDark ? 'bg-gray-900/80 border-gray-800' : 'bg-white/70 border-gray-200/30'
       }`}>
         <button
@@ -352,6 +354,7 @@ function CreateList() {
                         ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
                         : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
                 }`}
+                onFocus={handleFieldFocus}
               />
               {validationState.list_name === 'valid' && (
                 <svg className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
@@ -390,6 +393,7 @@ function CreateList() {
                     ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
                     : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
               }`}
+              onFocus={handleFieldFocus}
             />
             {errors.city && <p className="mt-2 text-sm text-red-500">{errors.city}</p>}
           </div>
@@ -416,6 +420,7 @@ function CreateList() {
                   ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
                   : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
               }`}
+              onFocus={handleFieldFocus}
             />
             <p className={`text-sm mt-2 text-right ${
               isDark ? 'text-gray-400' : 'text-gray-500'

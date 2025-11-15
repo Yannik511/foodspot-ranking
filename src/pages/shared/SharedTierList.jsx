@@ -808,8 +808,8 @@ function SharedTierList() {
 
   return (
     <div className={`min-h-screen flex flex-col ${isDark ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
-      <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-[16px] border-b border-gray-200/40 dark:border-gray-800/60 sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+      <header className="header-safe bg-white/80 dark:bg-gray-900/80 backdrop-blur-[16px] border-b border-gray-200/40 dark:border-gray-800/60 sticky top-0 z-20">
+        <div className="max-w-5xl mx-auto px-4 py-2 flex items-center justify-between">
           <button
             onClick={() => navigate('/dashboard?view=geteilt')}
             className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-gray-200/40 dark:hover:bg-gray-800 transition-all"
@@ -830,14 +830,14 @@ function SharedTierList() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto px-4 py-6 space-y-12">
+      <main className="flex-1 overflow-y-auto flex flex-col" style={{ minHeight: 'calc(100vh - env(safe-area-inset-top, 0px) - 120px)' }}>
+        <div className="max-w-5xl mx-auto px-4 py-6 space-y-12 flex flex-col flex-1 w-full">
           {TIERS.map((tier) => {
             const tierSpots = foodspotsByTier[tier] || []
             const tierColor = TIER_COLORS[tier]
 
             return (
-              <section key={tier}>
+              <section key={tier} className="flex flex-col flex-1">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-4">
                     <div
@@ -871,17 +871,18 @@ function SharedTierList() {
                   )}
                 </div>
 
-                {tierSpots.length === 0 ? (
-                  <div className={`rounded-3xl border-2 border-dashed px-6 py-16 text-center ${
-                    isDark ? 'border-gray-800 bg-gray-900/60' : 'border-gray-200 bg-gray-50'
-                  }`}>
-                    <div className="text-4xl mb-3">🚧</div>
-                    <p className="text-sm text-gray-500">Hier sind noch keine Spots gelandet.</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                      {tierSpots.slice(0, 3).map((spot) => {
+                <div className="flex-1 flex flex-col">
+                  {tierSpots.length === 0 ? (
+                    <div className={`rounded-3xl border-2 border-dashed px-6 py-16 text-center flex-1 flex flex-col items-center justify-center ${
+                      isDark ? 'border-gray-800 bg-gray-900/60' : 'border-gray-200 bg-gray-50'
+                    }`}>
+                      <div className="text-4xl mb-3">🚧</div>
+                      <p className="text-sm text-gray-500">Hier sind noch keine Spots gelandet.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {tierSpots.slice(0, 3).map((spot) => {
                         const photos = spotPhotos[spot.id] || []
                         const displayPhotos = photos.slice(0, 3)
                         
@@ -999,21 +1000,22 @@ function SharedTierList() {
                       })}
                     </div>
 
-                    {/* "Alle ansehen" Button - ab 4 Spots */}
-                    {tierSpots.length >= 4 && (
-                      <button
-                        onClick={() => setShowTierModal(tier)}
-                        className={`w-full mt-4 py-3 px-4 rounded-2xl border-2 border-dashed font-semibold transition-all hover:scale-[1.01] active:scale-[0.99] ${
-                          isDark 
-                            ? 'border-gray-700 bg-gray-800/50 text-gray-300 hover:border-[#FF9357] hover:bg-[#FF9357]/10' 
-                            : 'border-gray-300 bg-gray-50 text-gray-600 hover:border-[#FF7E42] hover:bg-[#FFE4C3]/30'
-                        }`}
-                      >
-                        Alle ansehen ({tierSpots.length} Spots)
-                      </button>
-                    )}
-                  </>
-                )}
+                      {/* "Alle ansehen" Button - ab 4 Spots */}
+                      {tierSpots.length >= 4 && (
+                        <button
+                          onClick={() => setShowTierModal(tier)}
+                          className={`w-full mt-4 py-3 px-4 rounded-2xl border-2 border-dashed font-semibold transition-all hover:scale-[1.01] active:scale-[0.99] ${
+                            isDark 
+                              ? 'border-gray-700 bg-gray-800/50 text-gray-300 hover:border-[#FF9357] hover:bg-[#FF9357]/10' 
+                              : 'border-gray-300 bg-gray-50 text-gray-600 hover:border-[#FF7E42] hover:bg-[#FFE4C3]/30'
+                          }`}
+                        >
+                          Alle ansehen ({tierSpots.length} Spots)
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
               </section>
             )
           })}

@@ -192,8 +192,16 @@ BEGIN
     up.updated_at
   FROM user_profiles up
   JOIN auth.users au ON au.id = up.id
-  WHERE up.username ILIKE '%' || search_query || '%'
-  LIMIT 10;
+  WHERE (
+    search_query IS NULL
+    OR search_query = ''
+    OR up.username ILIKE search_query || '%'
+    OR up.username ILIKE '%' || search_query || '%'
+    OR up.email ILIKE search_query || '%'
+    OR up.email ILIKE '%' || search_query || '%'
+  )
+  ORDER BY up.username ASC, up.created_at DESC
+  LIMIT 20;
 END;
 $$ LANGUAGE plpgsql;
 

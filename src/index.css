@@ -69,20 +69,19 @@
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #FFF5EF; /* Light Mode Statusbar */
+    background-color: #FFFFFF;
   }
   
   body {
-    --safe-area-bg-current: #FFF5EF;
+    --safe-area-bg-current: #FFFFFF;
     @apply text-gray-900 m-0;
     font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
     min-height: 100vh;
-    background: linear-gradient(180deg, #FFFFFF 0%, #FFF5EF 35%, #FFF5EF 100%);
+    background: #FFFFFF;
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
-    background-attachment: fixed;
   }
 
   body::before {
@@ -126,6 +125,22 @@
   --safe-area-bg-current: #0f172a;
   background: #0f172a;
   color: #F8FAFC;
+}
+
+@layer components {
+  .header-safe {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+    padding-bottom: 12px;
+    min-height: calc(60px + env(safe-area-inset-top, 0px));
+  }
+
+  .pressable {
+    transition: transform 0.16s cubic-bezier(0.2, 0.65, 0.25, 1), opacity 0.15s ease;
+  }
+
+  .pressable:active {
+    transform: scale(0.97);
+  }
 }
 
 @layer utilities {

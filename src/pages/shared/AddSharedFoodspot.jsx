@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTheme } from '../../contexts/ThemeContext'
 import { supabase } from '../../services/supabase'
+import { scrollFieldIntoView } from '../../utils/keyboard'
 import {
   uploadSharedSpotPhoto,
   deleteSharedSpotPhoto,
@@ -185,6 +186,7 @@ function AddSharedFoodspot() {
   const [coverPhotoEntryId, setCoverPhotoEntryId] = useState(null)
   const photoInputRef = useRef(null)
   const photoEntriesRef = useRef([])
+  const handleFieldFocus = (event) => scrollFieldIntoView(event.currentTarget)
 
 
   useEffect(() => {
@@ -667,10 +669,10 @@ function AddSharedFoodspot() {
 
   return (
     <div className={`min-h-screen pb-28 ${
-      isDark ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'
+      isDark ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'
     }`}>
-      <header className="sticky top-0 z-10 backdrop-blur-lg bg-white/70 dark:bg-gray-900/70 border-b border-gray-200/40 dark:border-gray-800/60">
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
+      <header className="header-safe sticky top-0 z-10 backdrop-blur-lg bg-white/70 dark:bg-gray-900/70 border-b border-gray-200/40 dark:border-gray-800/60">
+        <div className="max-w-3xl mx-auto px-4 py-2 flex items-center justify-between">
           <button
             onClick={() => navigate(`/shared/tierlist/${id}`)}
             className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-gray-200/40 dark:hover:bg-gray-800 transition-all"
@@ -814,6 +816,7 @@ function AddSharedFoodspot() {
                     ? 'bg-gray-800 border-gray-700 text-white focus:ring-[#FF9357]/20'
                     : 'bg-white border-gray-200 text-gray-900 focus:ring-[#FF7E42]/30'
                 }`}
+              onFocus={handleFieldFocus}
               />
               {errors.name && <p className="mt-2 text-sm text-red-500">{errors.name}</p>}
             </div>
@@ -843,6 +846,7 @@ function AddSharedFoodspot() {
                     ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
                     : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
                     }`}
+                    onFocus={handleFieldFocus}
                   />
             </div>
 
@@ -1087,6 +1091,7 @@ function AddSharedFoodspot() {
                     ? 'bg-gray-800 border-gray-700 text-white focus:ring-[#FF9357]/20'
                     : 'bg-white border-gray-200 text-gray-900 focus:ring-[#FF7E42]/20'
                 }`}
+                onFocus={handleFieldFocus}
               />
             </div>
 
@@ -1108,6 +1113,7 @@ function AddSharedFoodspot() {
                     ? 'bg-gray-800 border-gray-700 text-white focus:ring-[#FF9357]/20'
                     : 'bg-white border-gray-200 text-gray-900 focus:ring-[#FF7E42]/20'
                 }`}
+                onFocus={handleFieldFocus}
               />
             </div>
 

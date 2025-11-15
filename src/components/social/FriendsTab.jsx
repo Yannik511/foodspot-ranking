@@ -8,6 +8,28 @@ import { hapticFeedback } from '../../utils/haptics'
 import CreateSharedList from './CreateSharedList'
 import { useProfilesStore } from '../../contexts/ProfileContext'
 
+const SectionSkeleton = ({ isDark, rows = 3 }) => (
+  <div className="p-4 space-y-3">
+    {Array.from({ length: rows }).map((_, idx) => (
+      <div
+        key={idx}
+        className={`rounded-2xl border shadow-sm p-4 animate-pulse ${
+          isDark ? 'bg-gray-800/80 border-gray-700/60' : 'bg-white border-gray-200/70'
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <div className={`w-12 h-12 rounded-full ${isDark ? 'bg-gray-700/70' : 'bg-gray-200/80'}`} />
+          <div className="flex-1 space-y-2">
+            <div className={`h-4 rounded-full ${isDark ? 'bg-gray-700/60' : 'bg-gray-200/80'}`} />
+            <div className={`h-3 rounded-full w-1/2 ${isDark ? 'bg-gray-700/40' : 'bg-gray-200/60'}`} />
+          </div>
+          <div className={`w-10 h-10 rounded-2xl ${isDark ? 'bg-gray-700/60' : 'bg-gray-200/70'}`} />
+        </div>
+      </div>
+    ))}
+  </div>
+)
+
 function FriendsTab() {
   const { user } = useAuth()
   const { isDark } = useTheme()
@@ -28,7 +50,6 @@ function FriendsTab() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [toast, setToast] = useState(null)
-  const [copied, setCopied] = useState(false)
   const [showCreateSharedList, setShowCreateSharedList] = useState(false)
   const menuOpenForFriend = useRef(null)
 
@@ -517,18 +538,6 @@ function FriendsTab() {
       setSearchResults([])
     } finally {
       setSearchLoading(false)
-    }
-  }
-
-  const handleCopyInviteLink = async () => {
-    const inviteLink = `${window.location.origin}/register?invite=${user.id}`
-    try {
-      await navigator.clipboard.writeText(inviteLink)
-      setCopied(true)
-      showToast('Einladungslink kopiert!', 'success')
-      setTimeout(() => setCopied(false), 2000)
-    } catch (error) {
-      showToast('Fehler beim Kopieren', 'error')
     }
   }
 
@@ -1380,64 +1389,42 @@ function FriendsTab() {
   // Don't show loading screen if we're just loading invitations
   if (loading && friends.length === 0 && incomingRequests.length === 0 && outgoingRequests.length === 0) {
     return (
-      <div className={`flex-1 flex items-center justify-center ${
-        isDark ? 'bg-gray-900' : 'bg-gray-50'
+      <div className={`min-h-full flex flex-col ${
+        isDark ? 'bg-gray-900' : 'bg-white'
       }`}>
-        <div className="text-center">
-          <div className="text-4xl mb-4 animate-bounce">👥</div>
-          <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>Lädt Freunde...</p>
-        </div>
+        <SectionSkeleton isDark={isDark} rows={4} />
       </div>
     )
   }
 
   return (
-    <div className={`flex-1 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <div className={`min-h-full flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
       {/* Search and Invite */}
       <div className={`p-4 border-b ${
         isDark ? 'border-gray-700' : 'border-gray-200'
       }`}>
-        <div className="flex gap-2 mb-3">
-          <div className={`flex-1 relative ${
-            isDark ? 'bg-gray-800' : 'bg-white'
-          } rounded-xl overflow-hidden`}>
-            <input
-              type="text"
-              placeholder="Freunde suchen..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full px-4 py-3 ${
-                isDark ? 'bg-gray-800 text-white placeholder-gray-400' : 'bg-white text-gray-900 placeholder-gray-500'
-              } outline-none`}
-            />
-            <svg className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
-              isDark ? 'text-gray-400' : 'text-gray-500'
-            }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <button
-            onClick={handleCopyInviteLink}
-            className={`px-4 py-3 rounded-xl font-medium transition-all active:scale-95 ${
-              copied
-                ? 'bg-green-500 text-white'
-                : isDark
-                  ? 'bg-gray-800 text-gray-200 hover:bg-gray-700'
-                  : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            {copied ? '✓' : '📋'}
-          </button>
+        <div className={`relative ${
+          isDark ? 'bg-gray-800' : 'bg-white'
+        } rounded-xl overflow-hidden`}>
+          <input
+            type="text"
+            placeholder="Freunde suchen..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={`w-full px-4 py-3 ${
+              isDark ? 'bg-gray-800 text-white placeholder-gray-400' : 'bg-white text-gray-900 placeholder-gray-500'
+            } outline-none`}
+          />
+          <svg className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
+            isDark ? 'text-gray-400' : 'text-gray-500'
+          }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
         </div>
-        {copied && (
-          <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            Einladungslink kopiert!
-          </p>
-        )}
       </div>
 
       {/* Content */}
-      <div className="pb-24">
+      <div className="pb-24 flex-1">
         {/* Search Results */}
         {searchQuery.trim().length >= 2 && (
           <div className="p-4 border-b" style={{ borderColor: isDark ? '#374151' : '#E5E7EB' }}>
@@ -1447,12 +1434,7 @@ function FriendsTab() {
               Suchergebnisse
             </h3>
             {searchLoading ? (
-              <div className={`text-center py-8 ${
-                isDark ? 'text-gray-400' : 'text-gray-500'
-              }`}>
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto"></div>
-                <p className="text-xs mt-2">Suche...</p>
-              </div>
+              <SectionSkeleton isDark={isDark} rows={2} />
             ) : searchResults.length === 0 ? (
               <div className={`text-center py-8 ${
                 isDark ? 'text-gray-400' : 'text-gray-500'
@@ -1475,8 +1457,8 @@ function FriendsTab() {
                   return (
                     <div
                       key={result.id}
-                      className={`p-4 rounded-xl ${
-                        isDark ? 'bg-gray-800' : 'bg-white'
+                      className={`p-4 rounded-xl border shadow-sm pressable ${
+                        isDark ? 'bg-gray-800 border-gray-700/70' : 'bg-white border-gray-200/70'
                       }`}
                     >
                       <div className="flex items-center gap-3 mb-3">
@@ -1531,12 +1513,7 @@ function FriendsTab() {
             )}
           </div>
           {listInvitationsLoading ? (
-            <div className={`text-center py-4 ${
-              isDark ? 'text-gray-400' : 'text-gray-500'
-            }`}>
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500 mx-auto"></div>
-              <p className="text-xs mt-2">Lädt Einladungen...</p>
-            </div>
+            <SectionSkeleton isDark={isDark} rows={2} />
           ) : listInvitations.length === 0 ? (
             <div className={`text-center py-4 ${
               isDark ? 'text-gray-400' : 'text-gray-500'
@@ -1557,8 +1534,8 @@ function FriendsTab() {
                     return (
                       <div
                         key={invitation.id}
-                        className={`p-4 rounded-xl ${
-                          isDark ? 'bg-gray-800' : 'bg-white'
+                        className={`p-4 rounded-xl border shadow-sm pressable ${
+                          isDark ? 'bg-gray-800 border-gray-700/70' : 'bg-white border-gray-200/70'
                         }`}
                       >
                         <div className="flex items-center gap-3 mb-3">
@@ -1605,8 +1582,8 @@ function FriendsTab() {
                   return (
                     <div
                       key={invitation.id}
-                      className={`p-4 rounded-xl ${
-                        isDark ? 'bg-gray-800' : 'bg-white'
+                      className={`p-4 rounded-xl border shadow-sm pressable ${
+                        isDark ? 'bg-gray-800 border-gray-700/70' : 'bg-white border-gray-200/70'
                       }`}
                     >
                       {/* List Preview */}
@@ -2101,7 +2078,7 @@ function FriendsTab() {
             hapticFeedback.light()
           }}
                 className={`w-full px-4 py-3 rounded-lg text-left transition-all active:scale-95 flex items-center gap-3 ${
-                  isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+                  isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
                 }`}
               >
                 <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2227,7 +2204,7 @@ function FriendsTab() {
               
               {/* Inviter Info */}
               <div className={`p-3 rounded-lg ${
-                isDark ? 'bg-gray-700/50' : 'bg-gray-50'
+                isDark ? 'bg-gray-700/50' : 'bg-white/80'
               }`}>
                 <p className={`text-xs mb-2 ${
                   isDark ? 'text-gray-400' : 'text-gray-500'
@@ -2244,7 +2221,7 @@ function FriendsTab() {
               
               {/* Role Info */}
               <div className={`p-3 rounded-lg ${
-                isDark ? 'bg-gray-700/50' : 'bg-gray-50'
+                isDark ? 'bg-gray-700/50' : 'bg-white/80'
               }`}>
                 <p className={`text-xs mb-2 ${
                   isDark ? 'text-gray-400' : 'text-gray-500'

@@ -510,16 +510,13 @@ function Settings() {
   // isDark is now from ThemeContext
   
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
       {/* Header */}
-      <header
-        className={`${isDark ? 'bg-gray-800' : 'bg-white'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between sticky top-0 z-10`}
+      <header 
+        className={`header-safe ${isDark ? 'bg-gray-800' : 'bg-white'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between sticky top-0 z-10`}
         style={{
           paddingLeft: 'clamp(16px, 4vw, 24px)',
-          paddingRight: 'clamp(16px, 4vw, 24px)',
-          paddingTop: `calc(clamp(12px, 3vh, 16px) + env(safe-area-inset-top))`,
-          paddingBottom: 'clamp(12px, 3vh, 16px)',
-          minHeight: `calc(60px + env(safe-area-inset-top))`,
+          paddingRight: 'clamp(16px, 4vw, 24px)'
         }}
       >
         <button

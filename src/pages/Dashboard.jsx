@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
@@ -42,6 +42,36 @@ const CATEGORY_EMOJIS = {
   'Grillgerichte': '🔥',
   'Leberkässemmel': '🥪'
 }
+
+const SkeletonListSection = ({ isDark, count = 3 }) => (
+  <div className="max-w-5xl mx-auto w-full py-6 space-y-4">
+    {Array.from({ length: count }).map((_, idx) => (
+      <div
+        key={idx}
+        className={`relative overflow-hidden rounded-2xl shadow-lg animate-pulse ${
+          isDark ? 'bg-gray-800/70 border border-gray-700/40' : 'bg-white/90 border border-gray-200/60'
+        }`}
+        style={{ height: 160 }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-40" />
+        <div className="relative h-full w-full px-6 py-5 flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className={`h-5 rounded-full ${isDark ? 'bg-gray-600/70' : 'bg-gray-200'}`} style={{ width: '75%' }} />
+            <div className={`h-4 rounded-full ${isDark ? 'bg-gray-600/50' : 'bg-gray-200/80'}`} style={{ width: '55%' }} />
+          </div>
+          <div className="flex items-center gap-3 mt-auto">
+            <div className={`w-12 h-12 rounded-2xl ${isDark ? 'bg-gray-600/40' : 'bg-gray-200/70'}`} />
+            <div className="flex-1 space-y-2">
+              <div className={`h-4 rounded-full ${isDark ? 'bg-gray-600/40' : 'bg-gray-200/80'}`} style={{ width: '60%' }} />
+              <div className={`h-3 rounded-full ${isDark ? 'bg-gray-600/30' : 'bg-gray-200/60'}`} style={{ width: '40%' }} />
+            </div>
+            <div className={`w-10 h-10 rounded-full ${isDark ? 'bg-gray-600/40' : 'bg-gray-200/70'}`} />
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+)
 
 // Hook to check for unread social notifications (including list invitations)
 const useSocialNotifications = () => {
@@ -116,6 +146,48 @@ function Dashboard() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const hasSocialNotifications = useSocialNotifications()
+
+  const fetchEntryCountMap = useCallback(async (listIds = []) => {
+    const uniqueIds = Array.from(new Set((listIds || []).filter(Boolean)))
+    if (uniqueIds.length === 0) return new Map()
+    try {
+      const { data, error } = await supabase.rpc('get_list_entry_counts', { p_list_ids: uniqueIds })
+      if (error) throw error
+      const map = new Map()
+      ;(data || []).forEach((row) => {
+        if (!row?.list_id) return
+        map.set(row.list_id, row.entry_count || 0)
+      })
+      return map
+    } catch (rpcError) {
+      console.warn('[Dashboard] get_list_entry_counts failed, falling back to per-list counts', rpcError)
+      const fallbackEntries = await Promise.all(uniqueIds.map(async (listId) => {
+        const { count, error } = await supabase
+          .from('foodspots')
+          .select('*', { count: 'exact', head: true })
+          .eq('list_id', listId)
+        if (error) {
+          console.error('[Dashboard] Fallback count error for list:', listId, error)
+          return [listId, 0]
+        }
+        return [listId, count || 0]
+      }))
+      return new Map(fallbackEntries)
+    }
+  }, [])
+
+  const attachEntryCounts = useCallback(async (listsArr = []) => {
+    if (!listsArr || listsArr.length === 0) return []
+    const ids = listsArr.map(list => list?.id).filter(Boolean)
+    if (ids.length === 0) {
+      return listsArr.map(list => ({ ...list, entryCount: 0 }))
+    }
+    const countMap = await fetchEntryCountMap(ids)
+    return listsArr.map(list => ({
+      ...list,
+      entryCount: countMap.get(list.id) ?? 0
+    }))
+  }, [fetchEntryCountMap])
   
   // Tab-View: 'meine' (private Listen) oder 'geteilt' (geteilte Listen)
   // Prüfe URL-Parameter für initialen View
@@ -183,6 +255,33 @@ function Dashboard() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(null)
   const [showEditSharedListModal, setShowEditSharedListModal] = useState(null) // stores list object
+  const listRefs = useRef(new Map())
+  const [pendingScrollId, setPendingScrollId] = useState(() => {
+    if (typeof window === 'undefined') return null
+    return sessionStorage.getItem('scrollTargetListId')
+  })
+  const rememberScrollTarget = useCallback((id) => {
+    if (typeof window === 'undefined') return
+    if (!id) {
+      if (sessionStorage.getItem('scrollTargetListId')) {
+        sessionStorage.removeItem('scrollTargetListId')
+      }
+      setPendingScrollId(null)
+      return
+    }
+    const current = sessionStorage.getItem('scrollTargetListId')
+    if (current !== id) {
+      sessionStorage.setItem('scrollTargetListId', id)
+    }
+    setPendingScrollId(id)
+  }, [])
+  const registerListRef = useCallback((id) => (node) => {
+    if (!node) {
+      listRefs.current.delete(id)
+      return
+    }
+    listRefs.current.set(id, node)
+  }, [])
   
   // Long press refs
   const longPressRefs = useRef({})
@@ -341,22 +440,8 @@ function Dashboard() {
         }
       }
 
-      // Fetch foodspot counts (ursprüngliche Logik)
-        const listsWithCounts = await Promise.all(
-        listsToShow.map(async (list) => {
-            const { count, error: countError } = await supabase
-              .from('foodspots')
-              .select('*', { count: 'exact', head: true })
-              .eq('list_id', list.id)
-
-            if (countError) {
-              console.error('Error fetching count for list:', list.id, countError)
-              return { ...list, entryCount: 0 }
-            }
-
-            return { ...list, entryCount: count || 0 }
-          })
-        )
+      // Foodspot counts via RPC (mit Fallback)
+        const listsWithCounts = await attachEntryCounts(listsToShow)
 
       // Merge with optimistic lists (ursprüngliche Logik)
         const newListData = sessionStorage.getItem('newList')
@@ -372,6 +457,7 @@ function Dashboard() {
           )
           if (!realListExists) {
             mergedLists.unshift(optimisticList)
+            rememberScrollTarget(optimisticList.id)
           }
         })
         
@@ -388,9 +474,16 @@ function Dashboard() {
               )
               if (!alreadyInList) {
                 mergedLists.unshift(newList)
+                rememberScrollTarget(newList.id)
               }
             } else {
               sessionStorage.removeItem('newList')
+              const existing = listsWithCounts.find(l => 
+                l.list_name === newList.list_name && l.city === newList.city
+              )
+              if (existing?.id) {
+                rememberScrollTarget(existing.id)
+              }
             }
           } catch (error) {
             console.error('Error parsing new list:', error)
@@ -450,6 +543,19 @@ function Dashboard() {
       }
     }
   }, [privateFilters, user])
+
+  useEffect(() => {
+    if (!pendingScrollId) return
+    const targetElement = listRefs.current.get(pendingScrollId)
+    if (targetElement) {
+      requestAnimationFrame(() => {
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+      rememberScrollTarget(null)
+    } else if (lists.length > 0) {
+      rememberScrollTarget(null)
+    }
+  }, [lists, pendingScrollId, rememberScrollTarget])
 
   // Count all visible lists for routing logic (keine zusätzlichen Supabase-Calls)
   // Optional: privateListsOverride / sharedListsOverride verwenden, um direkt mit frisch geladenen Daten zu zählen
@@ -600,18 +706,12 @@ function Dashboard() {
         return acc
       }, [])
 
-      // Fetch foodspot counts AND member data (for avatars)
+      const sharedEntryCountMap = await fetchEntryCountMap(uniqueSharedLists.map(list => list.id).filter(Boolean))
+
+      // Fetch member data (for avatars) and enrich with counts
       const sharedListsWithCounts = await Promise.all(
         uniqueSharedLists.map(async (list) => {
-          // Foodspot count
-          const { count, error: countError } = await supabase
-            .from('foodspots')
-            .select('*', { count: 'exact', head: true })
-            .eq('list_id', list.id)
-
-          if (countError) {
-            console.error('Error fetching count for shared list:', list.id, countError)
-          }
+          const entryCount = sharedEntryCountMap.get(list.id) ?? 0
 
           let members = []
           let totalMembers = 0
@@ -741,7 +841,7 @@ function Dashboard() {
 
           return {
             ...list,
-            entryCount: count || 0,
+            entryCount,
             members,
             totalMembers
           }
@@ -1417,126 +1517,125 @@ function Dashboard() {
         </svg>
       </div>
 
-      {/* Header */}
-      <header className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-[12px] border-b border-gray-200/30 dark:border-gray-700/30 flex items-center justify-between sticky top-0 z-10"
-        style={{
-          paddingLeft: 'clamp(16px, 4vw, 24px)',
-          paddingRight: 'clamp(16px, 4vw, 24px)',
-          paddingTop: `calc(clamp(12px, 3vh, 16px) + env(safe-area-inset-top))`,
-          paddingBottom: 'clamp(12px, 3vh, 16px)',
-          minHeight: `calc(60px + env(safe-area-inset-top))`,
-        }}
-      >
-        <button
-          onClick={() => {
-            hapticFeedback.light()
-            // OPTIMIERT: Sofort navigieren, keine Verzögerung
-            navigate('/account')
-          }}
-          className="flex items-center justify-center active:scale-95 transition-all"
+      {/* Top Navigation (Sticky) */}
+      <div className={`sticky top-0 z-30 shadow-sm ${
+        isDark ? 'bg-gray-900/95 backdrop-blur-xl border-b border-gray-800' : 'bg-white/95 backdrop-blur-xl border-b border-gray-200'
+      }`}>
+        <header
+          className="header-safe flex items-center justify-between"
           style={{
-            minWidth: 'clamp(40px, 3vw, 56px)',
-            minHeight: 'clamp(40px, 3vw, 56px)',
-            width: 'clamp(40px, 3vw, 56px)',
-            height: 'clamp(40px, 3vw, 56px)',
-          }}
-          aria-label="Öffne Profil"
-        >
-          <Avatar 
-            size="responsive"
-            className="w-full h-full"
-          />
-        </button>
-
-        <h1 
-          className="text-gray-900 dark:text-white flex-1 text-center px-2" 
-          style={{ 
-            fontFamily: "'Poppins', sans-serif", 
-            fontWeight: 700,
-            fontSize: 'clamp(16px, 4vw, 18px)',
-            lineHeight: '1.2',
+            paddingLeft: 'clamp(16px, 4vw, 24px)',
+            paddingRight: 'clamp(16px, 4vw, 24px)'
           }}
         >
-          {isEmpty ? 'Rankify' : `${getUsername()}s Foodspots`}
-        </h1>
-
-        <button
-          onClick={() => {
-            hapticFeedback.light()
-            // OPTIMIERT: Sofort navigieren, keine Verzögerung
-            navigate('/settings')
-          }}
-          className="flex items-center justify-center"
-          style={{
-            width: '44px',
-            height: '44px',
-            minWidth: '44px',
-            minHeight: '44px',
-          }}
-          aria-label="Öffne Einstellungen"
-        >
-          <svg 
-            className="w-7 h-7 text-gray-900 dark:text-white" 
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
+          <button
+            onClick={() => {
+              hapticFeedback.light()
+              navigate('/account')
+            }}
+            className="flex items-center justify-center active:scale-95 transition-all"
+            style={{
+              minWidth: 'clamp(40px, 3vw, 56px)',
+              minHeight: 'clamp(40px, 3vw, 56px)',
+              width: 'clamp(40px, 3vw, 56px)',
+              height: 'clamp(40px, 3vw, 56px)',
+            }}
+            aria-label="Öffne Profil"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        </button>
-      </header>
+            <Avatar 
+              size="responsive"
+              className="w-full h-full"
+            />
+          </button>
 
-      {/* Tabs: Meine Listen / Geteilte Listen - NUR anzeigen wenn nicht isEmpty */}
-      {!isEmpty && (
-        <div className={`border-b sticky top-[60px] z-10 ${
-          isDark ? 'bg-gray-800/70 border-gray-700/30' : 'bg-white/70 border-gray-200/30'
-        } backdrop-blur-[12px]`}>
-          <div className="flex">
-            <button
-              onClick={() => {
-                hapticFeedback.light()
-                setListView('meine')
-              }}
-              className={`flex-1 py-3 px-4 text-sm font-medium transition-all relative ${
-                listView === 'meine'
-                  ? isDark
-                    ? 'text-white'
-                    : 'text-gray-900'
-                  : isDark
-                    ? 'text-gray-400'
-                    : 'text-gray-500'
-              }`}
+          <h1 
+            className="text-gray-900 dark:text-white flex-1 text-center px-2" 
+            style={{ 
+              fontFamily: "'Poppins', sans-serif", 
+              fontWeight: 700,
+              fontSize: 'clamp(16px, 4vw, 18px)',
+              lineHeight: '1.2',
+            }}
+          >
+            {isEmpty ? 'Rankify' : `${getUsername()}s Foodspots`}
+          </h1>
+
+          <button
+            onClick={() => {
+              hapticFeedback.light()
+              navigate('/settings')
+            }}
+            className="flex items-center justify-center"
+            style={{
+              width: '44px',
+              height: '44px',
+              minWidth: '44px',
+              minHeight: '44px',
+            }}
+            aria-label="Öffne Einstellungen"
+          >
+            <svg 
+              className="w-7 h-7 text-gray-900 dark:text-white" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
             >
-              <span>Meine Listen</span>
-        {listView === 'meine' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]" />
-              )}
-            </button>
-            <button
-              onClick={() => {
-                hapticFeedback.light()
-                // OPTIMIERT: Tab-Wechsel ohne Fetch - Daten sind bereits geladen
-                setListView('geteilt')
-              }}
-              className={`flex-1 py-3 px-4 text-sm font-medium transition-all relative ${
-                listView === 'geteilt'
-                  ? isDark
-                    ? 'text-white'
-                    : 'text-gray-900'
-                  : isDark
-                    ? 'text-gray-400'
-                    : 'text-gray-500'
-              }`}
-            >
-              <span>Geteilte Listen</span>
-              {listView === 'geteilt' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]" />
-              )}
-            </button>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+        </header>
+
+        {/* Tabs: Meine Listen / Geteilte Listen */}
+        {!isEmpty && (
+          <div className={`border-t ${
+            isDark ? 'border-gray-800' : 'border-gray-100'
+          }`}>
+            <div className="flex">
+              <button
+                onClick={() => {
+                  hapticFeedback.light()
+                  setListView('meine')
+                }}
+                className={`flex-1 py-3 px-4 text-sm font-medium transition-all relative ${
+                  listView === 'meine'
+                    ? isDark
+                      ? 'text-white'
+                      : 'text-gray-900'
+                    : isDark
+                      ? 'text-gray-400'
+                      : 'text-gray-500'
+                }`}
+              >
+                <span>Meine Listen</span>
+                {listView === 'meine' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]" />
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  hapticFeedback.light()
+                  setListView('geteilt')
+                }}
+                className={`flex-1 py-3 px-4 text-sm font-medium transition-all relative ${
+                  listView === 'geteilt'
+                    ? isDark
+                      ? 'text-white'
+                      : 'text-gray-900'
+                    : isDark
+                      ? 'text-gray-400'
+                      : 'text-gray-500'
+                }`}
+              >
+                <span>Geteilte Listen</span>
+                {listView === 'geteilt' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]" />
+                )}
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Main Content */}
       <main className={`flex-1 overflow-y-auto px-4 py-6 relative ${isEmpty ? '' : 'pb-24'}`}>
@@ -1675,7 +1774,9 @@ function Dashboard() {
                   </div>
                 </div>
 
-                {lists.length === 0 && !loading ? (
+                {currentLoading ? (
+                  <SkeletonListSection isDark={isDark} />
+                ) : lists.length === 0 && !loading ? (
                   hasActivePrivateFilters ? (
                     <div className="flex flex-col items-center justify-center min-h-[40vh] text-center px-4">
                       <div className="text-4xl mb-4">🔍</div>
@@ -1759,6 +1860,7 @@ function Dashboard() {
                   return (
               <div
                 key={list.id}
+                ref={registerListRef(list.id)}
                 onMouseDown={() => handleLongPressStart(list.id)}
                 onMouseUp={handleLongPressEnd}
                 onMouseLeave={handleLongPressEnd}
@@ -1944,12 +2046,7 @@ function Dashboard() {
             {listView === 'geteilt' && (
           <>
             {sharedListsLoading && sharedLists.length === 0 ? (
-              <div className="flex items-center justify-center min-h-full">
-                <div className="text-center">
-                  <div className="text-4xl mb-4 animate-bounce">👥</div>
-                  <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>Lädt geteilte Listen...</p>
-                </div>
-              </div>
+              <SkeletonListSection isDark={isDark} />
             ) : sharedLists.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-full text-center px-4">
                 <div className="text-6xl mb-4">🤝</div>

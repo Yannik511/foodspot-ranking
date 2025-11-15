@@ -416,11 +416,11 @@ function FriendProfile() {
 
   // Skeleton Loader Component
   const SkeletonLoader = () => (
-    <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <header className={`border-b sticky top-0 z-20 ${
+    <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
+      <header className={`header-safe border-b sticky top-0 z-20 ${
         isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
       }`}>
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between px-4 py-2">
           <div className={`w-10 h-10 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`} />
           <div className={`h-6 w-20 rounded ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`} />
           <div className="w-10" />
@@ -456,7 +456,7 @@ function FriendProfile() {
   if (!friendUser) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${
-        isDark ? 'bg-gray-900' : 'bg-gray-50'
+        isDark ? 'bg-gray-900' : 'bg-white'
       }`}>
         <div className="text-center">
           <div className="text-4xl mb-4">❌</div>
@@ -473,16 +473,14 @@ function FriendProfile() {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col ${
-      isDark ? 'bg-gray-900' : 'bg-gray-50'
-    }`}>
+    <div className={`min-h-screen flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
       {/* Header */}
-      <header className={`border-b sticky top-0 z-20 ${
+      <header className={`header-safe border-b sticky top-0 z-20 ${
         isDark
           ? 'bg-gray-800 border-gray-700'
           : 'bg-white border-gray-200'
       }`}>
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between px-4 py-2">
           <button
             onClick={() => navigate('/social')}
             className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${

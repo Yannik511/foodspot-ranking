@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
+import { scrollFieldIntoView } from '../utils/keyboard'
 
 // Category definitions with their specific criteria
 const DEFAULT_SCALE = 5
@@ -212,6 +213,7 @@ function AddFoodspot() {
   const [sharedRedirectChecked, setSharedRedirectChecked] = useState(false)
 
   const [errors, setErrors] = useState({})
+  const handleFieldFocus = (event) => scrollFieldIntoView(event.currentTarget)
 
   // Shared list detection – redirect to shared component
   useEffect(() => {
@@ -778,7 +780,7 @@ function AddFoodspot() {
   if (loading) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${
-        isDark ? 'bg-gray-900' : 'bg-gray-50'
+        isDark ? 'bg-gray-900' : 'bg-white'
       }`}>
         <div className="text-center">
           <div className="text-4xl mb-4 animate-bounce">🍔</div>
@@ -791,7 +793,7 @@ function AddFoodspot() {
   if (!list) {
     return (
       <div className={`min-h-screen flex items-center justify-center p-4 ${
-        isDark ? 'bg-gray-900' : 'bg-gray-50'
+        isDark ? 'bg-gray-900' : 'bg-white'
       }`}>
         <div className="text-center">
           <p className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Liste nicht gefunden</p>
@@ -814,15 +816,15 @@ function AddFoodspot() {
   if ((showCategorySelection || !selectedCategory) && !isEditMode && !listCategory) {
     return (
       <div className={`min-h-screen flex flex-col ${
-        isDark ? 'bg-gray-900' : 'bg-gray-50'
+        isDark ? 'bg-gray-900' : 'bg-white'
       }`}>
         {/* Header */}
-        <header className={`border-b sticky top-0 z-20 ${
+        <header className={`header-safe border-b sticky top-0 z-20 ${
           isDark
             ? 'bg-gray-800 border-gray-700'
             : 'bg-white border-gray-200'
         }`}>
-          <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center justify-between px-4 py-2">
             <button
               onClick={() => navigate(`/tierlist/${id}`)}
               className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
@@ -972,7 +974,7 @@ function AddFoodspot() {
     // Should not happen, but fallback
     return (
       <div className={`min-h-screen flex items-center justify-center ${
-        isDark ? 'bg-gray-900' : 'bg-gray-50'
+        isDark ? 'bg-gray-900' : 'bg-white'
       }`}>
         <div className="text-center">
           <div className="text-4xl mb-4 animate-bounce">🍔</div>
@@ -985,7 +987,7 @@ function AddFoodspot() {
   // Main Form
   return (
     <div className={`min-h-screen flex flex-col ${
-      isDark ? 'bg-gray-900' : 'bg-gray-50'
+      isDark ? 'bg-gray-900' : 'bg-white'
     }`}>
       {/* Loading Overlay */}
       {isSubmitting && (
@@ -1011,12 +1013,12 @@ function AddFoodspot() {
       )}
 
       {/* Header */}
-      <header className={`border-b sticky top-0 z-20 ${
+      <header className={`header-safe border-b sticky top-0 z-20 ${
         isDark
           ? 'bg-gray-800 border-gray-700'
           : 'bg-white border-gray-200'
       }`}>
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between px-4 py-2">
           <button
             onClick={() => navigate(`/tierlist/${id}`)}
             className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
@@ -1063,6 +1065,7 @@ function AddFoodspot() {
                   ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
                   : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
               }`}
+              onFocus={handleFieldFocus}
             />
             {errors.name && <p className="mt-2 text-sm text-red-500">{errors.name}</p>}
           </div>
@@ -1093,6 +1096,7 @@ function AddFoodspot() {
                   ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
                   : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
               }`}
+              onFocus={handleFieldFocus}
             />
 
             {errors.location && <p className="mt-2 text-sm text-red-500">{errors.location}</p>}
@@ -1273,6 +1277,7 @@ function AddFoodspot() {
                   ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
                   : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
               }`}
+              onFocus={handleFieldFocus}
             />
             <p className={`text-sm mt-2 text-right ${
               isDark ? 'text-gray-400' : 'text-gray-500'
