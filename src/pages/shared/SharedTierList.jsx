@@ -71,7 +71,7 @@ function SharedTierList() {
   const canUploadPhotos = canEditSpots
   const isOwner = userRole === 'owner'
   const spotPhotosRef = useRef({})
-  const { ensureProfiles, getProfile } = useProfilesStore()
+  const { ensureProfiles, getProfile, profiles } = useProfilesStore()
   const fetchRequestIdRef = useRef(0)
   const refreshTimeoutRef = useRef(null)
 
@@ -122,9 +122,9 @@ function SharedTierList() {
     if (uniqueIds.length === 0) return {}
 
     try {
-      // Add a small delay on first load to prevent race conditions
+      // Reduziertes Delay für bessere UX (nur bei Retry länger warten)
       if (retryCount === 0) {
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise(resolve => setTimeout(resolve, 100))
       }
 
       await ensureProfiles(uniqueIds)
@@ -281,7 +281,17 @@ function SharedTierList() {
       setSpotPhotos(photosMap)
 
       if (userIdSet.size > 0) {
-        await fetchProfilesForIds(Array.from(userIdSet))
+        const userIds = Array.from(userIdSet)
+        // Sofort laden ohne Delay für bessere UX
+        await fetchProfilesForIds(userIds)
+        
+        // Prüfe ob alle Profile geladen sind, retry falls nötig
+        const missingIds = userIds.filter(id => !getProfile(id))
+        if (missingIds.length > 0) {
+          console.log('[SharedTierList] Retrying missing profiles:', missingIds.length)
+          await new Promise(resolve => setTimeout(resolve, 300))
+          await fetchProfilesForIds(missingIds, 1)
+        }
       }
 
       const sortedSpots = (spotsData || []).sort((a, b) => {
@@ -380,12 +390,37 @@ function SharedTierList() {
     }, {})
   }, [foodspots])
 
+  // Re-Fetch Profile wenn sie in renderSpotAvatars fehlen
+  useEffect(() => {
+    if (!list || !foodspots.length || !spotRatings || !spotPhotos) return
+    
+    // Sammle alle benötigten User-IDs
+    const neededUserIds = new Set()
+    foodspots.forEach(spot => {
+      if (spot.first_uploader_id) neededUserIds.add(spot.first_uploader_id)
+      const ratings = spotRatings[spot.id] || []
+      ratings.forEach(r => r.user_id && neededUserIds.add(r.user_id))
+      const photos = spotPhotos[spot.id] || []
+      photos.forEach(p => p.uploader_user_id && neededUserIds.add(p.uploader_user_id))
+      if (list.user_id) neededUserIds.add(list.user_id)
+    })
+    
+    // Prüfe welche Profile fehlen
+    const missingIds = Array.from(neededUserIds).filter(id => !getProfile(id))
+    
+    if (missingIds.length > 0) {
+      console.log('[SharedTierList] Re-fetching missing profiles:', missingIds.length)
+      fetchProfilesForIds(missingIds)
+    }
+  }, [foodspots, spotRatings, spotPhotos, list, getProfile, fetchProfilesForIds])
+
   const getProfileForUser = useCallback((userId) => {
     if (!userId) return null
     return getProfile(userId)
   }, [getProfile])
 
-  const renderSpotAvatars = (spot) => {
+  // renderSpotAvatars als useMemo, damit es neu rendert wenn Profile geladen werden
+  const renderSpotAvatars = useCallback((spot) => {
     const participants = []
 
     if (spot.first_uploader_id) {
@@ -439,6 +474,9 @@ function SharedTierList() {
           const displayInitial = profile?.username?.charAt(0)?.toUpperCase() || '🍽️'
           const avatarUrl = profile?.profile_visibility === 'private' ? null : profile?.avatar_url
 
+          // Prüfe ob Profile noch geladen wird (kein Profile vorhanden, aber userId existiert)
+          const isProfileLoading = !profile && userId
+          
           return (
             <div
               key={`${spot.id}-${userId}-${index}`}
@@ -448,17 +486,34 @@ function SharedTierList() {
               style={{ width: size, height: size }}
               title={profile?.username || 'Mitglied'}
             >
-              {avatarUrl ? (
+              {isProfileLoading ? (
+                // Loading-State: Zeige Skeleton während Profile geladen wird
+                <div className={`w-full h-full animate-pulse ${
+                  isDark ? 'bg-gray-600' : 'bg-gray-300'
+                }`} />
+              ) : avatarUrl ? (
                 <img
                   src={avatarUrl}
                   alt={profile?.username || 'Avatar'}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Fallback zu Initialen wenn Bild nicht lädt
+                    e.target.style.display = 'none'
+                    const parent = e.target.parentElement
+                    if (parent) {
+                      const fallback = parent.querySelector('.avatar-fallback')
+                      if (fallback) fallback.style.display = 'flex'
+                    }
+                  }}
                 />
-              ) : (
-                <span className="text-xs">
-                  {displayInitial}
-                </span>
-              )}
+              ) : null}
+              {/* Fallback Initialen - wird angezeigt wenn kein Avatar oder Bild-Fehler */}
+              <span 
+                className="text-xs avatar-fallback" 
+                style={{ display: (avatarUrl && !isProfileLoading) ? 'none' : 'flex' }}
+              >
+                {displayInitial}
+              </span>
             </div>
           )
         })}
@@ -473,7 +528,7 @@ function SharedTierList() {
         )}
       </div>
     )
-  }
+  }, [getProfileForUser, spotRatings, spotPhotos, list, profiles, isDark])
 
   const canDeletePhoto = useCallback((photo) => {
     if (!photo) return false

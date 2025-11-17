@@ -93,7 +93,7 @@ function CreateList() {
     return Object.keys(newErrors).length === 0
   }
 
-  // Normalisiere Stadt-Eingabe
+  // Normalisiere Stadt-Eingabe (nur beim Speichern, nicht während der Eingabe)
   const normalizeCity = (value) => {
     return value
       .trim()
@@ -103,8 +103,12 @@ function CreateList() {
 
   // Handle input change
   const handleInputChange = (field, value) => {
-    // Bei Stadt: Normalisierung anwenden
-    const normalizedValue = field === 'city' ? normalizeCity(value) : value
+    // Bei Stadt: Nur HTML-Tags entfernen während der Eingabe, trim() erst beim Speichern
+    let normalizedValue = value
+    if (field === 'city') {
+      // Während der Eingabe: Nur HTML-Tags entfernen, Leerzeichen erlauben
+      normalizedValue = value.replace(/[<>]/g, '')
+    }
     
     setFormData(prev => ({ ...prev, [field]: normalizedValue }))
     if (errors[field]) {
