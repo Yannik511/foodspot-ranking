@@ -5,6 +5,7 @@ import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
 import { scrollFieldIntoView } from '../utils/keyboard'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
+import { getCategoryTerms } from '../utils/categoryTerms'
 
 // Category definitions with their specific criteria
 const DEFAULT_SCALE = 5
@@ -591,12 +592,13 @@ function AddFoodspot() {
 
   // Handle delete
   const handleDelete = async () => {
-    if (!window.confirm('Möchtest du diesen Foodspot wirklich löschen?')) {
+    const terms = getCategoryTerms(list?.category || listCategory)
+    if (!window.confirm(`Möchtest du dieses ${terms.singular} wirklich löschen?`)) {
       return
     }
 
     // Optimistic update: Navigate immediately
-    showToast('Foodspot wird gelöscht...', 'success')
+    showToast(`${terms.singular} wird gelöscht...`, 'success')
     navigate(`/tierlist/${id}`)
 
     // Delete in background (non-blocking)
@@ -850,7 +852,7 @@ function AddFoodspot() {
             <h1 className={`text-lg font-bold ${
               isDark ? 'text-white' : 'text-gray-900'
             }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-              Neuer Foodspot
+              Neuer {getCategoryTerms(list?.category || listCategory).singular}
             </h1>
 
             <div className="w-10" />
@@ -975,7 +977,7 @@ function AddFoodspot() {
           isDark ? 'bg-gray-900' : 'bg-gray-50'
         }`}>
           <div className="text-center">
-            <p className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Foodspot konnte nicht geladen werden</p>
+            <p className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{getCategoryTerms(list?.category || listCategory).singular} konnte nicht geladen werden</p>
             <button
               onClick={() => navigate(`/tierlist/${id}`)}
               className={`px-6 py-3 text-white rounded-[14px] font-semibold ${
@@ -1025,7 +1027,7 @@ function AddFoodspot() {
             <h3 className={`text-xl font-bold mb-2 ${
               isDark ? 'text-white' : 'text-gray-900'
             }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-              {isEditMode ? 'Wird gespeichert...' : 'Foodspot wird hinzugefügt...'}
+              {isEditMode ? 'Wird gespeichert...' : `${getCategoryTerms(list?.category || listCategory).singular} wird hinzugefügt...`}
             </h3>
           </div>
         </div>
@@ -1055,7 +1057,9 @@ function AddFoodspot() {
           <h1 className={`text-lg font-bold ${
             isDark ? 'text-white' : 'text-gray-900'
           }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-            {isEditMode ? 'Foodspot bearbeiten' : 'Foodspot erstellen'}
+            {isEditMode 
+              ? getCategoryTerms(list?.category || listCategory).editAction 
+              : getCategoryTerms(list?.category || listCategory).createAction}
           </h1>
 
           <div className="w-10" />
@@ -1356,7 +1360,7 @@ function AddFoodspot() {
               }`}
               style={{ fontFamily: "'Poppins', sans-serif" }}
             >
-              💾 Foodspot speichern
+              💾 {getCategoryTerms(list?.category || listCategory).singular} speichern
             </button>
           )}
         </div>

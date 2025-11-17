@@ -1663,17 +1663,24 @@ function Dashboard() {
 
       {/* Main Content */}
       <main 
-        className={`flex-1 overflow-y-auto px-4 py-6 relative ${isEmpty ? '' : 'pb-24'}`}
+        className={`flex-1 overflow-y-auto px-4 py-6 relative`}
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
+          paddingBottom: isEmpty 
+            ? `calc(24px + env(safe-area-inset-bottom, 0px))`
+            : `calc(72px + env(safe-area-inset-bottom, 0px) + 24px)`, // Bottom Nav + FAB + spacing
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'
         }}
       >
         {/* Zero-State: Welcome Screen (keine Tabs, keine Bottom Navigation) */}
             {isEmpty ? (
-          <div className="flex flex-col items-center justify-center min-h-[calc(100vh-60px)] text-center px-4">
+          <div 
+            className="flex flex-col items-center justify-center text-center px-4"
+            style={{
+              minHeight: `calc(100vh - ${headerHeight}px - 48px)`
+            }}
+          >
             <WelcomeCard 
               username={getUsername()} 
               onCreateList={() => navigate('/select-category')} 
@@ -1721,7 +1728,7 @@ function Dashboard() {
                     {isFilterExpanded ? (
                       <div className="px-4 py-4 sm:px-5 sm:py-5 border-t border-gray-200/60 dark:border-gray-700/60">
                         <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-                          <div className="flex-1 min-w-[180px]">
+                          <div className="flex-1 min-w-0 sm:min-w-[180px]">
                             <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${
                               isDark ? 'text-gray-300' : 'text-gray-600'
                             }`}>
@@ -1810,7 +1817,7 @@ function Dashboard() {
                   <SkeletonListSection isDark={isDark} />
                 ) : lists.length === 0 && !loading ? (
                   hasActivePrivateFilters ? (
-                    <div className="flex flex-col items-center justify-center min-h-[40vh] text-center px-4">
+                    <div className="flex flex-col items-center justify-center min-h-[200px] sm:min-h-[40vh] text-center px-4">
                       <div className="text-4xl mb-4">🔍</div>
                       <h3 className={`text-xl font-semibold mb-2 ${
                         isDark ? 'text-gray-200' : 'text-gray-900'
@@ -1836,7 +1843,7 @@ function Dashboard() {
                     </div>
                   ) : (
                   // Leerzustand im Tab "Meine Listen" - nur einfacher Button, kein Welcome Card
-                  <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+                  <div className="flex flex-col items-center justify-center min-h-[300px] sm:min-h-[60vh] text-center px-4">
                     <div className="mb-6">
                       <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-4 mx-auto ${
                         isDark ? 'bg-gray-800' : 'bg-gray-100'
@@ -1996,7 +2003,7 @@ function Dashboard() {
 
                   {/* Dropdown Menu */}
                   {menuOpenForList === list.id && (
-                    <div className={`absolute top-12 right-0 rounded-xl shadow-xl overflow-hidden min-w-[140px] ${
+                    <div className={`absolute top-12 right-0 rounded-xl shadow-xl overflow-hidden min-w-fit sm:min-w-[140px] ${
                       isDark ? 'bg-gray-800' : 'bg-white'
                     }`}>
                       <button
@@ -2171,6 +2178,7 @@ function Dashboard() {
                           </svg>
                         </button>
 
+                        {/* Badge and Category - fixed position under menu button */}
                         {!list.isPending && (
                           <div className="flex flex-col items-end gap-2">
                             <div className={`px-3 py-1.5 rounded-full backdrop-blur-sm text-white text-xs font-semibold shadow-lg ${
@@ -2193,7 +2201,7 @@ function Dashboard() {
 
                         {/* Dropdown Menu */}
                         {menuOpenForList === list.id && (
-                          <div className={`absolute top-12 right-0 rounded-xl shadow-xl overflow-hidden min-w-[160px] z-50 ${
+                          <div className={`absolute top-12 right-0 rounded-xl shadow-xl overflow-hidden min-w-fit sm:min-w-[160px] z-50 ${
                             isDark ? 'bg-gray-800' : 'bg-white'
                           }`}>
                             {/* Bearbeiten - für Owner & Editor */}
@@ -2261,12 +2269,15 @@ function Dashboard() {
                       style={{ padding: `${padding}px` }}
                     >
                       <div className="flex-1 text-left">
+                        {/* Title with automatic line break - leaves minimal space for right block */}
                         <h3 
-                          className="font-bold text-white mb-1 drop-shadow-lg break-words" 
+                          className="font-bold text-white drop-shadow-lg break-words mb-1" 
                           style={{ 
                             fontFamily: "'Poppins', sans-serif",
                             fontSize: `${titleSize}px`,
-                            lineHeight: `${titleSize * 1.2}px`
+                            lineHeight: `${titleSize * 1.2}px`,
+                            maxWidth: 'calc(100% - 100px)', // Reserve minimal space for right block (menu button + badge + category)
+                            paddingRight: '4px' // Minimal gap from right block
                           }}
                         >
                           {list.list_name}
@@ -2319,10 +2330,17 @@ function Dashboard() {
                                   )}
                                 </div>
                               ))}
+                              {list.totalMembers > 4 && (
+                                <div 
+                                  className="w-7 h-7 rounded-full border-2 border-white/90 flex items-center justify-center text-xs font-semibold bg-gradient-to-br from-gray-600 to-gray-700 text-white shadow-lg"
+                                  title={`${list.totalMembers - 4} weitere Mitglieder`}
+                                >
+                                  +{list.totalMembers - 4}
+                                </div>
+                              )}
                             </div>
                             <span className="text-white/90 text-xs font-semibold drop-shadow-md">
                               👥 {list.totalMembers} {list.totalMembers === 1 ? 'Mitglied' : 'Mitglieder'}
-                              {list.totalMembers > 4 && ` +${list.totalMembers - 4}`}
                             </span>
                           </div>
                         )}
@@ -2612,7 +2630,7 @@ function EditSharedListModal({ list, onClose, onSave }) {
   const [imageRemoved, setImageRemoved] = useState(false)
   
   // Teilnehmerverwaltung
-  const [members, setMembers] = useState([])
+  const [members, setMembers] = useState([]) // Enthält alle Teilnehmer (Owner + Members) wie im Dashboard
   const [pendingInvitations, setPendingInvitations] = useState([])
   const [availableFriends, setAvailableFriends] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -2621,6 +2639,7 @@ function EditSharedListModal({ list, onClose, onSave }) {
   const [selectedFriends, setSelectedFriends] = useState([]) // IDs der ausgewählten Freunde
   const [selectedRole, setSelectedRole] = useState({}) // { userId: 'editor' | 'viewer' }
   const [inviting, setInviting] = useState(false)
+  const [showParticipants, setShowParticipants] = useState(false) // Dropdown für Teilnehmer anzeigen
   const isOwner = list.isOwner || list.user_id === user.id
   const inputRef = useRef(null)
   const suggestionsRef = useRef(null)
@@ -2797,47 +2816,146 @@ function EditSharedListModal({ list, onClose, onSave }) {
 
   const fetchParticipants = async () => {
     try {
-      // Fetch current members
-      const { data: membersData, error: membersError } = await supabase
-        .from('list_members')
-        .select(`
-          user_id,
-          role,
-          joined_at,
-          users:user_id (
-            id,
-            email,
-            user_metadata
-          )
-        `)
-        .eq('list_id', list.id)
+      // Verwende die gleiche RPC-Funktion wie im Dashboard
+      let allMembers = []
+      
+      try {
+        const { data: rpcMembers, error: rpcError } = await supabase.rpc('get_shared_list_members', { p_list_id: list.id })
+        if (!rpcError && Array.isArray(rpcMembers) && rpcMembers.length > 0) {
+          // RPC erfolgreich - verwende diese Daten
+          const uniqueMembers = new Map()
 
-      if (membersError) throw membersError
+          rpcMembers.forEach(member => {
+            if (!member?.user_id) return
+            const username =
+              member.username ||
+              (member.email ? member.email.split('@')[0] : '') ||
+              member.user_id.substring(0, 8)
 
-      // Fetch pending invitations
-      const { data: invitationsData, error: invitationsError } = await supabase
-        .from('list_invitations')
-        .select(`
-          id,
-          invitee_id,
-          role,
-          status,
-          created_at,
-          users:invitee_id (
-            id,
-            email,
-            user_metadata
-          )
-        `)
-        .eq('list_id', list.id)
-        .eq('status', 'pending')
+            uniqueMembers.set(member.user_id, {
+              user_id: member.user_id,
+              role: member.role || (member.user_id === list.user_id ? 'owner' : 'viewer'),
+              username,
+              profile_image_url: member.profile_image_url || null,
+              email: member.email || null
+            })
+          })
 
-      if (invitationsError) throw invitationsError
+          // Sicherstellen, dass Owner vorhanden ist
+          if (!uniqueMembers.has(list.user_id)) {
+            let fallbackUsername = 'Owner'
+            let fallbackAvatar = null
+            try {
+              const { data: ownerProfileData, error: ownerProfileError } = await supabase.rpc('get_user_profile', { user_id: list.user_id })
+              if (!ownerProfileError && ownerProfileData && ownerProfileData.length > 0) {
+                fallbackUsername = ownerProfileData[0].username || fallbackUsername
+                fallbackAvatar = ownerProfileData[0].profile_image_url || null
+              }
+            } catch (ownerErr) {
+              console.warn('get_user_profile failed for owner', list.user_id, ownerErr)
+            }
 
-      setMembers(membersData || [])
+            uniqueMembers.set(list.user_id, {
+              user_id: list.user_id,
+              role: 'owner',
+              username: fallbackUsername,
+              profile_image_url: fallbackAvatar,
+              email: null
+            })
+          }
+
+          const ownerEntry = uniqueMembers.get(list.user_id)
+          const otherEntries = Array.from(uniqueMembers.values()).filter(m => m.user_id !== list.user_id)
+          allMembers = ownerEntry ? [ownerEntry, ...otherEntries] : [...otherEntries]
+        }
+      } catch (rpcError) {
+        console.error('[EditSharedListModal] RPC get_shared_list_members failed', rpcError)
+      }
+
+      // Fallback: Verwende manuelle Query wenn RPC fehlschlägt
+      if (allMembers.length === 0) {
+        try {
+          const { data: membersData } = await supabase
+            .from('list_members')
+            .select('user_id, role, joined_at')
+            .eq('list_id', list.id)
+
+          const allUserIds = new Set([list.user_id])
+          if (membersData) {
+            membersData.forEach(m => allUserIds.add(m.user_id))
+          }
+
+          const userIdsArray = Array.from(allUserIds)
+          const allProfiles = []
+
+          for (const userId of userIdsArray) {
+            try {
+              const { data, error } = await supabase.rpc('get_user_profile', { user_id: userId })
+              if (!error && data && data.length > 0) {
+                allProfiles.push(data[0])
+              }
+            } catch (err) {
+              console.warn('Could not fetch profile for user:', userId, err)
+            }
+          }
+
+          const processedIds = new Set()
+          const ownerProfile = allProfiles?.find(p => p.id === list.user_id)
+          if (ownerProfile) {
+            allMembers.push({
+              user_id: ownerProfile.id,
+              role: 'owner',
+              username: ownerProfile.username,
+              profile_image_url: ownerProfile.profile_image_url,
+              email: ownerProfile.email
+            })
+            processedIds.add(ownerProfile.id)
+          }
+
+          if (membersData) {
+            membersData.forEach(m => {
+              if (!processedIds.has(m.user_id)) {
+                const profile = allProfiles?.find(p => p.id === m.user_id)
+                allMembers.push({
+                  user_id: m.user_id,
+                  role: m.role,
+                  username: profile?.username,
+                  profile_image_url: profile?.profile_image_url,
+                  email: profile?.email
+                })
+                processedIds.add(m.user_id)
+              }
+            })
+          }
+        } catch (fallbackError) {
+          console.error('Fallback query failed:', fallbackError)
+        }
+      }
+
+      // Fetch pending invitations (separat, damit Fehler nicht Members-Laden blockiert)
+      let invitationsData = []
+      try {
+        const { data, error } = await supabase
+          .from('list_invitations')
+          .select('id, invitee_id, role, status, created_at')
+          .eq('list_id', list.id)
+          .eq('status', 'pending')
+        
+        if (!error && data) {
+          invitationsData = data
+        }
+      } catch (invError) {
+        console.warn('Error fetching invitations (non-critical):', invError)
+      }
+
+      // Speichere alle Members (inkl. Owner) in einem Format für die Anzeige
+      setMembers(allMembers || [])
       setPendingInvitations(invitationsData || [])
     } catch (error) {
       console.error('Error fetching participants:', error)
+      // Auch bei Fehler: Versuche zumindest Members zu setzen falls vorhanden
+      setMembers([])
+      setPendingInvitations([])
     }
   }
 
@@ -2962,6 +3080,7 @@ function EditSharedListModal({ list, onClose, onSave }) {
   const isFriendUnavailable = (friendId) => {
     const existingMemberIds = members.map(m => m.user_id)
     const pendingInviteeIds = pendingInvitations.map(inv => inv.invitee_id)
+    // Owner ist immer "unavailable" da er bereits in der Liste ist
     return existingMemberIds.includes(friendId) || pendingInviteeIds.includes(friendId) || friendId === list.user_id
   }
 
@@ -3087,7 +3206,7 @@ function EditSharedListModal({ list, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden ${
+      <div className={`rounded-3xl shadow-2xl max-w-2xl w-full max-h-[calc(100vh-120px)] flex flex-col overflow-hidden ${
         isDark ? 'bg-gray-800' : 'bg-white'
       }`}>
         {/* Header */}
@@ -3268,6 +3387,101 @@ function EditSharedListModal({ list, onClose, onSave }) {
               </div>
             )}
 
+            {/* Teilnehmer anzeigen */}
+            <div className="mb-4">
+              <button
+                onClick={() => setShowParticipants(!showParticipants)}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+                  isDark 
+                    ? 'bg-gray-700 hover:bg-gray-600' 
+                    : 'bg-gray-100 hover:bg-gray-200'
+                }`}
+              >
+                <span className={`text-sm font-semibold ${
+                  isDark ? 'text-white' : 'text-gray-900'
+                }`}>
+                  👥 Teilnehmer anzeigen
+                </span>
+                <svg 
+                  className={`w-5 h-5 transition-transform ${isDark ? 'text-gray-300' : 'text-gray-600'} ${
+                    showParticipants ? 'rotate-180' : ''
+                  }`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* Teilnehmer Liste */}
+              {showParticipants && (
+                <div className={`mt-2 rounded-xl border overflow-hidden ${
+                  isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                }`}>
+                  <div className="max-h-64 overflow-y-auto">
+                    {/* Alle Teilnehmer anzeigen - gleiche Datenquelle wie Dashboard */}
+                    {(() => {
+                      if (!members || members.length === 0) {
+                        return (
+                          <div className={`px-4 py-3 text-sm text-center ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                            Noch keine Teilnehmer
+                          </div>
+                        )
+                      }
+                      
+                      // Members sind bereits sortiert: Owner zuerst, dann andere
+                      return members.map((member, index) => {
+                        const isOwner = member.role === 'owner' || member.user_id === list.user_id
+                        const username = member.username || 
+                                       member.email?.split('@')[0] || 
+                                       'Unbekannt'
+                        
+                        return (
+                          <div 
+                            key={member.user_id}
+                            className={`px-4 py-3 flex items-center gap-3 ${
+                              index < members.length - 1 
+                                ? `border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`
+                                : ''
+                            }`}
+                          >
+                            {/* Avatar */}
+                            {member.profile_image_url ? (
+                              <img 
+                                src={member.profile_image_url} 
+                                alt={username}
+                                className="w-10 h-10 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${
+                                isOwner
+                                  ? (isDark ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white')
+                                  : (isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700')
+                              }`}>
+                                {username.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            
+                            <div className="flex-1 min-w-0">
+                              <p className={`font-semibold text-sm truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                {username}
+                              </p>
+                              <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {isOwner 
+                                  ? 'Owner' 
+                                  : member.role === 'editor' ? 'Editor' : 'Viewer'}
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      })
+                    })()}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Search & Invite */}
             <div className="mb-4">
               <label className={`block text-sm font-semibold mb-2 ${
@@ -3432,65 +3646,6 @@ function EditSharedListModal({ list, onClose, onSave }) {
                       }`}>
                         Ausstehend
                       </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Current Members */}
-            {members.length > 0 && (
-              <div>
-                <h4 className={`text-sm font-semibold mb-2 ${
-                  isDark ? 'text-gray-300' : 'text-gray-600'
-                }`}>
-                  Aktuelle Mitglieder
-                </h4>
-                <div className="space-y-2">
-                  {members.map((member) => (
-                    <div
-                      key={member.user_id}
-                      className={`flex items-center justify-between px-4 py-3 rounded-lg ${
-                        isDark ? 'bg-gray-700/50' : 'bg-gray-50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${
-                          isDark ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700'
-                        }`}>
-                          {getUsername(member.users).charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                            {getUsername(member.users)}
-                          </p>
-                          <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                            Beigetreten {new Date(member.joined_at).toLocaleDateString('de-DE')}
-                          </p>
-                        </div>
-                      </div>
-                      {isOwner ? (
-                        <select
-                          value={member.role}
-                          onChange={(e) => handleRoleChange(member.user_id, e.target.value)}
-                          className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${
-                            isDark 
-                              ? 'bg-gray-700 border-gray-600 text-gray-200' 
-                              : 'bg-white border-gray-200 text-gray-700'
-                          }`}
-                        >
-                          <option value="editor">Editor</option>
-                          <option value="viewer">Viewer</option>
-                        </select>
-                      ) : (
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          member.role === 'editor'
-                            ? isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'
-                            : isDark ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-600'
-                        }`}>
-                          {member.role === 'editor' ? 'Editor' : 'Viewer'}
-                        </span>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -3678,7 +3833,7 @@ function EditListModal({ list, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden ${
+      <div className={`rounded-3xl shadow-2xl max-w-2xl w-full max-h-[calc(100vh-120px)] flex flex-col overflow-hidden ${
         isDark ? 'bg-gray-800' : 'bg-white'
       }`}>
         {/* Header */}

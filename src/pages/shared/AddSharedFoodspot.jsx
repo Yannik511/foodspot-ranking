@@ -11,6 +11,7 @@ import {
   SUPPORTED_IMAGE_TYPES,
   MAX_SPOT_PHOTOS
 } from '../../services/sharedPhotos'
+import { getCategoryTerms } from '../../utils/categoryTerms'
 
 const DEFAULT_SCALE = 5
 
@@ -367,11 +368,26 @@ function AddSharedFoodspot() {
 
 
   const handleDelete = async () => {
-    if (!spotId || !canEdit) {
+    if (!spotId || !existingSpot) {
       showToast('Keine Berechtigung für diese Aktion', 'error')
       return
     }
-    if (!window.confirm('Möchtest du diesen Foodspot wirklich löschen?')) {
+
+    // Berechtigungsprüfung:
+    // - Owner kann alle Spots löschen
+    // - Editor kann nur eigene Spots löschen (die er selbst erstellt hat)
+    const isOwner = userRole === 'owner'
+    const isOwnSpot = existingSpot.user_id === user.id
+    const canDelete = isOwner || (userRole === 'editor' && isOwnSpot)
+
+    if (!canDelete) {
+      const terms = getCategoryTerms(list?.category || listCategory)
+      showToast(`Keine Berechtigung: Du kannst nur eigene ${terms.plural} löschen`, 'error')
+      return
+    }
+
+    const terms = getCategoryTerms(list?.category || listCategory)
+    if (!window.confirm(`Möchtest du dieses ${terms.singular} wirklich löschen?`)) {
       return
     }
 
@@ -385,11 +401,13 @@ function AddSharedFoodspot() {
 
       if (error) throw error
 
-      showToast('Foodspot gelöscht', 'success')
+      const terms = getCategoryTerms(list?.category || listCategory)
+      showToast(`${terms.singular} gelöscht`, 'success')
       navigate(`/shared/tierlist/${id}`)
     } catch (error) {
       console.error('Error deleting shared foodspot:', error)
-      showToast(error?.message || 'Foodspot konnte nicht gelöscht werden.', 'error')
+      const terms = getCategoryTerms(list?.category || listCategory)
+      showToast(error?.message || `${terms.singular} konnte nicht gelöscht werden.`, 'error')
     } finally {
       setIsSubmitting(false)
     }
@@ -582,7 +600,8 @@ function AddSharedFoodspot() {
       setPhotoEntries([])
       setCoverPhotoEntryId(null)
 
-      showToast(isEditMode ? 'Foodspot aktualisiert' : 'Foodspot hinzugefügt', 'success')
+      const terms = getCategoryTerms(list?.category || listCategory)
+      showToast(isEditMode ? `${terms.singular} aktualisiert` : `${terms.singular} hinzugefügt`, 'success')
       navigate(`/shared/tierlist/${id}`)
     } catch (error) {
       console.error('Error merging shared foodspot:', error)
@@ -609,14 +628,44 @@ function AddSharedFoodspot() {
   }
 
   const handleRemoveRating = async () => {
-    if (!existingSpot) return
+    if (!existingSpot || !user) return
+    
     setIsSubmitting(true)
     try {
-      const { error } = await supabase.rpc('delete_foodspot_rating', {
-        p_foodspot_id: existingSpot.id
-      })
-      if (error) throw error
-      showToast('Bewertung entfernt', 'success')
+      // 1. Prüfe, wie viele Bewertungen es insgesamt gibt
+      const { data: allRatings, error: countError } = await supabase
+        .from('foodspot_ratings')
+        .select('id, user_id')
+        .eq('foodspot_id', existingSpot.id)
+      
+      if (countError) throw countError
+      
+      const totalRatings = allRatings?.length || 0
+      const hasOnlyMyRating = totalRatings === 1 && allRatings[0]?.user_id === user.id
+      
+      // 2. Lösche meine eigene Bewertung
+      const { error: deleteError } = await supabase
+        .from('foodspot_ratings')
+        .delete()
+        .eq('foodspot_id', existingSpot.id)
+        .eq('user_id', user.id)
+      
+      if (deleteError) throw deleteError
+      
+      // 3. Wenn nur meine Bewertung vorhanden war, lösche den Spot komplett
+      if (hasOnlyMyRating) {
+        const { error: spotDeleteError } = await supabase
+          .from('foodspots')
+          .delete()
+          .eq('id', existingSpot.id)
+        
+        if (spotDeleteError) throw spotDeleteError
+        showToast('Bewertung und Spot entfernt', 'success')
+      } else {
+        // Die aggregierte Bewertung wird automatisch durch den Trigger neu berechnet
+        showToast('Bewertung entfernt', 'success')
+      }
+      
       navigate(`/shared/tierlist/${id}`)
     } catch (error) {
       console.error('Error removing rating:', error)
@@ -1152,19 +1201,28 @@ function AddSharedFoodspot() {
 
             {/* Submit */}
             <div className="flex flex-col sm:flex-row gap-3">
-              {isEditMode && userRole === 'owner' && (
-                <button
-                  onClick={handleDelete}
-                  disabled={isSubmitting}
-                  className={`flex-1 py-4 rounded-[18px] font-semibold text-base shadow-lg transition-all ${
-                    isDark
-                      ? 'bg-red-600 hover:bg-red-700 text-white'
-                      : 'bg-red-500 hover:bg-red-600 text-white'
-                  } disabled:opacity-60`}
-                >
-                  Löschen
-                </button>
-              )}
+              {isEditMode && existingSpot && (() => {
+                // Lösch-Button anzeigen:
+                // - Owner: immer (kann alle Spots löschen)
+                // - Editor: nur wenn er den Spot selbst erstellt hat
+                const isOwner = userRole === 'owner'
+                const isOwnSpot = existingSpot.user_id === user.id
+                const showDeleteButton = isOwner || (userRole === 'editor' && isOwnSpot)
+                
+                return showDeleteButton ? (
+                  <button
+                    onClick={handleDelete}
+                    disabled={isSubmitting}
+                    className={`flex-1 py-4 rounded-[18px] font-semibold text-base shadow-lg transition-all ${
+                      isDark
+                        ? 'bg-red-600 hover:bg-red-700 text-white'
+                        : 'bg-red-500 hover:bg-red-600 text-white'
+                    } disabled:opacity-60`}
+                  >
+                    Löschen
+                  </button>
+                ) : null
+              })()}
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}

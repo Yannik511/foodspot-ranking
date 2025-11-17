@@ -1424,7 +1424,12 @@ function FriendsTab() {
       </div>
 
       {/* Content */}
-      <div className="pb-24 flex-1">
+      <div 
+        className="flex-1"
+        style={{
+          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`
+        }}
+      >
         {/* Search Results */}
         {searchQuery.trim().length >= 2 && (
           <div className="p-4 border-b" style={{ borderColor: isDark ? '#374151' : '#E5E7EB' }}>
@@ -1959,7 +1964,20 @@ function FriendsTab() {
                 return (
                   <button
                     key={friendship.id}
-                    onClick={() => navigate(`/friend/${friend.id}`)}
+                    onClick={() => {
+                      // Speichere aktuelle Route und Scrollposition, bevor wir navigieren
+                      sessionStorage.setItem('social_previous_path', window.location.pathname)
+                      
+                      // Finde den Scroll-Container im Social-Component
+                      // Der Container ist im Parent-Component (Social.jsx), daher müssen wir ihn über das DOM finden
+                      const socialMain = document.querySelector('main[class*="overflow-y-auto"]')
+                      if (socialMain) {
+                        const scrollPosition = socialMain.scrollTop
+                        sessionStorage.setItem('social_scroll_position', scrollPosition.toString())
+                      }
+                      
+                      navigate(`/friend/${friend.id}`)
+                    }}
                     className={`w-full p-4 rounded-xl text-left transition-all active:scale-[0.98] ${
                       isDark ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-50'
                     }`}

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
+import { getCategoryTerms } from '../utils/categoryTerms'
 
 const TIER_COLORS = {
   S: { 
@@ -539,7 +540,7 @@ function TierList() {
             }`} 
             style={{ fontFamily: "'Poppins', sans-serif" }}
           >
-            Foodspots in {list.city}
+            {getCategoryTerms(list?.category).headerPrefix} in {list.city}
           </h1>
 
           <div className="relative" ref={menuRef}>
@@ -1000,7 +1001,7 @@ function TierList() {
       {showTierModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div 
-            className={`rounded-3xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col ${
+            className={`rounded-3xl shadow-2xl max-w-2xl w-full max-h-[calc(100vh-120px)] flex flex-col ${
               isDark ? 'bg-gray-800' : 'bg-white'
             }`}
             style={{ boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)' }}
@@ -1025,7 +1026,7 @@ function TierList() {
                   <p className={`text-sm ${
                     isDark ? 'text-gray-400' : 'text-gray-500'
                   }`}>
-                    {foodspotsByTier[showTierModal]?.length || 0} Foodspots
+                    {foodspotsByTier[showTierModal]?.length || 0} {getCategoryTerms(list?.category).plural}
                   </p>
                 </div>
               </div>

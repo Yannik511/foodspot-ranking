@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import FriendsTab from '../components/social/FriendsTab'
@@ -10,8 +10,10 @@ function Social() {
   const { user } = useAuth()
   const { isDark } = useTheme()
   const navigate = useNavigate()
+  const location = useLocation()
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false)
   const { headerRef, headerHeight } = useHeaderHeight()
+  const scrollContainerRef = useRef(null)
 
   // Check for unread notifications
   useEffect(() => {
@@ -95,6 +97,90 @@ function Social() {
     }
   }, [user])
 
+  // Wiederherstellen der Scrollposition beim Zurückkommen vom Profil
+  useEffect(() => {
+    // Nur ausführen, wenn wir auf /social sind (nicht beim ersten Mount)
+    if (location.pathname !== '/social') return
+
+    // Prüfe, ob wir vom Friend-Profile zurückkommen
+    const previousPath = sessionStorage.getItem('social_previous_path')
+    const savedScrollPosition = sessionStorage.getItem('social_scroll_position')
+    
+    if (previousPath?.startsWith('/friend/') && savedScrollPosition) {
+      const targetScroll = parseInt(savedScrollPosition, 10)
+      let attempts = 0
+      const maxAttempts = 10
+      
+      // Warte, bis der Content gerendert ist, bevor wir scrollen
+      const restoreScroll = () => {
+        const container = scrollContainerRef.current
+        if (!container) {
+          attempts++
+          return attempts < maxAttempts
+        }
+        
+        // Prüfe, ob der Container bereits Content hat (FriendsTab ist gerendert)
+        // Mindestens 100px scrollHeight bedeutet, dass Content vorhanden ist
+        const hasContent = container.scrollHeight > 100
+        
+        if (hasContent) {
+          // Setze Scrollposition
+          container.scrollTop = targetScroll
+          
+          // Cleanup: Entferne gespeicherte Position nach erfolgreicher Wiederherstellung
+          sessionStorage.removeItem('social_scroll_position')
+          sessionStorage.removeItem('social_previous_path')
+          return true
+        }
+        
+        attempts++
+        return attempts < maxAttempts
+      }
+
+      // Versuche sofort
+      if (!restoreScroll()) {
+        // Falls nicht erfolgreich, versuche mit Intervallen
+        const intervalId = setInterval(() => {
+          if (restoreScroll() === true || attempts >= maxAttempts) {
+            clearInterval(intervalId)
+            // Final cleanup falls max attempts erreicht
+            if (attempts >= maxAttempts) {
+              sessionStorage.removeItem('social_scroll_position')
+              sessionStorage.removeItem('social_previous_path')
+            }
+          }
+        }, 50)
+        
+        // Timeout nach 1 Sekunde als Fallback
+        setTimeout(() => {
+          clearInterval(intervalId)
+          const container = scrollContainerRef.current
+          if (container) {
+            container.scrollTop = targetScroll
+          }
+          sessionStorage.removeItem('social_scroll_position')
+          sessionStorage.removeItem('social_previous_path')
+        }, 1000)
+      }
+    }
+  }, [location.pathname])
+
+  // Scrollposition speichern, bevor man zum Profil navigiert
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const handleScroll = () => {
+      // Speichere Scrollposition in sessionStorage
+      sessionStorage.setItem('social_scroll_position', container.scrollTop.toString())
+    }
+
+    container.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+    }
+  }, [])
+
   return (
     <div className={`h-full flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'} relative overflow-hidden`}>
       {/* Header */}
@@ -134,6 +220,7 @@ function Social() {
 
       {/* Content */}
       <main 
+        ref={scrollContainerRef}
         className={`flex-1 overflow-y-auto ${isDark ? 'bg-gray-900' : 'bg-white'}`}
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),

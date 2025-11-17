@@ -563,7 +563,7 @@ function Settings() {
         className="flex-1 overflow-y-auto"
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(80px + env(safe-area-inset-bottom, 0px) + 24px)`,
+          paddingBottom: `calc(48px + env(safe-area-inset-bottom, 0px) + 24px)`, // Bottom Bar (~48px) + spacing
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'
         }}

@@ -423,30 +423,25 @@ function SharedTierList() {
 
   // renderSpotAvatars als useMemo, damit es neu rendert wenn Profile geladen werden
   const renderSpotAvatars = useCallback((spot) => {
-    const participants = []
-
-    if (spot.first_uploader_id) {
-      participants.push(spot.first_uploader_id)
-    }
-
+    // WICHTIG: Nur Personen anzeigen, die tatsächlich bewertet haben
     const ratingEntries = spotRatings[spot.id] || []
+    const participants = []
+    
+    // Sammle nur User-IDs aus den tatsächlichen Bewertungen
     ratingEntries.forEach(rating => {
       if (rating.user_id && !participants.includes(rating.user_id)) {
         participants.push(rating.user_id)
       }
     })
 
-    const photoEntries = spotPhotos[spot.id] || []
-    photoEntries.forEach(photo => {
-      if (photo.uploader_user_id && !participants.includes(photo.uploader_user_id)) {
-        participants.push(photo.uploader_user_id)
-      }
-    })
+    // Keine Teilnehmer = keine Avatare anzeigen
+    if (participants.length === 0) {
+      return null
+    }
 
     const ownerId = list?.user_id || null
-    if (ownerId && !participants.includes(ownerId)) {
-      participants.push(ownerId)
-    }
+    
+    // Sortiere: Owner zuerst (wenn er bewertet hat), dann alphabetisch
     const uniqueParticipants = Array.from(new Set(participants))
     uniqueParticipants.sort((a, b) => {
       if (ownerId) {
@@ -460,19 +455,16 @@ function SharedTierList() {
       return nameA.localeCompare(nameB)
     })
 
-    const displayUsers = uniqueParticipants.slice(0, 5)
+    // Maximal 6 Avatare anzeigen
+    const displayUsers = uniqueParticipants.slice(0, 6)
     const extraCount = uniqueParticipants.length - displayUsers.length
-
-    if (displayUsers.length === 0) {
-      return null
-    }
 
     return (
       <div className="flex items-center gap-1 mt-1.5">
         {displayUsers.map((userId, index) => {
           const profile = getProfileForUser(userId)
           const size = index === 0 ? 26 : 20
-          const isOwner = ownerId ? userId === ownerId && index === 0 : index === 0
+          const isOwner = ownerId ? userId === ownerId : false
           const displayInitial = profile?.username?.charAt(0)?.toUpperCase() || '🍽️'
           const avatarUrl = profile?.profile_visibility === 'private' ? null : profile?.avatar_url
 
@@ -530,7 +522,7 @@ function SharedTierList() {
         )}
       </div>
     )
-  }, [getProfileForUser, spotRatings, spotPhotos, list, profiles, isDark])
+  }, [getProfileForUser, spotRatings, list, profiles, isDark, getProfile])
 
   const canDeletePhoto = useCallback((photo) => {
     if (!photo) return false
@@ -1097,7 +1089,7 @@ function SharedTierList() {
       {showTierModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div 
-            className={`rounded-3xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col ${
+            className={`rounded-3xl shadow-2xl max-w-3xl w-full max-h-[calc(100vh-120px)] flex flex-col ${
               isDark ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'
             }`}
           >
@@ -1152,7 +1144,7 @@ function SharedTierList() {
             onClick={closeSpotDetails}
           />
           <div
-            className={`relative rounded-t-[32px] shadow-2xl max-h-[85vh] w-full max-w-3xl mx-auto overflow-hidden ${
+            className={`relative rounded-t-[32px] shadow-2xl max-h-[calc(100vh-120px)] w-full max-w-3xl mx-auto overflow-hidden ${
               isDark ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'
             }`}
           >
