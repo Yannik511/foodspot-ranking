@@ -283,10 +283,6 @@ function Dashboard() {
     listRefs.current.set(id, node)
   }, [])
   
-  // Long press refs
-  const longPressRefs = useRef({})
-  const longPressTimer = useRef(null)
-  
   // Track pending deletions to prevent race conditions with real-time sync
   const pendingDeletionsRef = useRef(new Set())
   
@@ -1222,21 +1218,6 @@ function Dashboard() {
     }
   }
 
-  // Long press handlers with improved haptics
-  const handleLongPressStart = (listId) => {
-    longPressTimer.current = setTimeout(() => {
-      openEditModal(listId)
-      hapticFeedback.medium()
-    }, 600)
-  }
-
-  const handleLongPressEnd = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current)
-      longPressTimer.current = null
-    }
-  }
-
   const openEditModal = (listId) => {
     const list = lists.find(l => l.id === listId)
     if (list) {
@@ -1861,11 +1842,6 @@ function Dashboard() {
               <div
                 key={list.id}
                 ref={registerListRef(list.id)}
-                onMouseDown={() => handleLongPressStart(list.id)}
-                onMouseUp={handleLongPressEnd}
-                onMouseLeave={handleLongPressEnd}
-                onTouchStart={() => handleLongPressStart(list.id)}
-                onTouchEnd={handleLongPressEnd}
                 onClick={(e) => handleListClick(list.id, e)}
                 className="relative overflow-hidden shadow-lg active:scale-[0.98] transition-all cursor-pointer group"
                 style={{

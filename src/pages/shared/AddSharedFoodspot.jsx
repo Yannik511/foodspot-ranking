@@ -837,7 +837,7 @@ function AddSharedFoodspot() {
                 value={formData.address || ''}
                 onChange={(e) => setFormData(prev => ({ 
                   ...prev, 
-                  address: e.target.value.trim().replace(/\s+/g, ' ').replace(/[<>]/g, '') 
+                  address: e.target.value.replace(/[<>]/g, '') 
                 }))}
                 placeholder="z. B. Hauptstr. 5, Gilching oder nur Gilching"
                 maxLength={200}

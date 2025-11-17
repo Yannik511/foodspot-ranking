@@ -1088,7 +1088,7 @@ function AddFoodspot() {
             <input
               type="text"
               value={formData.address || ''}
-              onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value.trim().replace(/\s+/g, ' ').replace(/[<>]/g, '') }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value.replace(/[<>]/g, '') }))}
               placeholder="z. B. Hauptstr. 5, Gilching oder nur Gilching"
               maxLength={200}
               className={`w-full px-4 py-3 text-base rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
