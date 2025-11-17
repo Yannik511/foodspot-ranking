@@ -848,9 +848,10 @@ function AddFoodspot() {
 
         {/* Category Selection */}
         <main 
-          className="flex-1 overflow-y-auto px-4 py-6"
+          className="flex-1 overflow-y-auto px-4"
           style={{
             paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)`,
+            paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
             overscrollBehavior: 'none',
             WebkitOverflowScrolling: 'touch'
           }}
@@ -1020,7 +1021,7 @@ function AddFoodspot() {
       )}
 
       {/* Header */}
-      <header className={`header-safe border-b sticky top-0 z-20 ${
+      <header className={`header-safe border-b fixed top-0 left-0 right-0 z-20 ${
         isDark
           ? 'bg-gray-800 border-gray-700'
           : 'bg-white border-gray-200'
@@ -1049,9 +1050,10 @@ function AddFoodspot() {
 
       {/* Main Content */}
       <main 
-        className="flex-1 overflow-y-auto px-4 py-6"
+        className="flex-1 overflow-y-auto px-4"
         style={{
           paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)`,
+          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'
         }}

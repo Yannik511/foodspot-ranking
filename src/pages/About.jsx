@@ -59,9 +59,10 @@ function About() {
       
       {/* Content */}
       <main 
-        className="flex-1 overflow-y-auto px-4 py-8 max-w-2xl mx-auto"
+        className="flex-1 overflow-y-auto px-4 max-w-2xl mx-auto"
         style={{
-          paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 32px)`,
+          paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)`,
+          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'
         }}

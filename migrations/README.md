@@ -4,6 +4,12 @@ Dieses Verzeichnis enthält alle Datenbank-Migrationen für die Foodspot Ranking
 
 ## Letzte Migration
 
+**049_sync_user_profiles_auto.sql** – Automatische Synchronisation von user_profiles
+- Synchronisiert ALLE bestehenden User aus auth.users in user_profiles
+- Erstellt Trigger für automatische Sync bei neuen Usern und Username-Änderungen
+- Löst das Problem, dass User nicht in der Freundes-Suche erscheinen
+- **WICHTIG:** Diese Migration sollte sofort ausgeführt werden!
+
 **047_create_get_list_entry_counts_function_up.sql** – Aggregiert Foodspot-Anzahlen in einem RPC
 - Liefert für beliebige `list_id`s serverseitig `entry_count`
 - Reduziert dutzende Einzelqueries beim Laden der Dashboards

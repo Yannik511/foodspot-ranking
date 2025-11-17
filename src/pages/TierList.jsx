@@ -609,28 +609,33 @@ function TierList() {
 
       {/* Main Content - All Tiers Always Visible */}
       <div 
-        className={`flex-1 overflow-y-auto px-4 py-4 ${
+        className={`flex-1 overflow-y-auto px-4 ${
           isDark ? 'bg-gray-900' : 'bg-gray-50'
         }`}
         style={{
-          paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 16px)`,
+          paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)`,
+          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
-          WebkitOverflowScrolling: 'touch'
+          WebkitOverflowScrolling: 'touch',
+          scrollBehavior: 'smooth'
         }}
       >
-        <div className="max-w-5xl mx-auto flex flex-col gap-4">
+        <div className="max-w-5xl mx-auto flex flex-col gap-4 pt-0 pb-4">
           {TIERS.map((tier, index) => {
             const tierData = TIER_COLORS[tier]
             const tierSpots = foodspotsByTier[tier] || []
             const tierSizing = calculateTierSizing[tier] || { height: 120, maxItems: 3, hasOverflow: false }
             const displayedSpots = tierSpots.slice(0, tierSizing.maxItems)
             const isEmpty = tierSpots.length === 0
+            const isFirstTier = index === 0
 
             return (
               <div
                 key={tier}
                 ref={(el) => (scrollRefs.current[tier] = el)}
-                className="flex rounded-[20px] overflow-hidden shadow-lg transition-all duration-200 ease-out"
+                className={`flex rounded-[20px] overflow-hidden shadow-lg transition-all duration-200 ease-out ${
+                  isFirstTier ? 'mt-0' : ''
+                }`}
                 style={{
                   height: `${tierSizing.height}px`,
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)'

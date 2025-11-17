@@ -889,6 +889,7 @@ function SharedTierList() {
         className="flex-1 overflow-y-auto flex flex-col" 
         style={{
           paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)`,
+          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'
         }}

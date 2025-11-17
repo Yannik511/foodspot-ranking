@@ -694,13 +694,15 @@ function AddSharedFoodspot() {
       </header>
 
       <main 
-        className="flex-1 overflow-y-auto max-w-3xl mx-auto px-4 py-6 space-y-6"
+        className="flex-1 overflow-y-auto max-w-3xl mx-auto px-4"
         style={{
           paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)`,
+          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'
         }}
       >
+        <div className="space-y-6">
         {/* Kategorie Auswahl */}
         {showCategorySelection && (
           <div className={`rounded-[24px] shadow-lg border p-8 ${
@@ -1169,6 +1171,7 @@ function AddSharedFoodspot() {
             </div>
           </div>
         )}
+        </div>
       </main>
 
       {toast && (
