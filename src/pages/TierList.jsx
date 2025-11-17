@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
+import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 
 const TIER_COLORS = {
   S: { 
@@ -53,6 +54,7 @@ function TierList() {
   const scrollRefs = useRef({})
   const menuRef = useRef(null)
   const [sharedContextChecked, setSharedContextChecked] = useState(false)
+  const { headerRef, headerHeight } = useHeaderHeight()
 
   // Track window height for responsive calculations
   useEffect(() => {
@@ -511,11 +513,14 @@ function TierList() {
       isDark ? 'bg-gray-900' : 'bg-gray-50'
     } relative overflow-hidden`}>
       {/* Header */}
-      <header className={`header-safe border-b fixed top-0 left-0 right-0 z-20 ${
-        isDark
-          ? 'bg-gray-800 border-gray-700'
-          : 'bg-white border-gray-200'
-      }`}>
+      <header 
+        ref={headerRef}
+        className={`header-safe border-b fixed top-0 left-0 right-0 z-20 ${
+          isDark
+            ? 'bg-gray-800 border-gray-700'
+            : 'bg-white border-gray-200'
+        }`}
+      >
         <div className="flex items-center justify-between px-4 py-3">
           <button
             onClick={() => navigate('/dashboard')}
@@ -528,9 +533,12 @@ function TierList() {
             </svg>
           </button>
 
-          <h1 className={`text-lg font-bold flex-1 text-center px-2 ${
-            isDark ? 'text-white' : 'text-gray-900'
-          }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+          <h1 
+            className={`text-lg font-bold flex-1 text-center px-2 break-words ${
+              isDark ? 'text-white' : 'text-gray-900'
+            }`} 
+            style={{ fontFamily: "'Poppins', sans-serif" }}
+          >
             Foodspots in {list.city}
           </h1>
 
@@ -613,7 +621,7 @@ function TierList() {
           isDark ? 'bg-gray-900' : 'bg-gray-50'
         }`}
         style={{
-          paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)`,
+          paddingTop: getContentPaddingTop(headerHeight, 24),
           paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch',

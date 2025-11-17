@@ -6,6 +6,7 @@ import Avatar from '../components/Avatar'
 import { supabase } from '../services/supabase'
 import { hapticFeedback } from '../utils/haptics'
 import { springEasing } from '../utils/animations'
+import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 
 // Helper function to compress image
 const compressImage = (file) => {
@@ -72,6 +73,7 @@ function Settings() {
   const { user, signOut } = useAuth()
   const { darkMode, isDark, setDarkMode } = useTheme()
   const navigate = useNavigate()
+  const { headerRef, headerHeight } = useHeaderHeight()
   
   // Form state
   const [displayName, setDisplayName] = useState('')
@@ -513,6 +515,7 @@ function Settings() {
     <div className={`h-full flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'} relative overflow-hidden`}>
       {/* Header */}
       <header 
+        ref={headerRef}
         className={`header-safe ${isDark ? 'bg-gray-800' : 'bg-white'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between fixed top-0 left-0 right-0 z-10`}
         style={{
           paddingLeft: 'clamp(16px, 4vw, 24px)',
@@ -559,7 +562,7 @@ function Settings() {
       <main 
         className="flex-1 overflow-y-auto"
         style={{
-          paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)`,
+          paddingTop: getContentPaddingTop(headerHeight, 24),
           paddingBottom: `calc(80px + env(safe-area-inset-bottom, 0px) + 24px)`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'

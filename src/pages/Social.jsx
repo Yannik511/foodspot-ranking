@@ -4,12 +4,14 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import FriendsTab from '../components/social/FriendsTab'
 import { supabase } from '../services/supabase'
+import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 
 function Social() {
   const { user } = useAuth()
   const { isDark } = useTheme()
   const navigate = useNavigate()
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false)
+  const { headerRef, headerHeight } = useHeaderHeight()
 
   // Check for unread notifications
   useEffect(() => {
@@ -96,11 +98,14 @@ function Social() {
   return (
     <div className={`h-full flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'} relative overflow-hidden`}>
       {/* Header */}
-      <header className={`header-safe border-b fixed top-0 left-0 right-0 z-20 ${
-        isDark
-          ? 'bg-gray-800 border-gray-700'
-          : 'bg-white border-gray-200'
-      }`}>
+      <header 
+        ref={headerRef}
+        className={`header-safe border-b fixed top-0 left-0 right-0 z-20 ${
+          isDark
+            ? 'bg-gray-800 border-gray-700'
+            : 'bg-white border-gray-200'
+        }`}
+      >
         <div className="flex items-center justify-between px-4 py-2">
           <button
             onClick={() => navigate('/dashboard')}
@@ -131,7 +136,7 @@ function Social() {
       <main 
         className={`flex-1 overflow-y-auto ${isDark ? 'bg-gray-900' : 'bg-white'}`}
         style={{
-          paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)`,
+          paddingTop: getContentPaddingTop(headerHeight, 24),
           paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'

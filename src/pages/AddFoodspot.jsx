@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
 import { scrollFieldIntoView } from '../utils/keyboard'
+import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 
 // Category definitions with their specific criteria
 const DEFAULT_SCALE = 5
@@ -201,6 +202,13 @@ function AddFoodspot() {
   const [listCategory, setListCategory] = useState(null) // Category from list
   // Skip category selection in edit mode OR if list has a specific category
   const [showCategorySelection, setShowCategorySelection] = useState(!isEditMode)
+  
+  // Dynamische Header-Höhen-Messung (für beide Header-Varianten)
+  const { headerRef: categoryHeaderRef, headerHeight: categoryHeaderHeight } = useHeaderHeight()
+  const { headerRef: formHeaderRef, headerHeight: formHeaderHeight } = useHeaderHeight()
+  
+  // Aktive Header-Höhe basierend auf angezeigtem Header
+  const activeHeaderHeight = showCategorySelection ? categoryHeaderHeight : formHeaderHeight
 
   const [formData, setFormData] = useState({
     name: '',
@@ -819,11 +827,14 @@ function AddFoodspot() {
         isDark ? 'bg-gray-900' : 'bg-white'
       } relative overflow-hidden`}>
         {/* Header */}
-        <header className={`header-safe border-b fixed top-0 left-0 right-0 z-20 ${
-          isDark
-            ? 'bg-gray-800 border-gray-700'
-            : 'bg-white border-gray-200'
-        }`}>
+        <header 
+          ref={categoryHeaderRef}
+          className={`header-safe border-b fixed top-0 left-0 right-0 z-20 ${
+            isDark
+              ? 'bg-gray-800 border-gray-700'
+              : 'bg-white border-gray-200'
+          }`}
+        >
           <div className="flex items-center justify-between px-4 py-2">
             <button
               onClick={() => navigate(`/tierlist/${id}`)}
@@ -850,7 +861,7 @@ function AddFoodspot() {
         <main 
           className="flex-1 overflow-y-auto px-4"
           style={{
-            paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)`,
+            paddingTop: getContentPaddingTop(categoryHeaderHeight, 24),
             paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
             overscrollBehavior: 'none',
             WebkitOverflowScrolling: 'touch'
@@ -1021,11 +1032,14 @@ function AddFoodspot() {
       )}
 
       {/* Header */}
-      <header className={`header-safe border-b fixed top-0 left-0 right-0 z-20 ${
-        isDark
-          ? 'bg-gray-800 border-gray-700'
-          : 'bg-white border-gray-200'
-      }`}>
+      <header 
+        ref={formHeaderRef}
+        className={`header-safe border-b fixed top-0 left-0 right-0 z-20 ${
+          isDark
+            ? 'bg-gray-800 border-gray-700'
+            : 'bg-white border-gray-200'
+        }`}
+      >
         <div className="flex items-center justify-between px-4 py-2">
           <button
             onClick={() => navigate(`/tierlist/${id}`)}
@@ -1052,7 +1066,7 @@ function AddFoodspot() {
       <main 
         className="flex-1 overflow-y-auto px-4"
         style={{
-          paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)`,
+          paddingTop: getContentPaddingTop(formHeaderHeight, 24),
           paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'

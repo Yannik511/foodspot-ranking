@@ -4,11 +4,13 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
 import { scrollFieldIntoView } from '../utils/keyboard'
+import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 
 function CreateList() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const { headerRef, headerHeight } = useHeaderHeight()
   
   // Get category from URL parameter
   const categoryParam = searchParams.get('category')
@@ -303,9 +305,12 @@ function CreateList() {
       )}
 
       {/* Header */}
-      <header className={`header-safe backdrop-blur-[12px] border-b px-4 flex items-center justify-between fixed top-0 left-0 right-0 z-10 ${
-        isDark ? 'bg-gray-900/80 border-gray-800' : 'bg-white/70 border-gray-200/30'
-      }`}>
+      <header 
+        ref={headerRef}
+        className={`header-safe backdrop-blur-[12px] border-b px-4 flex items-center justify-between fixed top-0 left-0 right-0 z-10 ${
+          isDark ? 'bg-gray-900/80 border-gray-800' : 'bg-white/70 border-gray-200/30'
+        }`}
+      >
         <button
           onClick={() => navigate('/select-category')}
           className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
@@ -335,7 +340,7 @@ function CreateList() {
       <main 
         className="flex-1 overflow-y-auto px-4"
         style={{
-          paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)`,
+          paddingTop: getContentPaddingTop(headerHeight, 24),
           paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'

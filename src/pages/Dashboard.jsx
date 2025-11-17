@@ -8,6 +8,7 @@ import Avatar from '../components/Avatar'
 import { supabase } from '../services/supabase'
 import { hapticFeedback } from '../utils/haptics'
 import { springEasing, staggerDelay } from '../utils/animations'
+import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 
 const PRIVATE_FILTER_STORAGE_KEY = 'dashboard_private_filters'
 const CATEGORY_OPTIONS = [
@@ -146,6 +147,7 @@ function Dashboard() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const hasSocialNotifications = useSocialNotifications()
+  const { headerRef, headerHeight } = useHeaderHeight()
 
   const fetchEntryCountMap = useCallback(async (listIds = []) => {
     const uniqueIds = Array.from(new Set((listIds || []).filter(Boolean)))
@@ -366,8 +368,8 @@ function Dashboard() {
           listsQuery = listsQuery.eq('category', normalizedFilters.category)
         }
 
+        // Kein Order hier, da wir später nach letzter Aktivität sortieren
         const { data: listsData, error: listsError } = await listsQuery
-          .order('created_at', { ascending: false })
 
         if (listsError) {
           console.error('Error fetching lists:', listsError)
@@ -439,6 +441,37 @@ function Dashboard() {
       // Foodspot counts via RPC (mit Fallback)
         const listsWithCounts = await attachEntryCounts(listsToShow)
 
+      // Hole die letzten Aktivitäten (updated_at des neuesten Foodspots) für jede Liste
+        let lastActivityMap = new Map()
+        if (listsWithCounts.length > 0) {
+          try {
+            const listIds = listsWithCounts.map(l => l.id).filter(Boolean)
+            if (listIds.length > 0) {
+              // Hole das maximale updated_at pro Liste aus foodspots
+              const { data: lastActivities, error: activityError } = await supabase
+                .from('foodspots')
+                .select('list_id, updated_at')
+                .in('list_id', listIds)
+                .order('updated_at', { ascending: false })
+
+              if (!activityError && lastActivities) {
+                // Erstelle Map mit dem neuesten updated_at pro Liste
+                lastActivities.forEach(spot => {
+                  if (!spot.list_id) return
+                  const currentMax = lastActivityMap.get(spot.list_id)
+                  const spotDate = new Date(spot.updated_at).getTime()
+                  if (!currentMax || spotDate > currentMax) {
+                    lastActivityMap.set(spot.list_id, spotDate)
+                  }
+                })
+              }
+            }
+          } catch (error) {
+            console.warn('[Dashboard] Error fetching last activities:', error)
+            // Bei Fehler einfach weitermachen mit bestehender Sortierung
+          }
+        }
+
       // Merge with optimistic lists (ursprüngliche Logik)
         const newListData = sessionStorage.getItem('newList')
         const optimisticLists = lists.filter(l => l.id?.startsWith('temp-'))
@@ -487,12 +520,19 @@ function Dashboard() {
           }
         }
         
+        // Sortiere nach letzter Aktivität (updated_at des neuesten Foodspots)
+        // Falls keine Foodspots existieren, verwende updated_at der Liste selbst, sonst created_at
         mergedLists.sort((a, b) => {
+          // Optimistic lists (temp-) immer ganz oben
           if (a.id?.startsWith('temp-') && !b.id?.startsWith('temp-')) return -1
           if (!a.id?.startsWith('temp-') && b.id?.startsWith('temp-')) return 1
-          const aDate = new Date(a.created_at || 0)
-          const bDate = new Date(b.created_at || 0)
-          return bDate - aDate
+          
+          // Hole letzte Aktivität (Foodspot updated_at) oder Liste updated_at/created_at
+          const aLastActivity = lastActivityMap.get(a.id) || new Date(a.updated_at || a.created_at || 0).getTime()
+          const bLastActivity = lastActivityMap.get(b.id) || new Date(b.updated_at || b.created_at || 0).getTime()
+          
+          // Sortiere absteigend (neueste zuerst)
+          return bLastActivity - aLastActivity
         })
 
       setLists(mergedLists)
@@ -1499,9 +1539,12 @@ function Dashboard() {
       </div>
 
       {/* Top Navigation (Fixed) */}
-      <div className={`fixed top-0 left-0 right-0 z-30 shadow-sm ${
-        isDark ? 'bg-gray-900/95 backdrop-blur-xl border-b border-gray-800' : 'bg-white/95 backdrop-blur-xl border-b border-gray-200'
-      }`}>
+      <div 
+        ref={headerRef}
+        className={`fixed top-0 left-0 right-0 z-30 shadow-sm ${
+          isDark ? 'bg-gray-900/95 backdrop-blur-xl border-b border-gray-800' : 'bg-white/95 backdrop-blur-xl border-b border-gray-200'
+        }`}
+      >
         <header
           className="header-safe flex items-center justify-between"
           style={{
@@ -1530,7 +1573,7 @@ function Dashboard() {
           </button>
 
           <h1 
-            className="text-gray-900 dark:text-white flex-1 text-center px-2" 
+            className="text-gray-900 dark:text-white flex-1 text-center px-2 break-words min-w-0" 
             style={{ 
               fontFamily: "'Poppins', sans-serif", 
               fontWeight: 700,
@@ -1622,9 +1665,8 @@ function Dashboard() {
       <main 
         className={`flex-1 overflow-y-auto px-4 py-6 relative ${isEmpty ? '' : 'pb-24'}`}
         style={{
-          paddingTop: isEmpty 
-            ? `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)` 
-            : `calc(60px + env(safe-area-inset-top, 0px) + 12px + 48px + 24px)`,
+          paddingTop: getContentPaddingTop(headerHeight, 24),
+          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'
         }}

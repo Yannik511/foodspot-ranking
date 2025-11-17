@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
+import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 
 // Kategorien-Definition (gleiche wie in AddFoodspot)
 const CATEGORIES = {
@@ -77,6 +78,7 @@ function SelectCategory() {
   const { user } = useAuth()
   const { isDark } = useTheme()
   const [selectedCategory, setSelectedCategory] = useState(null)
+  const { headerRef, headerHeight } = useHeaderHeight()
 
   const handleCategorySelect = (category) => {
     // Navigate to CreateList with category parameter
@@ -91,11 +93,14 @@ function SelectCategory() {
   return (
     <div className={`h-full flex flex-col ${isDark ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'} relative overflow-hidden`}>
       {/* Header */}
-      <header className={`header-safe backdrop-blur-[12px] border-b px-4 flex items-center justify-between fixed top-0 left-0 right-0 z-10 ${
-        isDark
-          ? 'bg-gray-800/70 border-gray-700/30'
-          : 'bg-white/70 border-gray-200/30'
-      }`}>
+      <header 
+        ref={headerRef}
+        className={`header-safe backdrop-blur-[12px] border-b px-4 flex items-center justify-between fixed top-0 left-0 right-0 z-10 ${
+          isDark
+            ? 'bg-gray-800/70 border-gray-700/30'
+            : 'bg-white/70 border-gray-200/30'
+        }`}
+      >
         <button
           onClick={() => navigate('/dashboard')}
           className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
@@ -120,7 +125,7 @@ function SelectCategory() {
       <main 
         className="flex-1 overflow-y-auto px-4"
         style={{
-          paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)`,
+          paddingTop: getContentPaddingTop(headerHeight, 24),
           paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'

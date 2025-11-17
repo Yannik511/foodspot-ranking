@@ -6,6 +6,7 @@ import UserAvatar from '../components/social/UserAvatar'
 import { supabase } from '../services/supabase'
 import { hapticFeedback } from '../utils/haptics'
 import { useProfilesStore } from '../contexts/ProfileContext'
+import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 
 function Compare() {
   const { id: friendId } = useParams()
@@ -13,6 +14,7 @@ function Compare() {
   const { isDark } = useTheme()
   const navigate = useNavigate()
   const { ensureProfiles, upsertProfiles } = useProfilesStore()
+  const { headerRef, headerHeight } = useHeaderHeight()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [myStats, setMyStats] = useState(null)
@@ -215,11 +217,14 @@ function Compare() {
     return (
       <div className={`min-h-screen flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
         {/* Header */}
-        <header className={`header-safe border-b sticky top-0 z-20 ${
-          isDark
-            ? 'bg-gray-800 border-gray-700'
-            : 'bg-white border-gray-200'
-        }`}>
+        <header 
+          ref={headerRef}
+          className={`header-safe border-b fixed top-0 left-0 right-0 z-20 ${
+            isDark
+              ? 'bg-gray-800 border-gray-700'
+              : 'bg-white border-gray-200'
+          }`}
+        >
           <div className="flex items-center justify-between px-4 py-2">
             <button
               onClick={() => navigate(`/friend/${friendId}`)}
@@ -243,7 +248,15 @@ function Compare() {
         </header>
 
         {/* Skeleton Loader */}
-        <main className="flex-1 overflow-y-auto px-4 py-6">
+        <main 
+          className="flex-1 overflow-y-auto px-4 py-6"
+          style={{
+            paddingTop: getContentPaddingTop(headerHeight, 24),
+            paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
+            overscrollBehavior: 'none',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
           <div className="max-w-4xl mx-auto space-y-6">
             {/* Comparison Header Skeleton */}
             <div className={`rounded-[24px] shadow-lg border p-6 ${
@@ -308,11 +321,14 @@ function Compare() {
     return (
       <div className={`min-h-screen flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
         {/* Header */}
-        <header className={`header-safe border-b sticky top-0 z-20 ${
-          isDark
-            ? 'bg-gray-800 border-gray-700'
-            : 'bg-white border-gray-200'
-        }`}>
+        <header 
+          ref={headerRef}
+          className={`header-safe border-b fixed top-0 left-0 right-0 z-20 ${
+            isDark
+              ? 'bg-gray-800 border-gray-700'
+              : 'bg-white border-gray-200'
+          }`}
+        >
           <div className="flex items-center justify-between px-4 py-2">
             <button
               onClick={() => navigate(`/friend/${friendId}`)}
@@ -336,7 +352,15 @@ function Compare() {
         </header>
 
         {/* Error State */}
-        <main className="flex-1 overflow-y-auto px-4 py-6">
+        <main 
+          className="flex-1 overflow-y-auto px-4 py-6"
+          style={{
+            paddingTop: getContentPaddingTop(headerHeight, 24),
+            paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
+            overscrollBehavior: 'none',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
           <div className="max-w-4xl mx-auto">
             <div className={`rounded-[24px] shadow-lg border p-8 text-center ${
               isDark
@@ -371,11 +395,14 @@ function Compare() {
   return (
     <div className={`min-h-screen flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
       {/* Header */}
-      <header className={`header-safe border-b sticky top-0 z-20 ${
-        isDark
-          ? 'bg-gray-800 border-gray-700'
-          : 'bg-white border-gray-200'
-      }`}>
+      <header 
+        ref={headerRef}
+        className={`header-safe border-b fixed top-0 left-0 right-0 z-20 ${
+          isDark
+            ? 'bg-gray-800 border-gray-700'
+            : 'bg-white border-gray-200'
+        }`}
+      >
         <div className="flex items-center justify-between px-4 py-2">
           <button
             onClick={() => navigate(`/friend/${friendId}`)}
@@ -399,7 +426,15 @@ function Compare() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto px-4 py-6 pb-24">
+      <main 
+        className="flex-1 overflow-y-auto px-4 py-6"
+        style={{
+          paddingTop: getContentPaddingTop(headerHeight, 24),
+          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
+          overscrollBehavior: 'none',
+          WebkitOverflowScrolling: 'touch'
+        }}
+      >
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Comparison Header - Only render if both stats are loaded */}
           {myStats && friendStats && friendUser && (

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTheme } from '../../contexts/ThemeContext'
 import { supabase } from '../../services/supabase'
+import { useHeaderHeight, getContentPaddingTop } from '../../hooks/useHeaderHeight'
 import {
   uploadSharedSpotPhoto,
   deleteSharedSpotPhoto,
@@ -62,6 +63,7 @@ function SharedTierList() {
   const [toast, setToast] = useState(null)
   const selectedSpotIdRef = useRef(null)
   const fileInputRef = useRef(null)
+  const { headerRef, headerHeight } = useHeaderHeight()
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
   const [photoUploadQueue, setPhotoUploadQueue] = useState([])
   const [photoActionLoading, setPhotoActionLoading] = useState(null)
@@ -863,7 +865,10 @@ function SharedTierList() {
 
   return (
     <div className={`h-full flex flex-col ${isDark ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'} relative overflow-hidden`}>
-      <header className="header-safe bg-white/80 dark:bg-gray-900/80 backdrop-blur-[16px] border-b border-gray-200/40 dark:border-gray-800/60 fixed top-0 left-0 right-0 z-20">
+      <header 
+        ref={headerRef}
+        className="header-safe bg-white/80 dark:bg-gray-900/80 backdrop-blur-[16px] border-b border-gray-200/40 dark:border-gray-800/60 fixed top-0 left-0 right-0 z-20"
+      >
         <div className="max-w-5xl mx-auto px-4 py-2 flex items-center justify-between">
           <button
             onClick={() => navigate('/dashboard?view=geteilt')}
@@ -873,11 +878,14 @@ function SharedTierList() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <div className="text-center">
+          <div className="text-center flex-1 min-w-0 px-2">
             <p className="text-xs uppercase tracking-widest text-gray-500 dark:text-gray-400">
               Geteilte Liste · {userRole === 'owner' ? 'Owner' : userRole === 'editor' ? 'Editor' : 'Viewer'}
             </p>
-            <h1 className="text-lg font-bold" style={{ fontFamily: "'Poppins', sans-serif" }}>
+            <h1 
+              className="text-lg font-bold break-words" 
+              style={{ fontFamily: "'Poppins', sans-serif" }}
+            >
               {list.list_name}
             </h1>
           </div>
@@ -888,7 +896,7 @@ function SharedTierList() {
       <main 
         className="flex-1 overflow-y-auto flex flex-col" 
         style={{
-          paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)`,
+          paddingTop: getContentPaddingTop(headerHeight, 24),
           paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'

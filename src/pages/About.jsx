@@ -1,10 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
 import { hapticFeedback } from '../utils/haptics'
+import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 
 function About() {
   const navigate = useNavigate()
   const { isDark } = useTheme()
+  const { headerRef, headerHeight } = useHeaderHeight()
   
   const handleBack = () => {
     hapticFeedback.light()
@@ -15,6 +17,7 @@ function About() {
     <div className={`h-full flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'} relative overflow-hidden`}>
       {/* Header */}
       <header 
+        ref={headerRef}
         className={`header-safe ${isDark ? 'bg-gray-800' : 'bg-white'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between fixed top-0 left-0 right-0 z-10`}
         style={{
           paddingLeft: 'clamp(16px, 4vw, 24px)',
@@ -61,7 +64,7 @@ function About() {
       <main 
         className="flex-1 overflow-y-auto px-4 max-w-2xl mx-auto"
         style={{
-          paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)`,
+          paddingTop: getContentPaddingTop(headerHeight, 24),
           paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'

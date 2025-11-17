@@ -6,6 +6,7 @@ import UserAvatar from '../components/social/UserAvatar'
 import { supabase } from '../services/supabase'
 import { hapticFeedback } from '../utils/haptics'
 import { useProfilesStore } from '../contexts/ProfileContext'
+import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 
 const CATEGORY_EMOJIS = {
   'Döner': '🥙',
@@ -29,6 +30,7 @@ function FriendProfile() {
   const { isDark } = useTheme()
   const navigate = useNavigate()
   const { ensureProfiles, upsertProfiles } = useProfilesStore()
+  const { headerRef, headerHeight } = useHeaderHeight()
   const [friendUser, setFriendUser] = useState(null)
   const [friendship, setFriendship] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -417,7 +419,7 @@ function FriendProfile() {
   // Skeleton Loader Component
   const SkeletonLoader = () => (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
-      <header className={`header-safe border-b sticky top-0 z-20 ${
+      <header className={`header-safe border-b fixed top-0 left-0 right-0 z-20 ${
         isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
       }`}>
         <div className="flex items-center justify-between px-4 py-2">
@@ -426,7 +428,14 @@ function FriendProfile() {
           <div className="w-10" />
         </div>
       </header>
-      <main className="px-4 py-6 space-y-6">
+      <main 
+        className="px-4 py-6 space-y-6"
+        style={{
+          paddingTop: getContentPaddingTop(headerHeight, 24),
+          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
+          overscrollBehavior: 'none'
+        }}
+      >
         <div className={`rounded-[24px] p-8 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
           <div className="flex flex-col sm:flex-row items-center gap-6">
             <div className={`w-24 h-24 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`} />
@@ -475,11 +484,14 @@ function FriendProfile() {
   return (
     <div className={`min-h-screen flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
       {/* Header */}
-      <header className={`header-safe border-b sticky top-0 z-20 ${
-        isDark
-          ? 'bg-gray-800 border-gray-700'
-          : 'bg-white border-gray-200'
-      }`}>
+      <header 
+        ref={headerRef}
+        className={`header-safe border-b fixed top-0 left-0 right-0 z-20 ${
+          isDark
+            ? 'bg-gray-800 border-gray-700'
+            : 'bg-white border-gray-200'
+        }`}
+      >
         <div className="flex items-center justify-between px-4 py-2">
           <button
             onClick={() => navigate('/social')}
@@ -503,7 +515,15 @@ function FriendProfile() {
       </header>
 
       {/* Main Content with Pull-to-Refresh */}
-      <main className="flex-1 overflow-y-auto px-4 py-6 pb-24">
+      <main 
+        className="flex-1 overflow-y-auto px-4 py-6"
+        style={{
+          paddingTop: getContentPaddingTop(headerHeight, 24),
+          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
+          overscrollBehavior: 'none',
+          WebkitOverflowScrolling: 'touch'
+        }}
+      >
         {refreshing && (
           <div className="text-center py-2 sticky top-0 z-10">
             <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500"></div>
