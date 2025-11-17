@@ -279,7 +279,7 @@ function CreateList() {
   }
 
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
+    <div className={`h-full flex flex-col ${isDark ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'} relative overflow-hidden`}>
       {/* Loading Overlay - Only show if submitting and not navigating */}
       {isSubmitting && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
@@ -299,7 +299,7 @@ function CreateList() {
       )}
 
       {/* Header */}
-      <header className={`header-safe backdrop-blur-[12px] border-b px-4 flex items-center justify-between sticky top-0 z-10 ${
+      <header className={`header-safe backdrop-blur-[12px] border-b px-4 flex items-center justify-between fixed top-0 left-0 right-0 z-10 ${
         isDark ? 'bg-gray-900/80 border-gray-800' : 'bg-white/70 border-gray-200/30'
       }`}>
         <button
@@ -328,7 +328,14 @@ function CreateList() {
       </header>
 
       {/* Main Content */}
-      <main className="px-4 py-6 pb-8">
+      <main 
+        className="flex-1 overflow-y-auto px-4 py-6"
+        style={{
+          paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)`,
+          overscrollBehavior: 'none',
+          WebkitOverflowScrolling: 'touch'
+        }}
+      >
         <div className="space-y-6 max-w-2xl mx-auto">
           {/* List Name */}
           <div className={`rounded-[20px] shadow-lg border overflow-hidden p-6 ${

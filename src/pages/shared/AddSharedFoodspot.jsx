@@ -668,10 +668,10 @@ function AddSharedFoodspot() {
   }
 
   return (
-    <div className={`min-h-screen pb-28 ${
+    <div className={`h-full flex flex-col ${
       isDark ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'
-    }`}>
-      <header className="header-safe sticky top-0 z-10 backdrop-blur-lg bg-white/70 dark:bg-gray-900/70 border-b border-gray-200/40 dark:border-gray-800/60">
+    } relative overflow-hidden`}>
+      <header className="header-safe fixed top-0 left-0 right-0 z-10 backdrop-blur-lg bg-white/70 dark:bg-gray-900/70 border-b border-gray-200/40 dark:border-gray-800/60">
         <div className="max-w-3xl mx-auto px-4 py-2 flex items-center justify-between">
           <button
             onClick={() => navigate(`/shared/tierlist/${id}`)}
@@ -693,7 +693,14 @@ function AddSharedFoodspot() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+      <main 
+        className="flex-1 overflow-y-auto max-w-3xl mx-auto px-4 py-6 space-y-6"
+        style={{
+          paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)`,
+          overscrollBehavior: 'none',
+          WebkitOverflowScrolling: 'touch'
+        }}
+      >
         {/* Kategorie Auswahl */}
         {showCategorySelection && (
           <div className={`rounded-[24px] shadow-lg border p-8 ${

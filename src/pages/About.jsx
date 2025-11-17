@@ -12,10 +12,10 @@ function About() {
   }
   
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
+    <div className={`h-full flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'} relative overflow-hidden`}>
       {/* Header */}
       <header 
-        className={`header-safe ${isDark ? 'bg-gray-800' : 'bg-white'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between sticky top-0 z-10`}
+        className={`header-safe ${isDark ? 'bg-gray-800' : 'bg-white'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between fixed top-0 left-0 right-0 z-10`}
         style={{
           paddingLeft: 'clamp(16px, 4vw, 24px)',
           paddingRight: 'clamp(16px, 4vw, 24px)'
@@ -58,7 +58,14 @@ function About() {
       </header>
       
       {/* Content */}
-      <main className="px-4 py-8 max-w-2xl mx-auto">
+      <main 
+        className="flex-1 overflow-y-auto px-4 py-8 max-w-2xl mx-auto"
+        style={{
+          paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 32px)`,
+          overscrollBehavior: 'none',
+          WebkitOverflowScrolling: 'touch'
+        }}
+      >
         <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-2xl p-6 shadow-sm`}>
           <div className="text-center mb-6">
             <div className="text-6xl mb-4">🍔</div>

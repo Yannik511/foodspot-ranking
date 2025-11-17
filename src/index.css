@@ -76,12 +76,13 @@
     --safe-area-bg-current: #FFFFFF;
     @apply text-gray-900 m-0;
     font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-    overscroll-behavior-y: contain;
+    overscroll-behavior-y: none;
+    overscroll-behavior-x: none;
     -webkit-overflow-scrolling: touch;
-    min-height: 100vh;
+    height: 100dvh;
+    height: 100vh; /* Fallback for browsers that don't support dvh */
     background: #FFFFFF;
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    overflow: hidden; /* Prevent body scroll, only content areas scroll */
   }
 
   body::before {
@@ -97,7 +98,11 @@
   }
 
   #root {
-    min-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    height: 100dvh;
+    height: 100vh; /* Fallback for browsers that don't support dvh */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   /* Native-like scroll behavior */

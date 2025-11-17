@@ -815,11 +815,11 @@ function AddFoodspot() {
   // Category Selection Screen - only show if NOT in edit mode, category not selected, AND list doesn't have a category
   if ((showCategorySelection || !selectedCategory) && !isEditMode && !listCategory) {
     return (
-      <div className={`min-h-screen flex flex-col ${
+      <div className={`h-full flex flex-col ${
         isDark ? 'bg-gray-900' : 'bg-white'
-      }`}>
+      } relative overflow-hidden`}>
         {/* Header */}
-        <header className={`header-safe border-b sticky top-0 z-20 ${
+        <header className={`header-safe border-b fixed top-0 left-0 right-0 z-20 ${
           isDark
             ? 'bg-gray-800 border-gray-700'
             : 'bg-white border-gray-200'
@@ -847,7 +847,14 @@ function AddFoodspot() {
         </header>
 
         {/* Category Selection */}
-        <main className="flex-1 overflow-y-auto px-4 py-6">
+        <main 
+          className="flex-1 overflow-y-auto px-4 py-6"
+          style={{
+            paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)`,
+            overscrollBehavior: 'none',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
           <div className="max-w-2xl mx-auto">
             <div className={`rounded-[24px] shadow-lg border p-8 ${
               isDark
@@ -1041,7 +1048,14 @@ function AddFoodspot() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto px-4 py-6 pb-24">
+      <main 
+        className="flex-1 overflow-y-auto px-4 py-6"
+        style={{
+          paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 24px)`,
+          overscrollBehavior: 'none',
+          WebkitOverflowScrolling: 'touch'
+        }}
+      >
         <div className="max-w-2xl mx-auto space-y-6">
           {/* Name */}
           <div className={`rounded-[20px] shadow-lg border p-6 ${

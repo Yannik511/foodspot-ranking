@@ -507,11 +507,11 @@ function TierList() {
   const hasSpots = totalSpots > 0
 
   return (
-    <div className={`min-h-screen flex flex-col ${
+    <div className={`h-full flex flex-col ${
       isDark ? 'bg-gray-900' : 'bg-gray-50'
-    }`}>
+    } relative overflow-hidden`}>
       {/* Header */}
-      <header className={`border-b sticky top-0 z-20 ${
+      <header className={`header-safe border-b fixed top-0 left-0 right-0 z-20 ${
         isDark
           ? 'bg-gray-800 border-gray-700'
           : 'bg-white border-gray-200'
@@ -608,9 +608,16 @@ function TierList() {
       </header>
 
       {/* Main Content - All Tiers Always Visible */}
-      <div className={`flex-1 overflow-y-auto px-4 py-4 ${
-        isDark ? 'bg-gray-900' : 'bg-gray-50'
-      }`}>
+      <div 
+        className={`flex-1 overflow-y-auto px-4 py-4 ${
+          isDark ? 'bg-gray-900' : 'bg-gray-50'
+        }`}
+        style={{
+          paddingTop: `calc(60px + env(safe-area-inset-top, 0px) + 12px + 16px)`,
+          overscrollBehavior: 'none',
+          WebkitOverflowScrolling: 'touch'
+        }}
+      >
         <div className="max-w-5xl mx-auto flex flex-col gap-4">
           {TIERS.map((tier, index) => {
             const tierData = TIER_COLORS[tier]
