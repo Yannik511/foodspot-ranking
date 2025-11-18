@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import WelcomeCard from '../components/WelcomeCard'
@@ -11,6 +11,7 @@ import { springEasing, staggerDelay } from '../utils/animations'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 
 const PRIVATE_FILTER_STORAGE_KEY = 'dashboard_private_filters'
+const SHARED_FILTER_STORAGE_KEY = 'dashboard_shared_filters'
 const CATEGORY_OPTIONS = [
   'Döner',
   'Burger',
@@ -26,6 +27,7 @@ const CATEGORY_OPTIONS = [
   'Bier',
   'Leberkässemmel'
 ]
+
 
 const CATEGORY_EMOJIS = {
   'Döner': '🥙',
@@ -145,9 +147,11 @@ function Dashboard() {
   const { user } = useAuth()
   const { isDark } = useTheme()
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const hasSocialNotifications = useSocialNotifications()
   const { headerRef, headerHeight } = useHeaderHeight()
+  const scrollContainerRef = useRef(null)
 
   const fetchEntryCountMap = useCallback(async (listIds = []) => {
     const uniqueIds = Array.from(new Set((listIds || []).filter(Boolean)))
@@ -228,6 +232,23 @@ function Dashboard() {
     }
     return { city: '', category: '' }
   })
+  const [sharedFilters, setSharedFilters] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = sessionStorage.getItem(SHARED_FILTER_STORAGE_KEY)
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          return {
+            city: parsed?.city || '',
+            category: parsed?.category || ''
+          }
+        }
+      } catch (error) {
+        console.warn('[Dashboard] Failed to load shared filters from sessionStorage', error)
+      }
+    }
+    return { city: '', category: '' }
+  })
   
   // Initialize with optimistic list from sessionStorage if available
   const [lists, setLists] = useState(() => {
@@ -258,6 +279,7 @@ function Dashboard() {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(null)
   const [showEditSharedListModal, setShowEditSharedListModal] = useState(null) // stores list object
   const listRefs = useRef(new Map())
+  const sharedListRefs = useRef(new Map())
   const [pendingScrollId, setPendingScrollId] = useState(() => {
     if (typeof window === 'undefined') return null
     return sessionStorage.getItem('scrollTargetListId')
@@ -284,6 +306,13 @@ function Dashboard() {
     }
     listRefs.current.set(id, node)
   }, [])
+  const registerSharedListRef = useCallback((id) => (node) => {
+    if (!node) {
+      sharedListRefs.current.delete(id)
+      return
+    }
+    sharedListRefs.current.set(id, node)
+  }, [])
   
   // Track pending deletions to prevent race conditions with real-time sync
   const pendingDeletionsRef = useRef(new Set())
@@ -297,8 +326,14 @@ function Dashboard() {
   const privateFiltersRef = useRef(privateFilters)
   const lastPrivateFilterKeyRef = useRef(`${(privateFilters.city || '').toLowerCase()}|${privateFilters.category || ''}`)
   const privateFilterDebounceRef = useRef(null)
+  const sharedFiltersRef = useRef(sharedFilters)
+  const lastSharedFilterKeyRef = useRef(`${(sharedFilters.city || '').toLowerCase()}|${sharedFilters.category || ''}`)
+  const sharedFilterDebounceRef = useRef(null)
   const handleResetFilters = () => {
     setPrivateFilters({ city: '', category: '' })
+  }
+  const handleResetSharedFilters = () => {
+    setSharedFilters({ city: '', category: '' })
   }
   
   // Track ob gerade ein Fetch läuft (verhindert parallele Fetches)
@@ -581,17 +616,159 @@ function Dashboard() {
   }, [privateFilters, user])
 
   useEffect(() => {
+    sharedFiltersRef.current = sharedFilters
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem(SHARED_FILTER_STORAGE_KEY, JSON.stringify(sharedFilters))
+      } catch (error) {
+        console.warn('[Dashboard] Failed to persist shared filters', error)
+      }
+    }
+
+    if (!user || isInitialMountRef.current) return
+
+    if (sharedFilterDebounceRef.current) {
+      clearTimeout(sharedFilterDebounceRef.current)
+    }
+
+    sharedFilterDebounceRef.current = setTimeout(() => {
+      hasLoadedSharedListsRef.current = false
+      fetchSharedLists(true, false, sharedFiltersRef.current)
+    }, 350)
+
+    return () => {
+      if (sharedFilterDebounceRef.current) {
+        clearTimeout(sharedFilterDebounceRef.current)
+      }
+    }
+  }, [sharedFilters, user])
+
+  useEffect(() => {
     if (!pendingScrollId) return
+    
+    // Prüfe zuerst private Listen
     const targetElement = listRefs.current.get(pendingScrollId)
     if (targetElement) {
       requestAnimationFrame(() => {
         targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
       })
       rememberScrollTarget(null)
-    } else if (lists.length > 0) {
+      return
+    }
+    
+    // Dann prüfe geteilte Listen
+    const sharedTargetElement = sharedListRefs.current.get(pendingScrollId)
+    if (sharedTargetElement) {
+      requestAnimationFrame(() => {
+        sharedTargetElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+      rememberScrollTarget(null)
+      return
+    }
+    
+    // Wenn Element nicht gefunden wurde, aber Listen vorhanden sind, entferne Scroll-Target
+    if (lists.length > 0 || sharedLists.length > 0) {
       rememberScrollTarget(null)
     }
-  }, [lists, pendingScrollId, rememberScrollTarget])
+  }, [lists, sharedLists, pendingScrollId, rememberScrollTarget])
+
+  // Wiederherstellen der Scroll-Position beim Zurückkommen von einer Liste
+  useEffect(() => {
+    // Nur ausführen, wenn wir auf /dashboard sind
+    if (location.pathname !== '/dashboard') return
+
+    const previousPath = sessionStorage.getItem('dashboard_previous_path')
+    const previousView = sessionStorage.getItem('dashboard_previous_view')
+    const isFromTierList = previousPath?.startsWith('/tierlist/') || previousPath?.startsWith('/shared/tierlist/')
+    
+    // Prüfe, ob wir von einer TierList-Seite zurückkommen und ob der View übereinstimmt
+    if (isFromTierList && previousView === listView) {
+      const storageKey = listView === 'geteilt' 
+        ? 'dashboard_shared_scroll_position' 
+        : 'dashboard_private_scroll_position'
+      const savedScrollPosition = sessionStorage.getItem(storageKey)
+      
+      if (savedScrollPosition) {
+        const targetScroll = parseInt(savedScrollPosition, 10)
+        let attempts = 0
+        const maxAttempts = 15
+        
+        // Warte, bis der Content gerendert ist, bevor wir scrollen
+        const restoreScroll = () => {
+          const container = scrollContainerRef.current
+          if (!container) {
+            attempts++
+            return attempts < maxAttempts
+          }
+          
+          // Prüfe, ob der Container bereits Content hat
+          const hasContent = container.scrollHeight > 100
+          const currentLists = listView === 'geteilt' ? sharedLists : lists
+          
+          if (hasContent && currentLists.length > 0) {
+            // Setze Scrollposition
+            container.scrollTop = targetScroll
+            
+            // Cleanup: Entferne gespeicherte Position nach erfolgreicher Wiederherstellung
+            sessionStorage.removeItem(storageKey)
+            sessionStorage.removeItem('dashboard_previous_path')
+            sessionStorage.removeItem('dashboard_previous_view')
+            return true
+          }
+          
+          attempts++
+          return attempts < maxAttempts
+        }
+
+        // Versuche sofort
+        if (!restoreScroll()) {
+          // Falls nicht erfolgreich, versuche mit Intervallen
+          const intervalId = setInterval(() => {
+            if (restoreScroll() === true || attempts >= maxAttempts) {
+              clearInterval(intervalId)
+              // Final cleanup falls max attempts erreicht
+              if (attempts >= maxAttempts) {
+                sessionStorage.removeItem(storageKey)
+                sessionStorage.removeItem('dashboard_previous_path')
+                sessionStorage.removeItem('dashboard_previous_view')
+              }
+            }
+          }, 50)
+          
+          // Timeout nach 1.5 Sekunden als Fallback
+          setTimeout(() => {
+            clearInterval(intervalId)
+            const container = scrollContainerRef.current
+            if (container) {
+              container.scrollTop = targetScroll
+            }
+            sessionStorage.removeItem(storageKey)
+            sessionStorage.removeItem('dashboard_previous_path')
+            sessionStorage.removeItem('dashboard_previous_view')
+          }, 1500)
+        }
+      }
+    }
+  }, [location.pathname, listView, lists, sharedLists])
+
+  // Scrollposition kontinuierlich speichern während des Scrollens
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const handleScroll = () => {
+      // Speichere Scrollposition in sessionStorage (separat für beide Views)
+      const storageKey = listView === 'geteilt' 
+        ? 'dashboard_shared_scroll_position' 
+        : 'dashboard_private_scroll_position'
+      sessionStorage.setItem(storageKey, container.scrollTop.toString())
+    }
+
+    container.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+    }
+  }, [listView])
 
   // Count all visible lists for routing logic (keine zusätzlichen Supabase-Calls)
   // Optional: privateListsOverride / sharedListsOverride verwenden, um direkt mit frisch geladenen Daten zu zählen
@@ -627,7 +804,7 @@ function Dashboard() {
   // WICHTIG: Nur Listen nach Annahme anzeigen (keine pending invitations)
   // OPTIMIERT: forceRefresh Parameter - wenn false, wird nicht neu geladen wenn bereits vorhanden
   // OPTIMIERT: backgroundRefresh Parameter - wenn true, kein Loading-State (Hintergrund-Update)
-  const fetchSharedLists = async (forceRefresh = false, backgroundRefresh = false) => {
+  const fetchSharedLists = async (forceRefresh = false, backgroundRefresh = false, appliedFilters = sharedFiltersRef.current) => {
     if (!user) return
     
     // Verhindere parallele Fetches
@@ -636,22 +813,28 @@ function Dashboard() {
       return
     }
     
+    const normalizedFilters = {
+      city: appliedFilters?.city?.trim() || '',
+      category: appliedFilters?.category || ''
+    }
+    const filterKey = `${normalizedFilters.city.toLowerCase()}|${normalizedFilters.category}`
+
     // Wenn bereits geladen und nicht forciert, überspringe (verhindert Doppelladen)
     // WICHTIG: Prüfe sowohl Ref als auch State (für Navigation zurück)
     // OPTIMIERT: Prüfe zuerst State (schneller), dann Ref
     if (!forceRefresh) {
-      if (sharedLists.length > 0) {
-        console.log('[Dashboard] fetchSharedLists: Skipping - data in state (sharedLists:', sharedLists.length, ')')
+      if (sharedLists.length > 0 && lastSharedFilterKeyRef.current === filterKey) {
+        console.log('[Dashboard] fetchSharedLists: Skipping - data in state (sharedLists:', sharedLists.length, ') for same filters')
         hasLoadedSharedListsRef.current = true // Update Ref für zukünftige Prüfungen
         return
       }
-      if (hasLoadedSharedListsRef.current) {
-        console.log('[Dashboard] fetchSharedLists: Skipping - already loaded (ref)')
+      if (hasLoadedSharedListsRef.current && lastSharedFilterKeyRef.current === filterKey) {
+        console.log('[Dashboard] fetchSharedLists: Skipping - already loaded (ref) for current filters')
         return
       }
     }
     
-    console.log('[Dashboard] fetchSharedLists: Starting fetch for user:', user.id, 'backgroundRefresh:', backgroundRefresh)
+    console.log('[Dashboard] fetchSharedLists: Starting fetch for user:', user.id, 'backgroundRefresh:', backgroundRefresh, 'filters:', normalizedFilters)
     isFetchingSharedRef.current = true
     if (!backgroundRefresh) {
       setSharedListsLoading(true)
@@ -659,7 +842,7 @@ function Dashboard() {
     try {
       // Fetch lists where user is a member (but not owner)
       // Diese sind bereits angenommen (nur in list_members wenn angenommen)
-      const { data: memberListsData, error: memberListsError } = await supabase
+      let memberListsQuery = supabase
         .from('list_members')
         .select(`
           list_id,
@@ -679,6 +862,15 @@ function Dashboard() {
         `)
         .eq('user_id', user.id)
 
+      // Apply filters to member lists query
+      // Note: Filters need to be applied to the joined lists table
+      if (normalizedFilters.city || normalizedFilters.category) {
+        // For member lists, we need to filter after fetching or use a more complex query
+        // For now, we'll filter after fetching (simpler and works with current structure)
+      }
+
+      const { data: memberListsData, error: memberListsError } = await memberListsQuery
+
       if (memberListsError) {
         console.error('Error fetching member lists:', memberListsError)
       }
@@ -686,11 +878,20 @@ function Dashboard() {
       // Fetch lists owned by user that are shared
       // WICHTIG: Owner sieht ALLE seine geteilten Listen, auch wenn noch keine Member angenommen haben
       // (Eine Liste ist "shared", wenn sie Mitglieder ODER pending invitations hat)
-      const { data: ownedListsData } = await supabase
+      let ownedListsQuery = supabase
         .from('lists')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+
+      // Apply filters to owned lists query
+      if (normalizedFilters.city) {
+        ownedListsQuery = ownedListsQuery.ilike('city', `%${normalizedFilters.city}%`)
+      }
+      if (normalizedFilters.category) {
+        ownedListsQuery = ownedListsQuery.eq('category', normalizedFilters.category)
+      }
+
+      const { data: ownedListsData } = await ownedListsQuery.order('created_at', { ascending: false })
 
       let sharedOwnedLists = []
       if (ownedListsData && ownedListsData.length > 0) {
@@ -718,14 +919,29 @@ function Dashboard() {
         console.log('[Dashboard] fetchSharedLists: Found', sharedOwnedLists.length, 'shared owned lists (including pending)')
       }
 
+      // Apply filters to member lists (filter after fetching since we use join)
+      let filteredMemberLists = (memberListsData || []).map(m => m.lists).filter(list => {
+        if (!list) return false
+        if (normalizedFilters.city && !list.city?.toLowerCase().includes(normalizedFilters.city.toLowerCase())) {
+          return false
+        }
+        if (normalizedFilters.category && list.category !== normalizedFilters.category) {
+          return false
+        }
+        return true
+      })
+
       // Combine member lists and shared owned lists
       const allSharedLists = [
-        ...(memberListsData || []).map(m => ({
-          ...m.lists,
-          role: m.role, // Set role for permission checks
-          membershipRole: m.role,
-          isOwner: false
-        })),
+        ...filteredMemberLists.map((list, idx) => {
+          const memberData = memberListsData?.find(m => m.lists?.id === list.id)
+          return {
+            ...list,
+            role: memberData?.role || 'viewer', // Set role for permission checks
+            membershipRole: memberData?.role || 'viewer',
+            isOwner: false
+          }
+        }),
         ...sharedOwnedLists.map(l => ({
           ...l,
           role: 'owner', // Owner has full permissions
@@ -929,6 +1145,7 @@ function Dashboard() {
       
       setSharedLists(sortedSharedLists)
       hasLoadedSharedListsRef.current = true
+      lastSharedFilterKeyRef.current = filterKey
       
       // Update count nach Shared-Fetch (kein zusätzlicher Supabase-Call)
       await countAllVisibleLists(lists, sortedSharedLists)
@@ -1271,6 +1488,18 @@ function Dashboard() {
     if (event.target.closest('.edit-button') || event.target.closest('.menu-button')) {
       return
     }
+    
+    // Speichere Scroll-Position vor Navigation
+    if (scrollContainerRef.current) {
+      const scrollPosition = scrollContainerRef.current.scrollTop
+      const storageKey = listView === 'geteilt' 
+        ? 'dashboard_shared_scroll_position' 
+        : 'dashboard_private_scroll_position'
+      sessionStorage.setItem(storageKey, scrollPosition.toString())
+      sessionStorage.setItem('dashboard_previous_path', location.pathname)
+      sessionStorage.setItem('dashboard_previous_view', listView)
+    }
+    
     if (listView === 'geteilt') {
       navigate(`/shared/tierlist/${listId}`)
     } else {
@@ -1481,7 +1710,12 @@ function Dashboard() {
     city: privateFilters.city.trim(),
     category: privateFilters.category
   }
+  const normalizedSharedFilters = {
+    city: sharedFilters.city.trim(),
+    category: sharedFilters.category
+  }
   const hasActivePrivateFilters = Boolean(normalizedPrivateFilters.city) || Boolean(normalizedPrivateFilters.category)
+  const hasActiveSharedFilters = Boolean(normalizedSharedFilters.city) || Boolean(normalizedSharedFilters.category)
   // OPTIMIERT: Loading nur anzeigen wenn wirklich noch nichts geladen wurde
   // Wenn bereits Daten vorhanden sind, kein Loading beim Tab-Wechsel
   const currentLoading = listView === 'meine' 
@@ -1663,6 +1897,7 @@ function Dashboard() {
 
       {/* Main Content */}
       <main 
+        ref={scrollContainerRef}
         className={`flex-1 overflow-y-auto px-4 py-6 relative`}
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
@@ -2079,31 +2314,178 @@ function Dashboard() {
             {/* Shared Lists View */}
             {listView === 'geteilt' && (
           <>
+            <div className="max-w-5xl mx-auto w-full mb-6">
+              <div className={`rounded-2xl border shadow-sm ${
+                isDark ? 'bg-gray-800/80 border-gray-700/60' : 'bg-white/80 border-gray-200/60'
+              }`}>
+                <button
+                  onClick={() => setIsFilterExpanded(prev => !prev)}
+                  className={`w-full flex items-center justify-between px-4 py-3 sm:px-5 sm:py-4 transition-all ${
+                    isDark ? 'text-gray-300' : 'text-gray-600'
+                  }`}
+                >
+                  <span className="text-sm font-semibold uppercase tracking-wide" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                    Filter
+                    {hasActiveSharedFilters && (
+                      <span className={`ml-2 text-xs px-2 py-1 rounded-full ${
+                        isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'
+                      }`}>
+                        Aktiv
+                      </span>
+                    )}
+                  </span>
+                  <svg
+                    className={`w-5 h-5 transition-transform ${
+                      isFilterExpanded ? 'rotate-180' : ''
+                    } ${isDark ? 'text-gray-300' : 'text-gray-600'}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {isFilterExpanded ? (
+                  <div className="px-4 py-4 sm:px-5 sm:py-5 border-t border-gray-200/60 dark:border-gray-700/60">
+                    <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+                      <div className="flex-1 min-w-0 sm:min-w-[180px]">
+                        <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${
+                          isDark ? 'text-gray-300' : 'text-gray-600'
+                        }`}>
+                          Ort
+                        </label>
+                        <input
+                          type="text"
+                          value={sharedFilters.city}
+                          onChange={(e) => setSharedFilters(prev => ({ ...prev, city: e.target.value }))}
+                          placeholder="Ort oder Stadtteil (z. B. München)"
+                          maxLength={100}
+                          autoComplete="off"
+                          className={`w-full px-4 py-3 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 ${
+                            isDark
+                              ? 'bg-gray-900/60 border-gray-700 text-white placeholder:text-gray-500 focus:ring-[#FF9357]/20'
+                              : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
+                          }`}
+                          style={{ fontSize: '16px', lineHeight: '24px' }}
+                        />
+                      </div>
+
+                      <div className="w-full sm:w-56">
+                        <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${
+                          isDark ? 'text-gray-300' : 'text-gray-600'
+                        }`}>
+                          Kategorie
+                        </label>
+                        <select
+                          value={sharedFilters.category}
+                          onChange={(e) => setSharedFilters(prev => ({ ...prev, category: e.target.value }))}
+                          className={`w-full px-4 py-3 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 ${
+                            isDark
+                              ? 'bg-gray-900/60 border-gray-700 text-white focus:ring-[#FF9357]/20'
+                              : 'bg-white border-gray-200 text-gray-900 focus:ring-[#FF7E42]/20'
+                          }`}
+                          style={{ fontSize: '16px', lineHeight: '24px' }}
+                        >
+                          <option value="">Alle Kategorien</option>
+                          {CATEGORY_OPTIONS.map((category) => (
+                            <option key={category} value={category}>
+                              {category}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex sm:flex-col sm:items-end gap-3">
+                        <button
+                          onClick={handleResetSharedFilters}
+                          disabled={!hasActiveSharedFilters}
+                          className={`px-4 py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.98] ${
+                            hasActiveSharedFilters
+                              ? isDark
+                                ? 'bg-gray-700 hover:bg-gray-600 text-gray-100'
+                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                              : isDark
+                                ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          }`}
+                        >
+                          Filter löschen
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`px-4 py-3 sm:px-5 sm:py-4 border-t border-gray-200/60 dark:border-gray-700/60 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    <div className="flex items-center gap-3 text-xs sm:text-sm">
+                      <div className={`px-3 py-1 rounded-full border ${
+                        isDark ? 'border-gray-700 bg-gray-900/60' : 'border-gray-200 bg-white/80'
+                      }`}>
+                        Ort: {sharedFilters.city ? sharedFilters.city : 'Alle'}
+                      </div>
+                      <div className={`px-3 py-1 rounded-full border ${
+                        isDark ? 'border-gray-700 bg-gray-900/60' : 'border-gray-200 bg-white/80'
+                      }`}>
+                        Kategorie: {sharedFilters.category ? sharedFilters.category : 'Alle'}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {sharedListsLoading && sharedLists.length === 0 ? (
               <SkeletonListSection isDark={isDark} />
             ) : sharedLists.length === 0 ? (
-              <div className="flex flex-col items-center justify-center min-h-full text-center px-4">
-                <div className="text-6xl mb-4">🤝</div>
-                <h2 className={`text-xl font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-                  Noch keine geteilten Listen
-                </h2>
-                <p className={`text-sm mb-6 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Teile eine Liste mit Freunden oder akzeptiere eine Einladung im Social-Tab
-                </p>
-                <button
-                  onClick={() => {
-                    hapticFeedback.light()
-                    navigate('/social')
-                  }}
-                  className={`px-6 py-3 rounded-xl font-semibold transition-all active:scale-95 ${
-                    isDark
-                      ? 'bg-gradient-to-r from-[#FF9357] to-[#B85C2C] text-white'
-                      : 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A] text-white'
-                  }`}
-                >
-                  Zum Social-Tab
-                </button>
-              </div>
+              hasActiveSharedFilters ? (
+                <div className="flex flex-col items-center justify-center min-h-[200px] sm:min-h-[40vh] text-center px-4">
+                  <div className="text-4xl mb-4">🔍</div>
+                  <h3 className={`text-xl font-semibold mb-2 ${
+                    isDark ? 'text-gray-200' : 'text-gray-900'
+                  }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                    Keine Listen für diese Filter
+                  </h3>
+                  <p className={`text-sm mb-6 ${
+                    isDark ? 'text-gray-400' : 'text-gray-600'
+                  }`}>
+                    Passe deine Suche an oder setze die Filter zurück.
+                  </p>
+                  <button
+                    onClick={handleResetSharedFilters}
+                    className={`px-5 py-3 rounded-xl font-semibold text-sm transition-all active:scale-[0.98] ${
+                      isDark
+                        ? 'bg-gray-700 hover:bg-gray-600 text-gray-100'
+                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                    }`}
+                    style={{ fontFamily: "'Poppins', sans-serif" }}
+                  >
+                    Filter zurücksetzen
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center min-h-full text-center px-4">
+                  <div className="text-6xl mb-4">🤝</div>
+                  <h2 className={`text-xl font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                    Noch keine geteilten Listen
+                  </h2>
+                  <p className={`text-sm mb-6 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Teile eine Liste mit Freunden oder akzeptiere eine Einladung im Social-Tab
+                  </p>
+                  <button
+                    onClick={() => {
+                      hapticFeedback.light()
+                      navigate('/social')
+                    }}
+                    className={`px-6 py-3 rounded-xl font-semibold transition-all active:scale-95 ${
+                      isDark
+                        ? 'bg-gradient-to-r from-[#FF9357] to-[#B85C2C] text-white'
+                        : 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A] text-white'
+                    }`}
+                  >
+                    Zum Social-Tab
+                  </button>
+                </div>
+              )
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: `${gap}px` }}>
                 {sharedLists.map((list, index) => {
@@ -2121,6 +2503,7 @@ function Dashboard() {
                   return (
                   <div
                     key={list.id}
+                    ref={registerSharedListRef(list.id)}
                     onClick={(e) => {
                       if (list.isPending) {
                         e.preventDefault()
