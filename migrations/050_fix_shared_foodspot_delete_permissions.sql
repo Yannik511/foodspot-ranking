@@ -32,3 +32,4 @@ COMMENT ON POLICY "List editors can delete foodspots in shared lists" ON foodspo
 -- =============================================
 
 
+

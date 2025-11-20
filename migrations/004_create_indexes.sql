@@ -35,3 +35,4 @@ CREATE INDEX IF NOT EXISTS idx_foodspots_category ON foodspots(category);
 
 
 
+
