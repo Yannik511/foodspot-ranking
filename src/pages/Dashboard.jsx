@@ -1903,7 +1903,7 @@ function Dashboard() {
           paddingTop: getContentPaddingTop(headerHeight, 24),
           paddingBottom: isEmpty 
             ? `calc(24px + max(env(safe-area-inset-bottom, 0px), 20px))`
-            : `calc(72px + max(env(safe-area-inset-bottom, 0px), 34px) + 32px)`, // Bottom Nav + FAB + safe area + extra spacing
+            : `calc(80px + max(env(safe-area-inset-bottom, 0px), 34px) + 60px)`, // Bottom Nav (~60px) + Safe-Area + FAB spacing + extra padding für Button
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'
         }}
