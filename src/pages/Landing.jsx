@@ -49,6 +49,7 @@ function Landing() {
       className="fixed inset-0 w-full h-full relative overflow-hidden"
       style={{
         height: '100dvh',
+        height: '100vh', // Fallback
         width: '100vw',
         margin: 0,
         padding: 0,
@@ -58,6 +59,7 @@ function Landing() {
         right: 0,
         bottom: 0,
         overflow: 'hidden',
+        zIndex: 0,
       }}
     >
       {/* Burger Background Image - Edge-to-Edge, vollständig abgedeckt, kein Scroll */}
@@ -68,11 +70,12 @@ function Landing() {
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
-          objectFit: 'cover',
           width: '100%',
           height: '100%',
-          transform: 'scale(1.1)',
+          minHeight: '100%',
+          transform: 'scale(1.05)',
           transition: 'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+          zIndex: 0,
         }}
         onMouseMove={(e) => {
           // Subtiler Parallax-Effekt bei Mausbewegung (nur Desktop)
@@ -82,11 +85,11 @@ function Landing() {
             const y = (e.clientY - rect.top) / rect.height
             const moveX = (x - 0.5) * 8
             const moveY = (y - 0.5) * 8
-            e.currentTarget.style.transform = `scale(1.1) translate(${moveX}px, ${moveY}px)`
+            e.currentTarget.style.transform = `scale(1.05) translate(${moveX}px, ${moveY}px)`
           }
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'scale(1.1)'
+          e.currentTarget.style.transform = 'scale(1.05)'
         }}
       />
 

@@ -618,15 +618,12 @@ function TierList() {
 
       {/* Main Content - All Tiers Always Visible */}
       <div 
-        className={`flex-1 overflow-y-auto px-4 ${
+        className={`page-content px-4 ${
           isDark ? 'bg-gray-900' : 'bg-gray-50'
         }`}
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
-          overscrollBehavior: 'none',
-          WebkitOverflowScrolling: 'touch',
-          scrollBehavior: 'smooth'
+          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`
         }}
       >
         <div className="max-w-5xl mx-auto flex flex-col gap-4 pt-0 pb-4">

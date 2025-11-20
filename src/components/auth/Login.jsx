@@ -12,7 +12,6 @@ function Login() {
   const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [biometricAvailable, setBiometricAvailable] = useState(false)
   const { signIn } = useAuth()
   const navigate = useNavigate()
 
@@ -25,38 +24,7 @@ function Login() {
       setEmailOrUsername(savedEmail)
       setRememberMe(true)
     }
-
-    // Prüfe ob WebAuthn verfügbar ist (Touch ID / Face ID)
-    if (window.PublicKeyCredential) {
-      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
-        .then((available) => {
-          setBiometricAvailable(available)
-        })
-        .catch(() => setBiometricAvailable(false))
-    }
   }, [])
-
-  const handleBiometricLogin = async () => {
-    if (!biometricAvailable) return
-    
-    try {
-      // WebAuthn Credential Request
-      const credential = await navigator.credentials.get({
-        publicKey: {
-          challenge: new Uint8Array(32),
-          allowCredentials: [],
-          timeout: 60000,
-          userVerification: 'required',
-        },
-      })
-      
-      // Hier würde man die Credentials mit dem Backend validieren
-      // Für jetzt zeigen wir nur eine Info
-      alert('Biometrische Anmeldung wird noch implementiert!')
-    } catch (err) {
-      console.error('Biometric login failed:', err)
-    }
-  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -190,31 +158,17 @@ function Login() {
             </div>
           )}
 
-          {/* Biometrische Anmeldung Button */}
-          {biometricAvailable && (
-            <button
-              type="button"
-              onClick={handleBiometricLogin}
-              className="w-full mb-6 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3.5 rounded-xl font-semibold text-base hover:from-blue-600 hover:to-purple-700 active:scale-[0.97] transition-all duration-200 shadow-lg flex items-center justify-center gap-2"
-              style={{ fontFamily: "'Poppins', sans-serif" }}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-              Mit Face ID / Touch ID anmelden
-            </button>
-          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label htmlFor="emailOrUsername" className={`block text-sm font-semibold mb-2.5 ${
                 isDark ? 'text-gray-200' : 'text-gray-700'
               }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-                E-Mail oder Username
+                E-Mail
               </label>
               <input
                 id="emailOrUsername"
-                type="text"
+                type="email"
                 value={emailOrUsername}
                 onChange={(e) => setEmailOrUsername(e.target.value)}
                 required
@@ -224,7 +178,7 @@ function Login() {
                     : 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:bg-white'
                 }`}
                 style={{ fontFamily: "'Poppins', sans-serif" }}
-                placeholder="deine@email.de oder username"
+                placeholder="deine@email.de"
               />
             </div>
 

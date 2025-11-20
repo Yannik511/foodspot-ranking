@@ -861,12 +861,10 @@ function AddFoodspot() {
 
         {/* Category Selection */}
         <main 
-          className="flex-1 overflow-y-auto px-4"
+          className="page-content px-4"
           style={{
             paddingTop: getContentPaddingTop(categoryHeaderHeight, 24),
-            paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
-            overscrollBehavior: 'none',
-            WebkitOverflowScrolling: 'touch'
+            paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`
           }}
         >
           <div className="max-w-2xl mx-auto">
@@ -1068,12 +1066,10 @@ function AddFoodspot() {
 
       {/* Main Content */}
       <main 
-        className="flex-1 overflow-y-auto px-4"
+        className="page-content px-4"
         style={{
           paddingTop: getContentPaddingTop(formHeaderHeight, 24),
-          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
-          overscrollBehavior: 'none',
-          WebkitOverflowScrolling: 'touch'
+          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`
         }}
       >
         <div className="max-w-2xl mx-auto space-y-6">

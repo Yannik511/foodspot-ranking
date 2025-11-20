@@ -950,12 +950,10 @@ function Account() {
 
       {/* Main Content */}
       <main 
-        className="flex-1 overflow-y-auto px-4"
+        className="page-content px-4"
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
-          overscrollBehavior: 'none',
-          WebkitOverflowScrolling: 'touch'
+          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`
         }}
       >
         <div className="max-w-4xl mx-auto space-y-6">
@@ -1157,47 +1155,6 @@ function Account() {
             </div>
           </div>
 
-          {/* Category Mix */}
-          {Object.keys(stats.categoryCounts).length > 0 && (
-            <div className={`rounded-[20px] shadow-lg border p-6 ${
-              isDark
-                ? 'bg-gray-800 border-gray-700'
-                : 'bg-white border-gray-100'
-            }`}>
-              <h3 className={`text-lg font-bold mb-4 ${
-                isDark ? 'text-white' : 'text-gray-900'
-              }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-                Kategorie-Mix
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(stats.categoryCounts)
-                  .sort((a, b) => b[1] - a[1])
-                  .map(([category, count]) => (
-                    <div
-                      key={category}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-full ${
-                        isDark
-                          ? 'bg-gray-700'
-                          : 'bg-gray-100'
-                      }`}
-                    >
-                      <span className="text-base">{CATEGORY_EMOJIS[category] || '🍔'}</span>
-                      <span className={`text-sm font-medium ${
-                        isDark ? 'text-gray-200' : 'text-gray-700'
-                      }`}>
-                        {category}
-                  </span>
-                      <span className={`text-xs font-bold ${
-                        isDark ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
-                        {count}
-                      </span>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          )}
-
           {/* Top 10 Section */}
           {stats.topSpots.length > 0 && (
             <div className={`rounded-[20px] shadow-lg border p-6 ${
@@ -1357,7 +1314,48 @@ function Account() {
             </div>
           )}
 
-          {/* Recent Spots */}
+          {/* Top Kategorien */}
+          {Object.keys(stats.categoryCounts).length > 0 && (
+            <div className={`rounded-[20px] shadow-lg border p-6 ${
+              isDark
+                ? 'bg-gray-800 border-gray-700'
+                : 'bg-white border-gray-100'
+            }`}>
+              <h3 className={`text-lg font-bold mb-4 ${
+                isDark ? 'text-white' : 'text-gray-900'
+              }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                Top Kategorien
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(stats.categoryCounts)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([category, count]) => (
+                    <div
+                      key={category}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-full ${
+                        isDark
+                          ? 'bg-gray-700'
+                          : 'bg-gray-100'
+                      }`}
+                    >
+                      <span className="text-base">{CATEGORY_EMOJIS[category] || '🍔'}</span>
+                      <span className={`text-sm font-medium ${
+                        isDark ? 'text-gray-200' : 'text-gray-700'
+                      }`}>
+                        {category}
+                      </span>
+                      <span className={`text-xs font-bold ${
+                        isDark ? 'text-gray-400' : 'text-gray-500'
+                      }`}>
+                        {count}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {/* Zuletzt bewertet */}
           {stats.recentSpots.length > 0 && (
             <div className={`rounded-[20px] shadow-lg border p-6 ${
               isDark
@@ -1367,7 +1365,7 @@ function Account() {
               <h3 className={`text-lg font-bold mb-4 ${
                 isDark ? 'text-white' : 'text-gray-900'
               }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-                Zuletzt hinzugefügt
+                Zuletzt bewertet
               </h3>
               <div className="space-y-2">
                 {stats.recentSpots.map((spot) => (
@@ -1415,47 +1413,6 @@ function Account() {
                 ))}
             </div>
           </div>
-          )}
-
-          {/* Category Mix */}
-          {Object.keys(stats.categoryCounts).length > 0 && (
-            <div className={`rounded-[20px] shadow-lg border p-6 ${
-              isDark
-                ? 'bg-gray-800 border-gray-700'
-                : 'bg-white border-gray-100'
-            }`}>
-              <h3 className={`text-lg font-bold mb-4 ${
-                isDark ? 'text-white' : 'text-gray-900'
-              }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-                Kategorie-Mix
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(stats.categoryCounts)
-                  .sort((a, b) => b[1] - a[1])
-                  .map(([category, count]) => (
-                    <div
-                      key={category}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-full ${
-                        isDark
-                          ? 'bg-gray-700'
-                          : 'bg-gray-100'
-                      }`}
-                    >
-                      <span className="text-base">{CATEGORY_EMOJIS[category] || '🍔'}</span>
-                      <span className={`text-sm font-medium ${
-                        isDark ? 'text-gray-200' : 'text-gray-700'
-                      }`}>
-                        {category}
-                      </span>
-                      <span className={`text-xs font-bold ${
-                        isDark ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
-                        {count}
-                      </span>
-                    </div>
-                  ))}
-              </div>
-            </div>
           )}
 
           {/* Badges */}

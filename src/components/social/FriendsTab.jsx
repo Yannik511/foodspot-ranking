@@ -54,7 +54,7 @@ function FriendsTab() {
   const menuOpenForFriend = useRef(null)
 
   const SHARED_LISTS_PREVIEW_LIMIT = 6
-  const FRIENDS_PREVIEW_LIMIT = 15
+  const FRIENDS_PREVIEW_LIMIT = 10
   const [showAllSharedLists, setShowAllSharedLists] = useState(false)
   const [showAllFriends, setShowAllFriends] = useState(false)
   const selectedInvitation = useMemo(() => {
@@ -1389,7 +1389,7 @@ function FriendsTab() {
   // Don't show loading screen if we're just loading invitations
   if (loading && friends.length === 0 && incomingRequests.length === 0 && outgoingRequests.length === 0) {
     return (
-      <div className={`min-h-full flex flex-col ${
+      <div className={`flex flex-col ${
         isDark ? 'bg-gray-900' : 'bg-white'
       }`}>
         <SectionSkeleton isDark={isDark} rows={4} />
@@ -1398,7 +1398,7 @@ function FriendsTab() {
   }
 
   return (
-    <div className={`min-h-full flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
+    <div className={`flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
       {/* Search and Invite */}
       <div className={`p-4 border-b ${
         isDark ? 'border-gray-700' : 'border-gray-200'
@@ -1424,12 +1424,7 @@ function FriendsTab() {
       </div>
 
       {/* Content */}
-      <div 
-        className="flex-1"
-        style={{
-          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`
-        }}
-      >
+      <div className="flex-1">
         {/* Search Results */}
         {searchQuery.trim().length >= 2 && (
           <div className="p-4 border-b" style={{ borderColor: isDark ? '#374151' : '#E5E7EB' }}>
@@ -2037,12 +2032,15 @@ function FriendsTab() {
                     hapticFeedback.light()
                     setShowAllFriends(true)
                   }}
-                  className={`w-full mt-3 py-3 rounded-xl font-semibold text-sm transition-all active:scale-[0.98] ${
-                    isDark ? 'bg-gray-800 hover:bg-gray-700 text-gray-200' : 'bg-white hover:bg-gray-100 text-gray-700'
+                  className={`w-full mt-3 py-3 px-4 rounded-xl font-semibold text-sm transition-all active:scale-[0.98] border-2 ${
+                    isDark 
+                      ? 'bg-gray-800 hover:bg-gray-700 text-gray-200 border-gray-700' 
+                      : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200'
                   }`}
                   aria-label="Alle Freunde anzeigen"
+                  style={{ fontFamily: "'Poppins', sans-serif" }}
                 >
-                  Alle Freunde anzeigen
+                  + {friends.length - FRIENDS_PREVIEW_LIMIT} weitere Freunde anzeigen
                 </button>
               )}
             </div>

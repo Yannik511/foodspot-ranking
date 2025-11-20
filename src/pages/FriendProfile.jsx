@@ -516,12 +516,10 @@ function FriendProfile() {
 
       {/* Main Content with Pull-to-Refresh */}
       <main 
-        className="flex-1 overflow-y-auto px-4 py-6"
+        className="page-content px-4 py-6"
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
-          overscrollBehavior: 'none',
-          WebkitOverflowScrolling: 'touch'
+          paddingBottom: `calc(120px + env(safe-area-inset-bottom, 0px))` // Extra spacing für vollständige Sichtbarkeit aller Bereiche
         }}
       >
         {refreshing && (
@@ -723,8 +721,8 @@ function FriendProfile() {
             </div>
           )}
 
-          {/* Top-Kategorien Card - Only if stats are visible and not loading */}
-          {canViewStats && !loading && !error && stats.topCategories && stats.topCategories.length > 0 && (
+          {/* Top 10 Spots - Only if stats are visible and not loading */}
+          {canViewStats && !loading && !error && stats.topSpots && stats.topSpots.length > 0 && (
             <div className={`rounded-[20px] shadow-lg border p-6 ${
               isDark
                 ? 'bg-gray-800 border-gray-700'
@@ -733,32 +731,74 @@ function FriendProfile() {
               <h3 className={`text-lg font-bold mb-4 ${
                 isDark ? 'text-white' : 'text-gray-900'
               }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-                Top-Kategorien
+                🏆 Top 10 Spots
               </h3>
-              <div className="flex flex-wrap gap-3">
-                {stats.topCategories.map((categoryData) => (
-                  <div
-                    key={categoryData.category}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-full ${
+              <div className="space-y-3">
+                {stats.topSpots.slice(0, 10).map((spot, index) => (
+                  <button
+                    key={spot.id}
+                    onClick={() => handleSpotClick(spot)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all active:scale-[0.98] ${
                       isDark
-                        ? 'bg-gray-700'
-                        : 'bg-gray-100'
+                        ? 'hover:bg-gray-700'
+                        : 'hover:bg-gray-50'
                     }`}
                   >
-                    <span className="text-xl">{CATEGORY_EMOJIS[categoryData.category] || '🍔'}</span>
-                    <div className="flex flex-col">
-                      <span className={`text-sm font-semibold ${
-                        isDark ? 'text-gray-200' : 'text-gray-700'
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
+                      index < 3
+                        ? 'bg-gradient-to-br from-[#FF7E42] to-[#FFB25A] text-white'
+                        : isDark
+                          ? 'bg-gray-700 text-gray-300'
+                          : 'bg-gray-200 text-gray-700'
+                    }`}>
+                      {index + 1}
+                    </div>
+                    {spot.cover_photo_url ? (
+                      <img
+                        src={spot.cover_photo_url}
+                        alt={spot.name}
+                        className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                        onError={(e) => {
+                          e.target.style.display = 'none'
+                          e.target.nextElementSibling.style.display = 'flex'
+                        }}
+                      />
+                    ) : null}
+                    <div className={`w-12 h-12 rounded-lg flex-shrink-0 flex items-center justify-center ${
+                      isDark ? 'bg-gray-700' : 'bg-gray-200'
+                    }`} style={{ display: spot.cover_photo_url ? 'none' : 'flex' }}>
+                      <span className="text-xl">{CATEGORY_EMOJIS[spot.category] || '🍔'}</span>
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <div className={`font-semibold text-sm truncate ${
+                        isDark ? 'text-white' : 'text-gray-900'
                       }`}>
-                        {categoryData.category}
-                      </span>
-                      <span className={`text-xs ${
+                        {spot.name}
+                      </div>
+                      <div className={`text-xs truncate ${
                         isDark ? 'text-gray-400' : 'text-gray-500'
                       }`}>
-                        {categoryData.percentage}% · {categoryData.count} {categoryData.count === 1 ? 'Spot' : 'Spots'}
+                        {spot.city}
+                      </div>
+                      {spot.category && (
+                        <div className="mt-1">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                            isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'
+                          }`}>
+                            {CATEGORY_EMOJIS[spot.category] || '🍽️'} {spot.category}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <span className="text-sm">⭐</span>
+                      <span className={`font-bold text-sm ${
+                        isDark ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {spot.rating?.toFixed(1)}/10
                       </span>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -847,8 +887,8 @@ function FriendProfile() {
             </div>
           )}
 
-          {/* Top Spots - Only if stats are visible and not loading (Top 10) */}
-          {canViewStats && !loading && !error && stats.topSpots && stats.topSpots.length > 0 && (
+          {/* Top Kategorien Card - Only if stats are visible and not loading */}
+          {canViewStats && !loading && !error && stats.topCategories && stats.topCategories.length > 0 && (
             <div className={`rounded-[20px] shadow-lg border p-6 ${
               isDark
                 ? 'bg-gray-800 border-gray-700'
@@ -857,74 +897,32 @@ function FriendProfile() {
               <h3 className={`text-lg font-bold mb-4 ${
                 isDark ? 'text-white' : 'text-gray-900'
               }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-                🏆 Top 10 Spots
+                Top Kategorien
               </h3>
-              <div className="space-y-3">
-                {stats.topSpots.slice(0, 10).map((spot, index) => (
-                  <button
-                    key={spot.id}
-                    onClick={() => handleSpotClick(spot)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all active:scale-[0.98] ${
+              <div className="flex flex-wrap gap-3">
+                {stats.topCategories.map((categoryData) => (
+                  <div
+                    key={categoryData.category}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-full ${
                       isDark
-                        ? 'hover:bg-gray-700'
-                        : 'hover:bg-gray-50'
+                        ? 'bg-gray-700'
+                        : 'bg-gray-100'
                     }`}
                   >
-                    <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
-                      index < 3
-                        ? 'bg-gradient-to-br from-[#FF7E42] to-[#FFB25A] text-white'
-                        : isDark
-                          ? 'bg-gray-700 text-gray-300'
-                          : 'bg-gray-200 text-gray-700'
-                    }`}>
-                      {index + 1}
-                    </div>
-                    {spot.cover_photo_url ? (
-                      <img
-                        src={spot.cover_photo_url}
-                        alt={spot.name}
-                        className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-                        onError={(e) => {
-                          e.target.style.display = 'none'
-                          e.target.nextElementSibling.style.display = 'flex'
-                        }}
-                      />
-                    ) : null}
-                    <div className={`w-12 h-12 rounded-lg flex-shrink-0 flex items-center justify-center ${
-                      isDark ? 'bg-gray-700' : 'bg-gray-200'
-                    }`} style={{ display: spot.cover_photo_url ? 'none' : 'flex' }}>
-                      <span className="text-xl">{CATEGORY_EMOJIS[spot.category] || '🍔'}</span>
-                    </div>
-                    <div className="flex-1 min-w-0 text-left">
-                      <div className={`font-semibold text-sm truncate ${
-                        isDark ? 'text-white' : 'text-gray-900'
+                    <span className="text-xl">{CATEGORY_EMOJIS[categoryData.category] || '🍔'}</span>
+                    <div className="flex flex-col">
+                      <span className={`text-sm font-semibold ${
+                        isDark ? 'text-gray-200' : 'text-gray-700'
                       }`}>
-                        {spot.name}
-                      </div>
-                      <div className={`text-xs truncate ${
+                        {categoryData.category}
+                      </span>
+                      <span className={`text-xs ${
                         isDark ? 'text-gray-400' : 'text-gray-500'
                       }`}>
-                        {spot.city}
-                      </div>
-                      {spot.category && (
-                        <div className="mt-1">
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${
-                            isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'
-                          }`}>
-                            {CATEGORY_EMOJIS[spot.category] || '🍽️'} {spot.category}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <span className="text-sm">⭐</span>
-                      <span className={`font-bold text-sm ${
-                        isDark ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        {spot.rating?.toFixed(1)}/10
+                        {categoryData.percentage}% · {categoryData.count} {categoryData.count === 1 ? 'Spot' : 'Spots'}
                       </span>
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -966,7 +964,7 @@ function FriendProfile() {
             </div>
           )}
 
-          {/* Top 5 Geteilte Spots - Only if stats are visible */}
+          {/* Top 5 geteilte Spots - Only if stats are visible */}
           {canViewStats && stats.topSharedSpots && stats.topSharedSpots.length > 0 && (
             <div className={`rounded-[20px] shadow-lg border p-6 ${
               isDark
@@ -976,7 +974,7 @@ function FriendProfile() {
               <h3 className={`text-lg font-bold mb-4 ${
                 isDark ? 'text-white' : 'text-gray-900'
               }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-                🤝 Top 5 geteilte Spots
+                Top 5 geteilte Spots
               </h3>
               <div className="space-y-3">
                 {stats.topSharedSpots.map((spot, index) => (

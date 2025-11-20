@@ -143,6 +143,17 @@
     min-height: calc(60px + env(safe-area-inset-top, 0px));
   }
 
+  /* Einheitlicher Content-Bereich für alle Pages */
+  /* Füllt verfügbaren Platz zwischen Header und Footer */
+  /* Scrollbar bei viel Content, füllt Platz bei wenig Content */
+  .page-content {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0; /* Wichtig für Flexbox overflow */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
+  }
+
   .pressable {
     transition: transform 0.16s cubic-bezier(0.2, 0.65, 0.25, 1), opacity 0.15s ease;
   }

@@ -560,12 +560,10 @@ function Settings() {
       
       {/* Content */}
       <main 
-        className="flex-1 overflow-y-auto"
+        className="page-content px-4"
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(48px + env(safe-area-inset-bottom, 0px) + 24px)`, // Bottom Bar (~48px) + spacing
-          overscrollBehavior: 'none',
-          WebkitOverflowScrolling: 'touch'
+          paddingBottom: `calc(48px + env(safe-area-inset-bottom, 0px) + 120px)` // Bottom Bar (~48px) + extra spacing für App-Info-Block + safe-area
         }}
       >
         {/* Error/Success Messages */}

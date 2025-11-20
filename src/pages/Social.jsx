@@ -221,12 +221,10 @@ function Social() {
       {/* Content */}
       <main 
         ref={scrollContainerRef}
-        className={`flex-1 overflow-y-auto ${isDark ? 'bg-gray-900' : 'bg-white'}`}
+        className={`page-content ${isDark ? 'bg-gray-900' : 'bg-white'}`}
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
-          overscrollBehavior: 'none',
-          WebkitOverflowScrolling: 'touch'
+          paddingBottom: `calc(16px + env(safe-area-inset-bottom, 0px))`
         }}
       >
         <FriendsTab />

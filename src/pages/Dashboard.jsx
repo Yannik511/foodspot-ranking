@@ -1898,14 +1898,12 @@ function Dashboard() {
       {/* Main Content */}
       <main 
         ref={scrollContainerRef}
-        className={`flex-1 overflow-y-auto px-4 py-6 relative`}
+        className={`page-content px-4 py-6 relative`}
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
           paddingBottom: isEmpty 
-            ? `calc(24px + max(env(safe-area-inset-bottom, 0px), 20px))`
-            : `calc(80px + max(env(safe-area-inset-bottom, 0px), 34px) + 60px)`, // Bottom Nav (~60px) + Safe-Area + FAB spacing + extra padding für Button
-          overscrollBehavior: 'none',
-          WebkitOverflowScrolling: 'touch'
+            ? `calc(16px + max(env(safe-area-inset-bottom, 0px), 20px))`
+            : `calc(80px + max(env(safe-area-inset-bottom, 0px), 34px) + 60px)` // Bottom Nav (~60px) + Safe-Area + FAB spacing + extra padding für Button
         }}
       >
         {/* Zero-State: Welcome Screen (keine Tabs, keine Bottom Navigation) */}
