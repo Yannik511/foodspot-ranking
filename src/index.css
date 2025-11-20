@@ -96,6 +96,10 @@
     z-index: 5;
     pointer-events: none;
   }
+  
+  .dark body::before {
+    background: var(--safe-area-bg-current, #111827);
+  }
 
   #root {
     height: 100dvh;
@@ -127,8 +131,8 @@
 }
 
 .dark body {
-  --safe-area-bg-current: #0f172a;
-  background: #0f172a;
+  --safe-area-bg-current: #111827;
+  background: #111827;
   color: #F8FAFC;
 }
 

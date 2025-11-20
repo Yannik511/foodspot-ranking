@@ -1902,8 +1902,8 @@ function Dashboard() {
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
           paddingBottom: isEmpty 
-            ? `calc(24px + env(safe-area-inset-bottom, 0px))`
-            : `calc(72px + env(safe-area-inset-bottom, 0px) + 24px)`, // Bottom Nav + FAB + spacing
+            ? `calc(24px + max(env(safe-area-inset-bottom, 0px), 20px))`
+            : `calc(72px + max(env(safe-area-inset-bottom, 0px), 34px) + 32px)`, // Bottom Nav + FAB + safe area + extra spacing
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'
         }}
