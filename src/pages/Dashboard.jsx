@@ -1970,7 +1970,7 @@ function Dashboard() {
             {/* Private Lists View */}
             {listView === 'meine' && (
               <>
-                <div className="max-w-5xl mx-auto w-full mb-6" style={{ paddingTop: 0 }}>
+                <div className="max-w-5xl mx-auto w-full mb-6" style={{ paddingTop: '16px' }}>
                   <div className={`rounded-2xl border shadow-sm ${
                     isDark ? 'bg-gray-800/80 border-gray-700/60' : 'bg-white/80 border-gray-200/60'
                   }`}>
@@ -2357,7 +2357,7 @@ function Dashboard() {
             {/* Shared Lists View */}
             {listView === 'geteilt' && (
           <>
-            <div className="max-w-5xl mx-auto w-full mb-6" style={{ paddingTop: 0 }}>
+            <div className="max-w-5xl mx-auto w-full mb-6" style={{ paddingTop: '16px' }}>
               <div className={`rounded-2xl border shadow-sm ${
                 isDark ? 'bg-gray-800/80 border-gray-700/60' : 'bg-white/80 border-gray-200/60'
               }`}>

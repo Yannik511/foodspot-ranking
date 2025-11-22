@@ -69,13 +69,13 @@ function Landing() {
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
-          top: `calc(-1 * env(safe-area-inset-top, 0px))`,
-          left: `calc(-1 * env(safe-area-inset-left, 0px))`,
-          right: `calc(-1 * env(safe-area-inset-right, 0px))`,
-          bottom: `calc(-1 * env(safe-area-inset-bottom, 0px))`,
-          width: `calc(100% + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px))`,
-          height: `calc(100% + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px))`,
-          minHeight: '100%',
+          top: `calc(-1 * env(safe-area-inset-top, 0px) - 2px)`,
+          left: `calc(-1 * env(safe-area-inset-left, 0px) - 2px)`,
+          right: `calc(-1 * env(safe-area-inset-right, 0px) - 2px)`,
+          bottom: `calc(-1 * env(safe-area-inset-bottom, 0px) - 2px)`,
+          width: `calc(100% + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px) + 4px)`,
+          height: `calc(100% + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px) + 4px)`,
+          minHeight: 'calc(100% + 4px)',
           transform: 'scale(1.05)',
           transition: 'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
           zIndex: 0,
@@ -100,12 +100,12 @@ function Landing() {
       <div 
         className="absolute"
         style={{
-          top: `calc(-1 * env(safe-area-inset-top, 0px))`,
-          left: `calc(-1 * env(safe-area-inset-left, 0px))`,
-          right: `calc(-1 * env(safe-area-inset-right, 0px))`,
-          bottom: `calc(-1 * env(safe-area-inset-bottom, 0px))`,
-          width: `calc(100% + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px))`,
-          height: `calc(100% + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px))`,
+          top: `calc(-1 * env(safe-area-inset-top, 0px) - 2px)`,
+          left: `calc(-1 * env(safe-area-inset-left, 0px) - 2px)`,
+          right: `calc(-1 * env(safe-area-inset-right, 0px) - 2px)`,
+          bottom: `calc(-1 * env(safe-area-inset-bottom, 0px) - 2px)`,
+          width: `calc(100% + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px) + 4px)`,
+          height: `calc(100% + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px) + 4px)`,
           background: isDark 
             ? 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0) 100%)'
             : 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 100%)',
@@ -116,12 +116,12 @@ function Landing() {
       <div 
         className="absolute"
         style={{
-          top: `calc(-1 * env(safe-area-inset-top, 0px))`,
-          left: `calc(-1 * env(safe-area-inset-left, 0px))`,
-          right: `calc(-1 * env(safe-area-inset-right, 0px))`,
-          bottom: `calc(-1 * env(safe-area-inset-bottom, 0px))`,
-          width: `calc(100% + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px))`,
-          height: `calc(100% + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px))`,
+          top: `calc(-1 * env(safe-area-inset-top, 0px) - 2px)`,
+          left: `calc(-1 * env(safe-area-inset-left, 0px) - 2px)`,
+          right: `calc(-1 * env(safe-area-inset-right, 0px) - 2px)`,
+          bottom: `calc(-1 * env(safe-area-inset-bottom, 0px) - 2px)`,
+          width: `calc(100% + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px) + 4px)`,
+          height: `calc(100% + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px) + 4px)`,
           backgroundColor: isDark ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.1)',
         }}
       />
