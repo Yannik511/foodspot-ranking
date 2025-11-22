@@ -224,7 +224,7 @@ function Social() {
         className={`page-content ${isDark ? 'bg-gray-900' : 'bg-white'}`}
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(16px + env(safe-area-inset-bottom, 0px))`
+          paddingBottom: `calc(60px + env(safe-area-inset-bottom, 0px))`
         }}
       >
         <FriendsTab />

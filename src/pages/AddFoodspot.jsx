@@ -864,7 +864,7 @@ function AddFoodspot() {
           className="page-content px-4"
           style={{
             paddingTop: getContentPaddingTop(categoryHeaderHeight, 24),
-            paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`
+            paddingBottom: `calc(60px + env(safe-area-inset-bottom, 0px))`
           }}
         >
           <div className="max-w-2xl mx-auto">
@@ -1069,7 +1069,7 @@ function AddFoodspot() {
         className="page-content px-4"
         style={{
           paddingTop: getContentPaddingTop(formHeaderHeight, 24),
-          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`
+          paddingBottom: `calc(60px + env(safe-area-inset-bottom, 0px))`
         }}
       >
         <div className="max-w-2xl mx-auto space-y-6">

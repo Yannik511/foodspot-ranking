@@ -32,7 +32,9 @@ function Avatar({
   className = '',
   showBorder = true,
   cacheBust = null,
-  shape = 'circle' // 'circle' or 'square'
+  shape = 'circle', // 'circle' or 'square'
+  onImageLoad = null, // Callback when image loads
+  forceImageUrl = null // Force a specific image URL (for optimistic updates)
 }) {
   const { user } = useAuth()
   const { ensureProfiles, getProfile } = useProfilesStore()
@@ -52,7 +54,7 @@ function Avatar({
   }
   
   const profileFromStore = useMemo(() => getProfile(user?.id), [getProfile, user?.id])
-  const profileImageUrl = profileFromStore?.avatar_url || user?.user_metadata?.profileImageUrl
+  const profileImageUrl = forceImageUrl || profileFromStore?.avatar_url || user?.user_metadata?.profileImageUrl
   const backgroundColor = getColorFromId(user?.id)
   
   // Add cache busting if provided
@@ -99,12 +101,22 @@ function Avatar({
           alt={getUsername()}
           className="w-full h-full object-cover"
           style={{ objectFit: 'cover' }}
+          onLoad={() => {
+            // Call onImageLoad callback when image successfully loads
+            if (onImageLoad) {
+              onImageLoad()
+            }
+          }}
           onError={(e) => {
             // Fallback to initials if image fails to load
             e.target.style.display = 'none'
             e.target.parentElement.style.backgroundColor = backgroundColor
             const initials = e.target.parentElement.querySelector('.avatar-initials')
             if (initials) initials.style.display = 'flex'
+            // Still call onImageLoad even on error, so loading state can be cleared
+            if (onImageLoad) {
+              onImageLoad()
+            }
           }}
         />
       ) : null}

@@ -93,7 +93,7 @@
     right: 0;
     height: env(safe-area-inset-top, 0px);
     background: var(--safe-area-bg-current, #FFF5EF);
-    z-index: 5;
+    z-index: 3; /* Niedriger als Content (z-10) und Header (z-20), damit Content darüber scrollen kann */
     pointer-events: none;
   }
   

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTheme } from '../../contexts/ThemeContext'
+import { useHeaderHeight } from '../../hooks/useHeaderHeight'
 import UserAvatar from './UserAvatar'
 import { supabase } from '../../services/supabase'
 import { hapticFeedback } from '../../utils/haptics'
@@ -24,10 +25,11 @@ const CATEGORIES = {
 }
 
 
-function CreateSharedList({ onClose }) {
+function CreateSharedList({ onClose, isFullscreen = false }) {
   const { user } = useAuth()
   const { isDark } = useTheme()
   const navigate = useNavigate()
+  const { headerRef, headerHeight } = useHeaderHeight()
   
   // Stepper State
   const [step, setStep] = useState(1) // 1: Mitglieder, 2: Details, 3: Zusammenfassung
@@ -813,6 +815,156 @@ function CreateSharedList({ onClose }) {
     )
   }
   
+  // Fullscreen-Page Layout
+  if (isFullscreen) {
+    return (
+      <div className={`h-full flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'} relative overflow-hidden`}>
+        {/* Header - Fixed */}
+        <header 
+          ref={headerRef}
+          className={`header-safe flex items-center justify-between border-b fixed top-0 left-0 right-0 z-20 ${
+            isDark
+              ? 'bg-gray-800 border-gray-700'
+              : 'bg-white border-gray-200'
+          }`}
+          style={{
+            paddingLeft: 'clamp(16px, 4vw, 24px)',
+            paddingRight: 'clamp(16px, 4vw, 24px)',
+          }}
+        >
+          <button
+            onClick={() => step > 1 ? setStep(step - 1) : onClose()}
+            className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
+              isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+            }`}
+          >
+            <svg className={`w-6 h-6 ${isDark ? 'text-gray-200' : 'text-gray-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+            {step === 1 && 'Schritt 1: Mitglieder'}
+            {step === 2 && 'Schritt 2: Listen-Details'}
+            {step === 3 && 'Schritt 3: Zusammenfassung'}
+          </h2>
+          <div className="w-10" />
+        </header>
+
+        {/* Main Content - Scrollable */}
+        <main 
+          className="absolute inset-0 overflow-y-auto"
+          style={{
+            paddingTop: 0,
+            paddingBottom: `calc(80px + env(safe-area-inset-bottom, 0px))`,
+            overscrollBehavior: 'none',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
+          {/* Spacer für Header-Höhe + konsistenter Abstand */}
+          <div 
+            style={{ 
+              height: headerHeight 
+                ? `${headerHeight + 24}px` // Gemessene Header-Höhe + 24px konsistenter Abstand
+                : 'calc(56px + env(safe-area-inset-top, 0px) + 24px + 24px)', // Fallback: Header + Safe-Area + 24px Abstand
+              flexShrink: 0 
+            }} 
+          />
+          
+          {/* Content-Bereich */}
+          <div className="max-w-2xl mx-auto px-4 py-6" style={{ paddingTop: 'clamp(24px, 6vw, 32px)' }}>
+            {/* Stepper Indicator */}
+            <div className={`mb-6 p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+              <div className="flex items-center justify-between">
+                {[1, 2, 3].map((s) => (
+                  <div key={s} className="flex items-center flex-1">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold ${
+                      s < step ? (isDark ? 'bg-green-600 text-white' : 'bg-green-500 text-white') :
+                      s === step ? (isDark ? 'bg-[#FF9357] text-white' : 'bg-[#FF7E42] text-white') :
+                      (isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-500')
+                    }`}>
+                      {s < step ? '✓' : s}
+                    </div>
+                    {s < 3 && (
+                      <div className={`flex-1 h-0.5 mx-2 ${s < step ? (isDark ? 'bg-green-600' : 'bg-green-500') : (isDark ? 'bg-gray-700' : 'bg-gray-200')}`} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Step Content */}
+            {step === 1 && renderStep1()}
+            {step === 2 && renderStep2()}
+            {step === 3 && renderStep3()}
+            
+            {/* Error Message */}
+            {error && (
+              <div className={`mt-4 px-3 py-2 rounded-lg text-sm ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-600'}`}>
+                {error}
+              </div>
+            )}
+          </div>
+        </main>
+
+        {/* Footer - Fixed */}
+        <div 
+          className={`fixed bottom-0 left-0 right-0 border-t ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}
+          style={{
+            paddingTop: 'clamp(12px, 3vw, 16px)',
+            paddingBottom: `max(12px, env(safe-area-inset-bottom))`,
+            paddingLeft: 'clamp(16px, 4vw, 24px)',
+            paddingRight: 'clamp(16px, 4vw, 24px)',
+          }}
+        >
+          <div className="flex gap-3 max-w-2xl mx-auto">
+            {step < 3 ? (
+              <>
+                <button
+                  onClick={onClose}
+                  className={`flex-1 py-3 px-4 rounded-xl font-medium ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'}`}
+                >
+                  Abbrechen
+                </button>
+                <button
+                  onClick={() => {
+                    if (step === 1 && canProceedToStep2()) {
+                      setStep(2)
+                      hapticFeedback.light()
+                    } else if (step === 2 && canProceedToStep3()) {
+                      setStep(3)
+                      hapticFeedback.light()
+                    }
+                  }}
+                  disabled={(step === 1 && !canProceedToStep2()) || (step === 2 && !canProceedToStep3())}
+                  className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all ${
+                    ((step === 1 && canProceedToStep2()) || (step === 2 && canProceedToStep3()))
+                      ? `text-white ${isDark ? 'bg-gradient-to-r from-[#FF9357] to-[#B85C2C]' : 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]'}`
+                      : (isDark ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed')
+                  }`}
+                >
+                  Weiter
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={handleCreate}
+                disabled={creating || !canProceedToStep3()}
+                className={`w-full py-3 px-4 rounded-xl font-medium transition-all ${
+                  !creating && canProceedToStep3()
+                    ? `text-white ${isDark ? 'bg-gradient-to-r from-[#FF9357] to-[#B85C2C]' : 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]'}`
+                    : (isDark ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed')
+                }`}
+              >
+                {creating ? 'Wird erstellt...' : 'Liste erstellen'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Modal Layout (für Rückwärtskompatibilität)
   return (
     <div 
       className={`fixed inset-0 z-50 flex items-center justify-center ${isDark ? 'bg-gray-900/95' : 'bg-white/95'} backdrop-blur-sm`}

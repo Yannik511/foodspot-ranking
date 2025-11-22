@@ -93,6 +93,9 @@ function Account() {
   const [uploading, setUploading] = useState(false)
   const [toast, setToast] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [newAvatarUrl, setNewAvatarUrl] = useState(null) // Optimistic update URL
+  const [imageLoaded, setImageLoaded] = useState(false) // Track if new image is loaded
+  const uploadTimeoutRef = useRef(null) // Ref for upload timeout
   
   // Profile stats
   const createEmptyStats = () => ({
@@ -655,6 +658,8 @@ function Account() {
     }
 
     setUploading(true)
+    setImageLoaded(false)
+    setNewAvatarUrl(null)
 
     try {
       const compressedFile = await compressImage(file)
@@ -678,34 +683,100 @@ function Account() {
         throw new Error(`Upload fehlgeschlagen: ${uploadError.message}`)
       }
 
+      // Get public URL
+      let imageUrl
       const { data: urlData } = supabase.storage
         .from('profile-avatars')
         .getPublicUrl(fileName)
       
-      const imageUrl = urlData?.publicUrl
+      imageUrl = urlData?.publicUrl
+
+      // If public URL doesn't work, try signed URL
+      if (!imageUrl) {
+        const { data: signedData, error: signedError } = await supabase.storage
+          .from('profile-avatars')
+          .createSignedUrl(fileName, 31536000) // 1 year in seconds
+        
+        if (!signedError && signedData?.signedUrl) {
+          imageUrl = signedData.signedUrl
+        }
+      }
 
       if (!imageUrl) {
         throw new Error('Konnte URL für das hochgeladene Bild nicht abrufen')
       }
 
+      // Update user metadata with cache busting
+      const imageUrlWithCache = `${imageUrl}?v=${Date.now()}`
+      
+      // OPTIMISTIC UPDATE: Setze die neue URL sofort, damit sie angezeigt wird
+      setNewAvatarUrl(imageUrlWithCache)
+
+      // Update user metadata
       const { error: updateError } = await supabase.auth.updateUser({
         data: {
-          profileImageUrl: imageUrl
+          ...user?.user_metadata,
+          profileImageUrl: imageUrlWithCache
         }
       })
 
       if (updateError) throw updateError
 
+      // WICHTIG: Auch user_profiles Tabelle aktualisieren!
+      // (Damit Freunde und geteilte Listen das Avatar sehen)
+      try {
+        await supabase
+          .from('user_profiles')
+          .update({ profile_image_url: imageUrlWithCache })
+          .eq('id', user.id)
+        
+        // Aktualisiere auch den ProfileContext sofort
+        upsertProfiles({
+          id: user.id,
+          user_id: user.id,
+          profile_image_url: imageUrlWithCache,
+          avatar_url: imageUrlWithCache,
+          username: user?.user_metadata?.username || user?.email?.split('@')[0] || '',
+          profile_visibility: user?.user_metadata?.profile_visibility || 'private'
+        })
+      } catch (profileUpdateErr) {
+        console.warn('Could not update user_profiles table:', profileUpdateErr)
+        // Nicht kritisch - auth.users ist die Hauptquelle
+      }
+
+      // Lade Session explizit neu, um sicherzustellen, dass die neuen Metadata verfügbar sind
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        // Der AuthContext wird automatisch über onAuthStateChange aktualisiert
+        // Aber wir können hier sicherstellen, dass die Session die neuen Daten hat
+      }
+
       showToast('Profilbild erfolgreich aktualisiert!', 'success')
       
-      setTimeout(() => {
-        window.location.reload()
-      }, 1000)
+      // Fallback: Wenn das Bild nach 5 Sekunden nicht geladen wurde, Ladesymbol trotzdem ausblenden
+      if (uploadTimeoutRef.current) {
+        clearTimeout(uploadTimeoutRef.current)
+      }
+      uploadTimeoutRef.current = setTimeout(() => {
+        if (uploading) {
+          console.warn('Avatar image load timeout - hiding loading indicator')
+          setImageLoaded(true)
+          setUploading(false)
+          setNewAvatarUrl(null)
+        }
+        uploadTimeoutRef.current = null
+      }, 5000)
     } catch (error) {
       console.error('Error uploading avatar:', error)
-      showToast('Fehler beim Hochladen. Bitte versuche es erneut.', 'error')
-    } finally {
+      // Clear timeout on error
+      if (uploadTimeoutRef.current) {
+        clearTimeout(uploadTimeoutRef.current)
+        uploadTimeoutRef.current = null
+      }
+      setNewAvatarUrl(null)
+      setImageLoaded(false)
       setUploading(false)
+      showToast('Fehler beim Hochladen. Bitte versuche es erneut.', 'error')
     }
   }
 
@@ -953,7 +1024,7 @@ function Account() {
         className="page-content px-4"
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`
+          paddingBottom: `calc(60px + env(safe-area-inset-bottom, 0px))`
         }}
       >
         <div className="max-w-4xl mx-auto space-y-6">
@@ -968,9 +1039,30 @@ function Account() {
               <div className="relative">
                 <label htmlFor="avatar-upload" className="cursor-pointer">
                   <div className="relative">
-                    <Avatar size={100} showBorder={true} />
+                    <Avatar 
+                      size={100} 
+                      showBorder={true}
+                      forceImageUrl={newAvatarUrl}
+                      cacheBust={newAvatarUrl ? Date.now() : null}
+                      onImageLoad={() => {
+                        // Bild wurde erfolgreich geladen - Ladesymbol ausblenden
+                        if (uploading && imageLoaded === false) {
+                          // Clear fallback timeout
+                          if (uploadTimeoutRef.current) {
+                            clearTimeout(uploadTimeoutRef.current)
+                            uploadTimeoutRef.current = null
+                          }
+                          setImageLoaded(true)
+                          // Kurze Verzögerung, damit der User das neue Bild sieht
+                          setTimeout(() => {
+                            setUploading(false)
+                            setNewAvatarUrl(null) // Reset nach erfolgreichem Load
+                          }, 300)
+                        }
+                      }}
+                    />
                     {uploading && (
-                      <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                      <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center z-10">
                         <svg className="animate-spin h-8 w-8 text-white" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>

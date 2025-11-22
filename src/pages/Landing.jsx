@@ -49,7 +49,6 @@ function Landing() {
       className="fixed inset-0 w-full h-full relative overflow-hidden"
       style={{
         height: '100dvh',
-        height: '100vh', // Fallback
         width: '100vw',
         margin: 0,
         padding: 0,
@@ -62,16 +61,20 @@ function Landing() {
         zIndex: 0,
       }}
     >
-      {/* Burger Background Image - Edge-to-Edge, vollständig abgedeckt, kein Scroll */}
+      {/* Burger Background Image - Edge-to-Edge, vollständig abgedeckt inkl. Safe Area, kein Scroll */}
       <div 
-        className="absolute inset-0"
+        className="absolute"
         style={{
           backgroundImage: 'url("https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1920&q=80")',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
-          width: '100%',
-          height: '100%',
+          top: `calc(-1 * env(safe-area-inset-top, 0px))`,
+          left: `calc(-1 * env(safe-area-inset-left, 0px))`,
+          right: `calc(-1 * env(safe-area-inset-right, 0px))`,
+          bottom: `calc(-1 * env(safe-area-inset-bottom, 0px))`,
+          width: `calc(100% + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px))`,
+          height: `calc(100% + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px))`,
           minHeight: '100%',
           transform: 'scale(1.05)',
           transition: 'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
@@ -95,8 +98,14 @@ function Landing() {
 
       {/* Gradient Overlay - von unten dunkel nach oben transparent + Dark Mode Support */}
       <div 
-        className="absolute inset-0"
+        className="absolute"
         style={{
+          top: `calc(-1 * env(safe-area-inset-top, 0px))`,
+          left: `calc(-1 * env(safe-area-inset-left, 0px))`,
+          right: `calc(-1 * env(safe-area-inset-right, 0px))`,
+          bottom: `calc(-1 * env(safe-area-inset-bottom, 0px))`,
+          width: `calc(100% + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px))`,
+          height: `calc(100% + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px))`,
           background: isDark 
             ? 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0) 100%)'
             : 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 100%)',
@@ -105,8 +114,14 @@ function Landing() {
 
       {/* Zusätzliche transparente Overlay-Schicht für besseren Textkontrast */}
       <div 
-        className="absolute inset-0"
+        className="absolute"
         style={{
+          top: `calc(-1 * env(safe-area-inset-top, 0px))`,
+          left: `calc(-1 * env(safe-area-inset-left, 0px))`,
+          right: `calc(-1 * env(safe-area-inset-right, 0px))`,
+          bottom: `calc(-1 * env(safe-area-inset-bottom, 0px))`,
+          width: `calc(100% + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px))`,
+          height: `calc(100% + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px))`,
           backgroundColor: isDark ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.1)',
         }}
       />

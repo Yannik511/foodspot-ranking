@@ -432,7 +432,7 @@ function FriendProfile() {
         className="px-4 py-6 space-y-6"
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
+          paddingBottom: `calc(60px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none'
         }}
       >
@@ -519,7 +519,7 @@ function FriendProfile() {
         className="page-content px-4 py-6"
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(120px + env(safe-area-inset-bottom, 0px))` // Extra spacing für vollständige Sichtbarkeit aller Bereiche
+          paddingBottom: `calc(80px + env(safe-area-inset-bottom, 0px))` // Extra spacing für vollständige Sichtbarkeit aller Bereiche
         }}
       >
         {refreshing && (

@@ -5,7 +5,6 @@ import { useTheme } from '../../contexts/ThemeContext'
 import UserAvatar from './UserAvatar'
 import { supabase } from '../../services/supabase'
 import { hapticFeedback } from '../../utils/haptics'
-import CreateSharedList from './CreateSharedList'
 import { useProfilesStore } from '../../contexts/ProfileContext'
 
 const SectionSkeleton = ({ isDark, rows = 3 }) => (
@@ -50,7 +49,6 @@ function FriendsTab() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [toast, setToast] = useState(null)
-  const [showCreateSharedList, setShowCreateSharedList] = useState(false)
   const menuOpenForFriend = useRef(null)
 
   const SHARED_LISTS_PREVIEW_LIMIT = 6
@@ -2089,9 +2087,9 @@ function FriendsTab() {
             }`}>
         <button
           onClick={() => {
-                  setShowFABMenu(false)
-            setShowCreateSharedList(true)
+            setShowFABMenu(false)
             hapticFeedback.light()
+            navigate('/create-shared-list')
           }}
                 className={`w-full px-4 py-3 rounded-lg text-left transition-all active:scale-95 flex items-center gap-3 ${
                   isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
@@ -2132,16 +2130,6 @@ function FriendsTab() {
         <div
           className="fixed inset-0 z-[5]"
           onClick={() => setShowFABMenu(false)}
-        />
-      )}
-
-      {/* Create Shared List Modal */}
-      {showCreateSharedList && (
-        <CreateSharedList
-          onClose={() => {
-            setShowCreateSharedList(false)
-            setShowFABMenu(false)
-          }}
         />
       )}
 

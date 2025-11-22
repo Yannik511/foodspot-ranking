@@ -65,7 +65,7 @@ function About() {
         className="flex-1 overflow-y-auto px-4 max-w-2xl mx-auto"
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
+          paddingBottom: `calc(60px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'
         }}

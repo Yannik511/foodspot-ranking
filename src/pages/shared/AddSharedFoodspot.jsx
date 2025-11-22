@@ -724,7 +724,7 @@ function AddSharedFoodspot() {
     } relative overflow-hidden`}>
       <header 
         ref={headerRef}
-        className="header-safe fixed top-0 left-0 right-0 z-10 backdrop-blur-lg bg-white/70 dark:bg-gray-900/70 border-b border-gray-200/40 dark:border-gray-800/60"
+        className="header-safe fixed top-0 left-0 right-0 z-20 backdrop-blur-lg bg-white/70 dark:bg-gray-900/70 border-b border-gray-200/40 dark:border-gray-800/60"
       >
         <div className="max-w-3xl mx-auto px-4 py-2 flex items-center justify-between">
           <button
@@ -750,16 +750,28 @@ function AddSharedFoodspot() {
         </div>
       </header>
 
+      {/* Main Content - scrollt von top: 0 (unter Dynamic Island) */}
       <main 
-        className="flex-1 overflow-y-auto max-w-3xl mx-auto px-4"
+        className="absolute inset-0 overflow-y-auto px-4"
         style={{
-          paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
+          paddingTop: 0,
+          paddingBottom: `calc(60px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'
         }}
       >
-        <div className="space-y-6">
+        {/* Spacer für Header-Höhe + konsistenter Abstand - Content scrollt darüber */}
+        <div 
+          style={{ 
+            height: headerHeight 
+              ? `${headerHeight + 24}px` // Gemessene Header-Höhe + 24px konsistenter Abstand
+              : `calc(60px + env(safe-area-inset-top, 0px) + 24px + 24px)`, // Fallback: Header + Safe-Area + 24px Abstand
+            flexShrink: 0 
+          }} 
+        />
+        
+        {/* Content-Bereich - kein zusätzliches Padding, da bereits im Spacer enthalten */}
+        <div className="max-w-3xl mx-auto space-y-6">
         {/* Kategorie Auswahl */}
         {showCategorySelection && (
           <div className={`rounded-[24px] shadow-lg border p-8 ${

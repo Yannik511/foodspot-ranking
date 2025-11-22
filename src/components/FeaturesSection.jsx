@@ -25,57 +25,43 @@ function FeatureCard({ feature, index, isActive, cardWidth }) {
       <div
         className="bg-white dark:bg-gray-800 rounded-[28px] p-8 h-full flex flex-col relative overflow-hidden"
         style={{
-          boxShadow: isActive
-            ? (isDark
-              ? '0 20px 60px rgba(184, 92, 44, 0.3), 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-              : '0 20px 60px rgba(255, 125, 66, 0.25), 0 8px 24px rgba(255, 77, 109, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8)')
-            : (isDark
-              ? '0 8px 24px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2)'
-              : '0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)'),
-          transform: isActive ? 'translateY(-8px) scale(1)' : 'translateY(0) scale(0.96)',
-          opacity: isActive ? 1 : 0.75,
-          transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-          backdropFilter: isActive ? 'blur(20px)' : 'blur(10px)',
-          WebkitBackdropFilter: isActive ? 'blur(20px)' : 'blur(10px)',
+          // Option B: Sehr dezenter Schatten - clean wie iOS-Widgets
+          boxShadow: isDark
+            ? '0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08)'
+            : '0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04)',
+          border: isDark
+            ? '1px solid rgba(255, 255, 255, 0.05)'
+            : '1px solid rgba(0, 0, 0, 0.04)',
+          transform: 'none',
+          opacity: 1,
+          transition: 'none',
+          backdropFilter: 'none',
+          WebkitBackdropFilter: 'none',
         }}
       >
-        {/* Glow Effect für aktive Card */}
-        {isActive && (
-          <div
-            className="absolute inset-0 rounded-[28px] opacity-30 pointer-events-none"
-            style={{
-              background: 'radial-gradient(circle at center, rgba(255, 125, 66, 0.15) 0%, transparent 70%)',
-              animation: 'glowPulse 3s ease-in-out infinite',
-            }}
-          />
-        )}
 
         <div className="flex flex-col h-full relative z-10">
-          {/* Icon - Mit Animation wenn aktiv */}
+          {/* Icon - Clean, keine Animationen */}
           <div className="mb-6 mx-auto flex items-center justify-center flex-shrink-0">
             <div
               className="relative flex items-center justify-center rounded-[20px]"
               style={{
                 width: 'clamp(72px, 18vw, 88px)',
                 height: 'clamp(72px, 18vw, 88px)',
-                background: isActive
-                  ? `linear-gradient(135deg, #FFB25A 0%, #FF9C68 40%, #FF7E42 80%, #FF6B4A 100%)`
-                  : `linear-gradient(135deg, ${feature.color}12 0%, ${feature.color}20 100%)`,
-                boxShadow: isActive
-                  ? '0 8px 24px rgba(255, 125, 66, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
-                  : '0 4px 12px rgba(0, 0, 0, 0.08)',
-                transform: isActive ? 'scale(1.08)' : 'scale(1)',
-                transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                animation: isActive ? 'iconPulse 2s ease-in-out infinite' : 'none',
+                background: `linear-gradient(135deg, ${feature.color}12 0%, ${feature.color}20 100%)`,
+                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+                transform: 'scale(1)',
+                transition: 'none',
+                animation: 'none',
               }}
             >
               <div
                 style={{
                   width: 'clamp(40px, 10vw, 48px)',
                   height: 'clamp(40px, 10vw, 48px)',
-                  color: isActive ? '#FFFFFF' : feature.color,
-                  filter: isActive ? 'drop-shadow(0 2px 8px rgba(255, 255, 255, 0.3))' : 'none',
-                  transition: 'all 0.4s ease-out',
+                  color: feature.color,
+                  filter: 'none',
+                  transition: 'none',
                 }}
               >
                 {feature.icon}
@@ -83,7 +69,7 @@ function FeatureCard({ feature, index, isActive, cardWidth }) {
             </div>
           </div>
 
-          {/* Title - Größer und visuell stärker */}
+          {/* Title - Clean, keine Animationen */}
           <h4
             className="text-center mb-4 flex-shrink-0"
             style={{
@@ -94,15 +80,15 @@ function FeatureCard({ feature, index, isActive, cardWidth }) {
               color: isDark ? '#FFFFFF' : '#1F2937',
               minHeight: 'clamp(52px, 10vw, 68px)',
               letterSpacing: '-0.02em',
-              opacity: isActive ? 1 : 0.85,
-              transform: isActive ? 'translateY(0)' : 'translateY(4px)',
-              transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+              opacity: 1,
+              transform: 'none',
+              transition: 'none',
             }}
           >
             {feature.title}
           </h4>
 
-          {/* Description - Heller und besser lesbar */}
+          {/* Description - Clean, keine Animationen */}
           <p
             className="text-center flex-1 flex items-center justify-center"
             style={{
@@ -112,9 +98,9 @@ function FeatureCard({ feature, index, isActive, cardWidth }) {
               lineHeight: '1.7',
               color: isDark ? 'rgba(255, 255, 255, 0.75)' : 'rgba(107, 114, 128, 0.85)',
               letterSpacing: '0.01em',
-              opacity: isActive ? 1 : 0.7,
-              transform: isActive ? 'translateY(0)' : 'translateY(4px)',
-              transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s',
+              opacity: 1,
+              transform: 'none',
+              transition: 'none',
               paddingTop: '8px',
             }}
           >
@@ -282,7 +268,7 @@ function FeaturesSection() {
         setIsTransitioning(false)
       }, 300)
     }
-  }, [currentIndex, cardWidth, isDragging])
+  }, [currentIndex, cardWidth])
   
   // Smooth scroll function for dot clicks with haptic feedback
   const scrollToIndex = useCallback((targetIndex) => {
@@ -383,110 +369,28 @@ function FeaturesSection() {
     }
   }, [cardWidth, features.length, currentIndex])
 
-  // Improved touch handlers with better gesture detection
+  // Improved touch handlers - nur Wischen, kein Dragging
   const handleTouchStart = useCallback((e) => {
     if (isTransitioning) return
     
-    setIsDragging(true)
     const touch = e.touches[0]
-    setStartX(touch.pageX - (scrollContainerRef.current?.offsetLeft || 0))
-    setScrollLeft(scrollContainerRef.current?.scrollLeft || 0)
-    lastTouchXRef.current = touch.pageX
-    lastTouchTimeRef.current = Date.now()
     touchStartXRef.current = touch.pageX
     touchStartTimeRef.current = Date.now()
     setShowArrow(false)
-    
-    // Prevent default to avoid scrolling conflicts
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.style.scrollBehavior = 'auto'
-    }
   }, [isTransitioning])
 
   const handleTouchMove = useCallback((e) => {
-    if (!isDragging || !scrollContainerRef.current || isTransitioning) return
-    
-    e.preventDefault()
-    e.stopPropagation()
-    
-    const touch = e.touches[0]
-    const x = touch.pageX - (scrollContainerRef.current.offsetLeft || 0)
-    const walk = (x - startX) * 1.2 // Reduced multiplier for more control
-    scrollContainerRef.current.scrollLeft = scrollLeft - walk
-
-    // Improved velocity calculation for better swipe detection
-    const now = Date.now()
-    const timeDelta = now - lastTouchTimeRef.current
-    if (timeDelta > 0) {
-      const positionDelta = touch.pageX - lastTouchXRef.current
-      const v = positionDelta / timeDelta
-      setVelocity(v * 10) // Scale velocity for better detection
-    }
-    
-    // Update current index during drag for reactive dots
-    const scrollPos = scrollContainerRef.current.scrollLeft
-    const cardWithGap = cardWidth + 16
-    const newIndex = Math.round(scrollPos / cardWithGap)
-    if (newIndex !== currentIndex && newIndex >= 0 && newIndex < features.length) {
-      setCurrentIndex(newIndex)
-    }
-    
-    lastTouchXRef.current = touch.pageX
-    lastTouchTimeRef.current = now
-  }, [isDragging, startX, scrollLeft, isTransitioning, cardWidth, currentIndex, features.length])
-
-  const handleTouchEnd = useCallback(() => {
-    if (!isDragging || !scrollContainerRef.current) return
-    
-    setIsDragging(false)
-    
-    // Restore smooth scrolling
-    scrollContainerRef.current.style.scrollBehavior = 'smooth'
-    
-    // Calculate final velocity
-    const timeDelta = Date.now() - touchStartTimeRef.current
-    const distanceDelta = Math.abs(lastTouchXRef.current - touchStartXRef.current)
-    const finalVelocity = timeDelta > 0 ? (distanceDelta / timeDelta) * 10 : 0
-    
-    snapToNearest(finalVelocity)
-    setVelocity(0)
-  }, [isDragging, snapToNearest])
-
-  // Mouse handlers for desktop
-  const handleMouseDown = useCallback((e) => {
-    setIsDragging(true)
-    setStartX(e.pageX - scrollContainerRef.current.offsetLeft)
-    setScrollLeft(scrollContainerRef.current.scrollLeft)
-    lastTouchXRef.current = e.pageX
-    lastTouchTimeRef.current = Date.now()
-    setShowArrow(false)
+    // Nur natürliches Scrollen erlauben, kein manuelles Dragging
+    // Das native Scroll-Verhalten übernimmt das Wischen
   }, [])
 
-  const handleMouseMove = useCallback((e) => {
-    if (!isDragging || !scrollContainerRef.current) return
-    e.preventDefault()
-    
-    const x = e.pageX - scrollContainerRef.current.offsetLeft
-    const walk = (x - startX) * 1.5
-    scrollContainerRef.current.scrollLeft = scrollLeft - walk
-
-    const now = Date.now()
-    const timeDelta = now - lastTouchTimeRef.current
-    if (timeDelta > 0) {
-      const positionDelta = e.pageX - lastTouchXRef.current
-      const v = positionDelta / timeDelta
-      setVelocity(v)
+  const handleTouchEnd = useCallback(() => {
+    // Snap to nearest card nach natürlichem Scroll
+    if (scrollContainerRef.current) {
+      snapToNearest(0)
     }
-    lastTouchXRef.current = e.pageX
-    lastTouchTimeRef.current = now
-  }, [isDragging, startX, scrollLeft])
+  }, [snapToNearest])
 
-  const handleMouseUp = useCallback(() => {
-    if (!isDragging) return
-    setIsDragging(false)
-    snapToNearest(velocity)
-    setVelocity(0)
-  }, [isDragging, velocity, snapToNearest])
 
   // Handle scroll events for reactive dots (only when not dragging)
   const handleScroll = useCallback(() => {
@@ -503,7 +407,7 @@ function FeaturesSection() {
         setCurrentIndex(newIndex)
       }
     })
-  }, [cardWidth, currentIndex, features.length, isDragging, isTransitioning])
+  }, [cardWidth, currentIndex, features.length, isTransitioning])
 
   // Navigate to next/previous with haptic feedback
   const goToNext = useCallback(() => {
@@ -538,73 +442,40 @@ function FeaturesSection() {
   }, [goToNext, goToPrevious])
 
   return (
-    <div 
-      ref={containerRef}
-      className="w-full px-4 py-8 relative overflow-hidden"
-      style={{
-        paddingLeft: `max(${containerPadding}px, env(safe-area-inset-left))`,
-        paddingRight: `max(${containerPadding}px, env(safe-area-inset-right))`,
-      }}
-    >
-      {/* Background Gradient */}
+    <>
+      {/* Abschnitt 2: Onboarding-Slider Card */}
       <div 
-        className="absolute inset-0"
+        className="w-full max-w-md mx-auto"
         style={{
-          background: isDark 
-            ? 'linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 100%)'
-            : 'linear-gradient(180deg, #FFF7F0 0%, #FFF0E5 100%)',
+          borderRadius: '28px',
+          padding: 'clamp(24px, 6vw, 32px)',
+          background: isDark
+            ? 'rgba(255, 255, 255, 0.05)'
+            : 'rgba(255, 255, 255, 0.95)',
+          boxShadow: isDark
+            ? '0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2)'
+            : '0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: 'none',
+          outline: 'none',
         }}
-      />
-      
-      {/* Floating Animation Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div 
-          className="absolute top-10 left-10 opacity-20 dark:opacity-10"
-          style={{
-            animation: 'float 6s ease-in-out infinite',
-            animationDelay: '0s',
-          }}
-        >
-          <svg width="40" height="40" viewBox="0 0 100 100" fill="none">
-            <path d="M50 20L60 40L80 45L65 60L67 80L50 70L33 80L35 60L20 45L40 40L50 20Z" fill="#FF7E42" />
-          </svg>
-        </div>
-        <div 
-          className="absolute top-20 right-20 opacity-15 dark:opacity-8"
-          style={{
-            animation: 'float 8s ease-in-out infinite',
-            animationDelay: '2s',
-          }}
-        >
-          <svg width="30" height="30" viewBox="0 0 100 100" fill="none">
-            <ellipse cx="50" cy="50" rx="40" ry="25" fill="#FFB25A" />
-          </svg>
-        </div>
-        <div 
-          className="absolute bottom-20 left-20 opacity-10 dark:opacity-5"
-          style={{
-            animation: 'float 7s ease-in-out infinite',
-            animationDelay: '4s',
-          }}
-        >
-          <svg width="35" height="35" viewBox="0 0 100 100" fill="none">
-            <circle cx="50" cy="50" r="30" fill="#FF9C68" />
-          </svg>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="relative z-10 max-w-6xl mx-auto">
+      >
         {/* Header */}
         <h3 
-          className="text-center mb-8 font-semibold"
+          className="text-center font-semibold"
           style={{
-            color: isDark ? 'rgba(255, 255, 255, 0.9)' : 'rgba(44, 44, 44, 0.9)',
-            fontSize: 'clamp(18px, 4vw, 24px)',
+            color: isDark ? 'rgba(255, 255, 255, 0.95)' : 'rgba(31, 41, 55, 0.95)',
+            fontSize: 'clamp(18px, 4vw, 22px)',
             fontFamily: "'Poppins', sans-serif",
+            fontWeight: 600,
             opacity: isMounted ? 1 : 0,
             transform: isMounted ? 'translateY(0)' : 'translateY(20px)',
-              transition: `opacity 0.6s ${springEasing.default}, transform 0.6s ${springEasing.gentle}`,
+            transition: `opacity 0.6s ${springEasing.default}, transform 0.6s ${springEasing.gentle}`,
+            marginBottom: 'clamp(24px, 6vw, 28px)',
+            marginTop: 0,
+            paddingBottom: 0,
+            border: 'none',
           }}
         >
           Entdecke, was Rankify kann
@@ -667,31 +538,26 @@ function FeaturesSection() {
             style={{
               overflowX: 'auto',
               overflowY: 'hidden',
-              scrollSnapType: isDragging ? 'none' : 'x mandatory',
+              scrollSnapType: 'x mandatory',
               WebkitOverflowScrolling: 'touch',
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
-              scrollBehavior: isDragging ? 'auto' : 'smooth',
+              scrollBehavior: 'smooth',
               touchAction: 'pan-x',
-              cursor: isDragging ? 'grabbing' : 'grab',
               width: '100%',
               position: 'relative',
+              overscrollBehaviorX: 'auto',
+              overscrollBehaviorY: 'none',
             }}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             onTouchCancel={handleTouchEnd}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
             onScroll={handleScroll}
           >
             <div 
               className="flex gap-4"
               style={{
-                width: `${features.length * (cardWidth + 16)}px`,
-                minWidth: `${features.length * (cardWidth + 16)}px`,
+                width: `${features.length * (cardWidth + 16) + 16}px`,
+                minWidth: `${features.length * (cardWidth + 16) + 16}px`,
                 paddingLeft: `${containerPadding}px`,
                 paddingRight: `${containerPadding}px`,
                 display: 'flex',
@@ -704,7 +570,7 @@ function FeaturesSection() {
                   data-scroll-item
                   style={{
                     scrollSnapAlign: 'center',
-                    scrollSnapStop: 'always',
+                    scrollSnapStop: index === features.length - 1 ? 'normal' : 'always',
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'stretch',
@@ -752,46 +618,36 @@ function FeaturesSection() {
             </div>
           )}
 
-          {/* Pagination Dots - Modern Progress Indicator */}
+          {/* Pagination Dots - Modern, kleinere Kreise */}
           <div 
-            className="flex justify-center items-center gap-1.5 mt-6"
+            className="flex justify-center items-center gap-2 mt-6"
             role="tablist"
             aria-label="Feature-Seiten"
             style={{
-              marginTop: 'clamp(1.5rem, 4vh, 2rem)',
+              marginTop: 'clamp(20px, 5vw, 24px)',
             }}
           >
             {features.map((_, index) => {
               const isActive = index === currentIndex
-              const distance = Math.abs(index - currentIndex)
               
               return (
                 <button
                   key={index}
                   onClick={() => scrollToIndex(index)}
                   onTouchStart={() => hapticFeedback.light()}
-                  className={`rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#FF7E42] dark:focus:ring-[#FF9357] ${
-                    isActive 
-                      ? 'cursor-default' 
-                      : 'cursor-pointer'
-                  }`}
+                  className="rounded-full transition-all duration-300 focus:outline-none"
                   style={{
-                    width: isActive ? '24px' : '6px',
+                    width: '6px',
                     height: '6px',
-                    minWidth: isActive ? '24px' : '6px',
+                    minWidth: '6px',
                     minHeight: '6px',
                     background: isActive
-                      ? 'linear-gradient(90deg, #FF7E42 0%, #FF9C68 50%, #FF7E42 100%)'
-                      : distance === 1
-                      ? 'rgba(255, 125, 66, 0.4)'
-                      : 'rgba(156, 163, 175, 0.4)',
-                    borderRadius: isActive ? '3px' : '50%',
-                    opacity: distance > 1 ? 0.3 : 1,
-                    transform: isActive ? 'scale(1)' : 'scale(1)',
-                    transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                    boxShadow: isActive
-                      ? '0 2px 8px rgba(255, 125, 66, 0.4)'
-                      : 'none',
+                      ? '#FF7E42'
+                      : (isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(156, 163, 175, 0.5)'),
+                    borderRadius: '50%',
+                    opacity: isActive ? 1 : 0.5,
+                    transform: isActive ? 'scale(1.2)' : 'scale(1)',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   }}
                   aria-label={`Zur Seite ${index + 1} springen`}
                   aria-selected={isActive}
@@ -802,31 +658,48 @@ function FeaturesSection() {
             })}
           </div>
         </div>
+      </div>
 
-        {/* Inspiration Section - Modern Grid Layout */}
-        <div 
-          className="mt-10 relative z-10 max-w-md mx-auto"
+      {/* Abschnitt 3: Kategorien-Grid Card */}
+      <div 
+        className="w-full max-w-md mx-auto"
+        style={{
+          borderRadius: '28px',
+          padding: 'clamp(24px, 6vw, 32px)',
+          background: isDark
+            ? 'rgba(255, 255, 255, 0.05)'
+            : 'rgba(255, 255, 255, 0.95)',
+          boxShadow: isDark
+            ? '0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2)'
+            : '0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+        }}
+      >
+
+        {/* Kategorien-Grid */}
+        <h4 
+          className="text-center font-semibold mb-6"
           style={{
+            color: isDark ? 'rgba(255, 255, 255, 0.95)' : 'rgba(31, 41, 55, 0.95)',
+            fontFamily: "'Poppins', sans-serif",
+            fontWeight: 600,
+            fontSize: 'clamp(16px, 4vw, 20px)',
+            letterSpacing: '-0.01em',
             opacity: isMounted ? 1 : 0,
             transform: isMounted ? 'translateY(0)' : 'translateY(20px)',
             transition: `opacity 0.6s ${springEasing.default} 0.5s, transform 0.6s ${springEasing.gentle} 0.5s`,
-            paddingLeft: `max(${containerPadding}px, env(safe-area-inset-left))`,
-            paddingRight: `max(${containerPadding}px, env(safe-area-inset-right))`,
+            marginBottom: 'clamp(20px, 5vw, 24px)',
           }}
         >
-          <h4 
-            className="text-center font-semibold mb-6"
+          Wähle dein erstes Food-Abenteuer 🍜
+        </h4>
+          <div 
+            className="grid grid-cols-2 gap-3"
             style={{
-              color: isDark ? 'rgba(255, 255, 255, 0.95)' : 'rgba(31, 41, 55, 0.95)',
-              fontFamily: "'Poppins', sans-serif",
-              fontWeight: 600,
-              fontSize: 'clamp(16px, 4vw, 20px)',
-              letterSpacing: '-0.01em',
+              gridAutoRows: '1fr',
             }}
           >
-            Wähle dein erstes Food-Abenteuer 🍜
-          </h4>
-          <div className="grid grid-cols-2 gap-3">
             {[
               { emoji: '🥙', text: 'Beste Döner', gradient: 'linear-gradient(135deg, #FFE4C3 0%, #FFD4A3 100%)' },
               { emoji: '🍕', text: 'Pizza-Topliste', gradient: 'linear-gradient(135deg, #FFD4A3 0%, #FFC98A 100%)' },
@@ -842,7 +715,7 @@ function FeaturesSection() {
                   navigate('/select-category')
                 }}
                 onTouchStart={() => hapticFeedback.light()}
-                className="relative rounded-[20px] p-4 shadow-md hover:shadow-lg active:scale-[0.97] transition-all duration-300 group overflow-hidden"
+                className="relative rounded-[20px] shadow-md hover:shadow-lg active:scale-[0.97] transition-all duration-300 group overflow-hidden flex flex-col items-center justify-center"
                 style={{
                   background: isDark
                     ? `linear-gradient(135deg, rgba(255, 157, 104, 0.15) 0%, rgba(255, 126, 66, 0.2) 100%)`
@@ -850,7 +723,12 @@ function FeaturesSection() {
                   border: isDark
                     ? '1px solid rgba(255, 157, 104, 0.2)'
                     : '1px solid rgba(255, 126, 66, 0.1)',
-                  minHeight: '80px',
+                  height: 'clamp(100px, 22vw, 120px)',
+                  minHeight: 'clamp(100px, 22vw, 120px)',
+                  maxHeight: 'clamp(100px, 22vw, 120px)',
+                  width: '100%',
+                  padding: 'clamp(16px, 4vw, 20px)',
+                  aspectRatio: '1 / 1',
                   transform: 'translateY(0)',
                   transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
                 }}
@@ -870,13 +748,15 @@ function FeaturesSection() {
                     background: 'radial-gradient(circle at center, rgba(255, 125, 66, 0.3) 0%, transparent 70%)',
                   }}
                 />
-                <div className="relative z-10 flex flex-col items-center justify-center gap-2">
+                <div className="relative z-10 flex flex-col items-center justify-center gap-2 w-full h-full">
                   <span 
-                    className="text-2xl"
+                    className="flex-shrink-0"
                     style={{
                       filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))',
                       transform: 'scale(1)',
                       transition: 'transform 0.3s ease-out',
+                      fontSize: 'clamp(24px, 6vw, 32px)',
+                      lineHeight: '1',
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.transform = 'scale(1.15) rotate(5deg)'
@@ -888,11 +768,14 @@ function FeaturesSection() {
                     {item.emoji}
                   </span>
                   <span 
-                    className="font-semibold text-gray-800 dark:text-gray-100 text-sm"
+                    className="font-semibold text-gray-800 dark:text-gray-100 text-sm text-center flex-shrink-0"
                     style={{
                       fontFamily: "'Poppins', sans-serif",
                       fontSize: 'clamp(13px, 3vw, 15px)',
                       fontWeight: 600,
+                      lineHeight: '1.3',
+                      wordBreak: 'break-word',
+                      hyphens: 'auto',
                     }}
                   >
                     {item.text}
@@ -901,7 +784,6 @@ function FeaturesSection() {
               </button>
             ))}
           </div>
-        </div>
       </div>
 
       {/* CSS Animations */}
@@ -945,7 +827,9 @@ function FeaturesSection() {
           scroll-behavior: smooth;
           scroll-snap-type: x mandatory;
           -webkit-overflow-scrolling: touch;
-          overscroll-behavior-x: contain;
+          overscroll-behavior-x: auto;
+          overscroll-behavior-y: none;
+          scroll-padding: 0;
         }
         
         [data-scroll-item] {
@@ -977,7 +861,7 @@ function FeaturesSection() {
           }
         }
       `}</style>
-    </div>
+    </>
   )
 }
 

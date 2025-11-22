@@ -18,6 +18,7 @@ import About from './pages/About'
 import Social from './pages/Social'
 import FriendProfile from './pages/FriendProfile'
 import Compare from './pages/Compare'
+import CreateSharedListPage from './pages/CreateSharedListPage'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -115,6 +116,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Social />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/create-shared-list"
+            element={
+              <ProtectedRoute>
+                <CreateSharedListPage />
               </ProtectedRoute>
             }
           />

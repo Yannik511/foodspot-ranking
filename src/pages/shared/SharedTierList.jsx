@@ -885,15 +885,27 @@ function SharedTierList() {
         </div>
       </header>
 
+      {/* Main Content - scrollt von top: 0 (unter Dynamic Island) */}
       <main 
-        className="flex-1 overflow-y-auto flex flex-col" 
+        className="absolute inset-0 overflow-y-auto flex flex-col" 
         style={{
-          paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
+          paddingTop: 0,
+          paddingBottom: `calc(60px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'
         }}
       >
+        {/* Spacer für Header-Höhe + konsistenter Abstand - Content scrollt darüber */}
+        <div 
+          style={{ 
+            height: headerHeight 
+              ? `${headerHeight + 24}px` // Gemessene Header-Höhe + 24px konsistenter Abstand
+              : `calc(60px + env(safe-area-inset-top, 0px) + 24px + 24px)`, // Fallback: Header + Safe-Area + 24px Abstand
+            flexShrink: 0 
+          }} 
+        />
+        
+        {/* Content-Bereich - kein zusätzliches Padding, da bereits im Spacer enthalten */}
         <div className="max-w-5xl mx-auto px-4 py-6 space-y-12 flex flex-col flex-1 w-full">
           {TIERS.map((tier) => {
             const tierSpots = foodspotsByTier[tier] || []

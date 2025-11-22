@@ -1748,14 +1748,18 @@ function Dashboard() {
   }
 
   return (
-    <div className={`h-full flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'} relative overflow-hidden`}>
+    <div className={`h-full flex flex-col ${isEmpty ? (isDark ? 'bg-gray-900/0' : 'bg-transparent') : (isDark ? 'bg-gray-900' : 'bg-white')} relative overflow-hidden`}>
       {/* Background with gradient */}
       <div 
         className="fixed inset-0"
         style={{
-          background: isDark 
-            ? 'radial-gradient(60% 50% at 50% 0%, #1F2937 0%, #111827 60%)'
-            : 'radial-gradient(60% 50% at 50% 0%, #FFF1E8 0%, #FFFFFF 60%)',
+          background: isEmpty
+            ? (isDark 
+              ? 'linear-gradient(180deg, rgba(255, 152, 89, 0.15) 0%, rgba(255, 126, 66, 0.2) 100%)'
+              : 'linear-gradient(180deg, #FFF5EF 0%, #FFE4C3 50%, #FFD4A3 100%)')
+            : (isDark 
+              ? 'radial-gradient(60% 50% at 50% 0%, #1F2937 0%, #111827 60%)'
+              : 'radial-gradient(60% 50% at 50% 0%, #FFF1E8 0%, #FFFFFF 60%)'),
         }}
       />
 
@@ -1772,18 +1776,25 @@ function Dashboard() {
         </svg>
       </div>
 
-      {/* Top Navigation (Fixed) */}
+      {/* Top Navigation (Fixed) - Transparent mit Glass-Effekt */}
       <div 
         ref={headerRef}
-        className={`fixed top-0 left-0 right-0 z-30 shadow-sm ${
-          isDark ? 'bg-gray-900/95 backdrop-blur-xl border-b border-gray-800' : 'bg-white/95 backdrop-blur-xl border-b border-gray-200'
+        className={`fixed top-0 left-0 right-0 z-30 shadow-sm backdrop-blur-xl ${
+          isDark ? 'bg-gray-900/80 border-b border-gray-800/50' : 'bg-white/80 border-b border-gray-200/50'
         }`}
       >
         <header
           className="header-safe flex items-center justify-between"
           style={{
             paddingLeft: 'clamp(16px, 4vw, 24px)',
-            paddingRight: 'clamp(16px, 4vw, 24px)'
+            paddingRight: 'clamp(16px, 4vw, 24px)',
+            paddingTop: isEmpty 
+              ? `calc(env(safe-area-inset-top, 0px) + 8px)` 
+              : undefined,
+            paddingBottom: isEmpty ? '8px' : undefined,
+            minHeight: isEmpty 
+              ? `calc(56px + env(safe-area-inset-top, 0px))` 
+              : undefined,
           }}
         >
           <button
@@ -1895,38 +1906,71 @@ function Dashboard() {
         )}
       </div>
 
-      {/* Main Content */}
+      {/* Main Content - scrollt von top: 0 (unter Dynamic Island) */}
       <main 
         ref={scrollContainerRef}
-        className={`page-content px-4 py-6 relative`}
+        className="absolute inset-0 overflow-y-auto px-4 py-6"
         style={{
-          paddingTop: getContentPaddingTop(headerHeight, 24),
+          paddingTop: 0,
           paddingBottom: isEmpty 
-            ? `calc(16px + max(env(safe-area-inset-bottom, 0px), 20px))`
-            : `calc(80px + max(env(safe-area-inset-bottom, 0px), 34px) + 60px)` // Bottom Nav (~60px) + Safe-Area + FAB spacing + extra padding für Button
+            ? `calc(40px + max(env(safe-area-inset-bottom, 0px), 20px))`
+            : `calc(120px + max(env(safe-area-inset-bottom, 0px), 34px))`, // Bottom Nav (~80px) + FAB Button (~88px) + Safe-Area + extra padding
+          overscrollBehavior: 'none',
+          WebkitOverflowScrolling: 'touch'
         }}
       >
-        {/* Zero-State: Welcome Screen (keine Tabs, keine Bottom Navigation) */}
-            {isEmpty ? (
-          <div 
-            className="flex flex-col items-center justify-center text-center px-4"
-            style={{
-              minHeight: `calc(100vh - ${headerHeight}px - 48px)`
-            }}
-          >
-            <WelcomeCard 
-              username={getUsername()} 
-              onCreateList={() => navigate('/select-category')} 
-              foodEmoji={userFoodEmoji} 
-            />
-                <FeaturesSection />
+        {/* Spacer für Header-Höhe + konsistenter Abstand - Content scrollt darüber */}
+        <div 
+          style={{ 
+            height: headerHeight 
+              ? `${headerHeight + 24}px` // Gemessene Header-Höhe + 24px konsistenter Abstand
+              : `calc(60px + env(safe-area-inset-top, 0px) + 24px + 24px)`, // Fallback: Header + Safe-Area + 24px Abstand
+            flexShrink: 0 
+          }} 
+        />
+        
+        {/* Content-Bereich - kein zusätzliches Padding, da bereits im Spacer enthalten */}
+        <div>
+          {/* Zero-State: Welcome Screen (keine Tabs, keine Bottom Navigation) */}
+          {isEmpty ? (
+            <div 
+              className="flex flex-col items-center w-full gap-6"
+              style={{
+                minHeight: `calc(100vh - ${headerHeight || 100}px)`,
+                paddingTop: 'clamp(16px, 4vw, 24px)',
+                paddingBottom: `calc(96px + env(safe-area-inset-bottom, 0px))`,
+                paddingLeft: 'clamp(16px, 4vw, 20px)',
+                paddingRight: 'clamp(16px, 4vw, 20px)',
+              }}
+            >
+            {/* Abschnitt 1: WelcomeCard in Bubble */}
+            <div 
+              className="w-full max-w-md mx-auto"
+              style={{
+                borderRadius: '28px',
+                padding: 'clamp(24px, 6vw, 32px)',
+                background: isDark
+                  ? 'linear-gradient(145deg, #FF9357 0%, #D67A47 40%, #B85C2C 100%)'
+                  : 'linear-gradient(145deg, #FFB25A 0%, #FF9C68 40%, #FF7E42 100%)',
+                boxShadow: '0 12px 40px rgba(255, 125, 66, 0.35), 0 4px 16px rgba(255, 126, 66, 0.2)',
+              }}
+            >
+              <WelcomeCard 
+                username={getUsername()} 
+                onCreateList={() => navigate('/select-category')} 
+                foodEmoji={userFoodEmoji} 
+                isCompact={true}
+              />
+            </div>
+            
+            <FeaturesSection onCreateList={() => navigate('/select-category')} />
           </div>
         ) : (
           <>
             {/* Private Lists View */}
             {listView === 'meine' && (
               <>
-                <div className="max-w-5xl mx-auto w-full mb-6">
+                <div className="max-w-5xl mx-auto w-full mb-6" style={{ paddingTop: 0 }}>
                   <div className={`rounded-2xl border shadow-sm ${
                     isDark ? 'bg-gray-800/80 border-gray-700/60' : 'bg-white/80 border-gray-200/60'
                   }`}>
@@ -1935,6 +1979,7 @@ function Dashboard() {
                       className={`w-full flex items-center justify-between px-4 py-3 sm:px-5 sm:py-4 transition-all ${
                         isDark ? 'text-gray-300' : 'text-gray-600'
                       }`}
+                      style={{ minHeight: '48px' }}
                     >
                       <span className="text-sm font-semibold uppercase tracking-wide" style={{ fontFamily: "'Poppins', sans-serif" }}>
                         Filter
@@ -2312,7 +2357,7 @@ function Dashboard() {
             {/* Shared Lists View */}
             {listView === 'geteilt' && (
           <>
-            <div className="max-w-5xl mx-auto w-full mb-6">
+            <div className="max-w-5xl mx-auto w-full mb-6" style={{ paddingTop: 0 }}>
               <div className={`rounded-2xl border shadow-sm ${
                 isDark ? 'bg-gray-800/80 border-gray-700/60' : 'bg-white/80 border-gray-200/60'
               }`}>
@@ -2321,6 +2366,7 @@ function Dashboard() {
                   className={`w-full flex items-center justify-between px-4 py-3 sm:px-5 sm:py-4 transition-all ${
                     isDark ? 'text-gray-300' : 'text-gray-600'
                   }`}
+                  style={{ minHeight: '48px' }}
                 >
                   <span className="text-sm font-semibold uppercase tracking-wide" style={{ fontFamily: "'Poppins', sans-serif" }}>
                     Filter
@@ -2736,9 +2782,11 @@ function Dashboard() {
             )}
           </>
         )}
+        </div>
       </main>
 
       {/* FAB: Nur anzeigen wenn listView === 'meine' UND nicht im Welcome-Screen (!isEmpty) */}
+      {/* FAB für "Meine Listen" - Private Liste erstellen */}
       {listView === 'meine' && !isEmpty && (
         <button
           onClick={() => {
@@ -2773,6 +2821,31 @@ function Dashboard() {
             </svg>
           )}
           <span className="sr-only">Neue Liste</span>
+        </button>
+      )}
+
+      {/* FAB für "Geteilte Listen" - Geteilte Liste erstellen */}
+      {listView === 'geteilt' && !isEmpty && (
+        <button
+          onClick={() => {
+            hapticFeedback.medium()
+            navigate('/create-shared-list')
+          }}
+          onTouchStart={() => hapticFeedback.light()}
+          className={`fixed right-6 w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-white transition-all active:scale-95 hover:shadow-2xl hover:scale-105 z-40 ${
+            isDark
+              ? 'bg-gradient-to-br from-[#FF9357] to-[#B85C2C]'
+              : 'bg-gradient-to-br from-[#FF7E42] to-[#FFB25A]'
+          }`}
+          style={{
+            bottom: `calc(env(safe-area-inset-bottom, 16px) + 72px)`
+          }}
+          aria-label="Geteilte Liste erstellen"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
+          </svg>
+          <span className="sr-only">Geteilte Liste erstellen</span>
         </button>
       )}
 

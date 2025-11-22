@@ -95,7 +95,7 @@ function SelectCategory() {
       {/* Header */}
       <header 
         ref={headerRef}
-        className={`header-safe backdrop-blur-[12px] border-b px-4 flex items-center justify-between fixed top-0 left-0 right-0 z-10 ${
+        className={`header-safe backdrop-blur-[12px] border-b px-4 flex items-center justify-between fixed top-0 left-0 right-0 z-20 ${
           isDark
             ? 'bg-gray-800/70 border-gray-700/30'
             : 'bg-white/70 border-gray-200/30'
@@ -121,16 +121,27 @@ function SelectCategory() {
         <div className="w-10" />
       </header>
 
-      {/* Main Content */}
+      {/* Main Content - scrollt von top: 0 (unter Dynamic Island) */}
       <main 
-        className="flex-1 overflow-y-auto px-4"
+        className="absolute inset-0 overflow-y-auto px-4"
         style={{
-          paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
+          paddingTop: 0,
+          paddingBottom: `calc(60px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'
         }}
       >
+        {/* Spacer für Header-Höhe + konsistenter Abstand - Content scrollt darüber */}
+        <div 
+          style={{ 
+            height: headerHeight 
+              ? `${headerHeight + 24}px` // Gemessene Header-Höhe + 24px konsistenter Abstand
+              : `calc(60px + env(safe-area-inset-top, 0px) + 24px + 24px)`, // Fallback: Header + Safe-Area + 24px Abstand
+            flexShrink: 0 
+          }} 
+        />
+        
+        {/* Content-Bereich - kein zusätzliches Padding, da bereits im Spacer enthalten */}
         <div className="max-w-2xl mx-auto">
           {/* Title */}
           <div className="text-center mb-8">
@@ -174,7 +185,7 @@ function SelectCategory() {
           </div>
 
           {/* Category Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ paddingBottom: 'clamp(24px, 6vw, 32px)' }}>
             {Object.entries(CATEGORIES).map(([category, { emoji, description, color }]) => (
               <button
                 key={category}

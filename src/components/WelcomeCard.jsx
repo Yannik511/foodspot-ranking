@@ -58,71 +58,22 @@ function WelcomeCard({ username, onCreateList, isCompact = false, foodEmoji = nu
       </div>
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col items-center text-center">
-        {/* App Logo - Rankify Logo mit Gradient-Hintergrund */}
+      <div className="relative z-10 flex flex-col items-center text-center" style={{ pointerEvents: 'auto' }}>
+        {/* App Logo - Rankify Logo - direkt ohne zusätzliche Box */}
         <div className="mb-4 w-full flex justify-center items-center -mt-4">
-          <div 
-            className="relative flex items-center justify-center"
+          <img 
+            src="/icon.png" 
+            alt="Rankify Logo" 
             style={{
+              width: 'clamp(80px, 25vw, 112px)',
+              height: 'clamp(80px, 25vw, 112px)',
+              objectFit: 'contain',
+              display: 'block',
               opacity: isMounted ? 1 : 0,
               transform: isMounted ? 'scale(1) translateY(0)' : 'scale(0.8) translateY(20px)',
               transition: `opacity 0.6s 0.2s ${springEasing.gentle}, transform 0.6s 0.2s ${springEasing.gentle}`,
             }}
-          >
-            {/* Logo Container - Abgerundetes Quadrat mit rötlichem Gradient */}
-            <div 
-              className="relative flex items-center justify-center"
-              style={{
-                width: 'clamp(80px, 25vw, 112px)',
-                height: 'clamp(80px, 25vw, 112px)',
-                minWidth: 'clamp(80px, 25vw, 112px)',
-                minHeight: 'clamp(80px, 25vw, 112px)',
-                borderRadius: 'clamp(20px, 5vw, 28px)',
-                background: 'linear-gradient(135deg, #FF9C68 0%, #FF7E42 50%, #FF6B4A 100%)',
-                boxShadow: '0 8px 24px rgba(255, 107, 74, 0.4), 0 4px 12px rgba(255, 77, 109, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-              }}
-            >
-              {/* Hamburger Menu Icon - Drei horizontale Linien (dicker und größer) */}
-              <svg 
-                width="65%" 
-                height="65%" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                xmlns="http://www.w3.org/2000/svg"
-                style={{
-                  filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))',
-                }}
-              >
-                {/* Top Line - Dicker */}
-                <rect 
-                  x="3" 
-                  y="5.5" 
-                  width="18" 
-                  height="3.5" 
-                  rx="1.75" 
-                  fill="white"
-                />
-                {/* Middle Line - Dicker */}
-                <rect 
-                  x="3" 
-                  y="10.25" 
-                  width="18" 
-                  height="3.5" 
-                  rx="1.75" 
-                  fill="white"
-                />
-                {/* Bottom Line - Dicker */}
-                <rect 
-                  x="3" 
-                  y="15" 
-                  width="18" 
-                  height="3.5" 
-                  rx="1.75" 
-                  fill="white"
-                />
-              </svg>
-            </div>
-          </div>
+          />
         </div>
 
         {/* Title - Poppins 700, 22px, white for contrast - closer to image */}
@@ -155,83 +106,135 @@ function WelcomeCard({ username, onCreateList, isCompact = false, foodEmoji = nu
           Finde die besten Foodspots deiner Stadt – bewertet von echten Genießern.
         </p>
 
-        {/* Primary Button */}
+        {/* Hinweis-Text über dem Button */}
+        {!isCompact && (
+          <p 
+            className="mb-4 max-w-[90%] mx-auto"
+            style={{ 
+              fontFamily: "'Inter', sans-serif", 
+              fontWeight: 500,
+              fontSize: 'clamp(16px, 4vw, 18px)',
+              lineHeight: '1.5',
+              color: '#374151',
+              opacity: isMounted ? 1 : 0,
+              transform: isMounted ? 'translateY(0)' : 'translateY(10px)',
+              transition: `opacity 0.5s 0.55s ${springEasing.default}, transform 0.5s 0.55s ${springEasing.gentle}`,
+              marginBottom: 'clamp(16px, 4vw, 20px)',
+            }}
+          >
+            Erstelle jetzt deine erste Liste, um alle Funktionen von Rankify auszuprobieren.
+          </p>
+        )}
+
+        {/* Primary Button - Größer und prominenter */}
         {!isCompact ? (
-          <div className="flex justify-center w-full">
+          <div className="flex justify-center w-full" style={{ width: '100%', paddingLeft: 'clamp(8px, 2vw, 12px)', paddingRight: 'clamp(8px, 2vw, 12px)' }}>
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
                 hapticFeedback.medium()
-                // Navigate to category selection first
                 if (typeof onCreateList === 'function') {
-                  // Check if onCreateList is a navigation function
-                  const navigate = typeof window !== 'undefined' && window.location?.pathname?.includes('/dashboard')
-                  if (navigate) {
-                    // We'll handle this in the Dashboard component
-                    onCreateList()
-                  } else {
-                    onCreateList()
-                  }
+                  onCreateList()
                 }
               }}
               onTouchStart={() => hapticFeedback.light()}
-              className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white py-3.5 px-8 rounded-[20px] font-semibold text-base active:scale-[0.97] transition-all duration-200 shadow-[0_4px_12px_rgba(255,125,66,0.2)] dark:shadow-[0_6px_20px_rgba(184,92,44,0.3)] flex items-center gap-2 w-fit"
+              className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-[28px] font-bold active:scale-[0.97] transition-all duration-200 flex items-center justify-center gap-3 cursor-pointer"
               style={{ 
                 fontFamily: "'Poppins', sans-serif", 
-                fontWeight: 600,
-                fontSize: '16px',
+                fontWeight: 700,
+                fontSize: 'clamp(20px, 5vw, 24px)',
+                paddingTop: 'clamp(28px, 7vw, 34px)',
+                paddingBottom: 'clamp(28px, 7vw, 34px)',
+                paddingLeft: 'clamp(32px, 8vw, 40px)',
+                paddingRight: 'clamp(32px, 8vw, 40px)',
+                minHeight: 'clamp(76px, 19vw, 84px)',
+                width: '100%',
+                maxWidth: '100%',
                 opacity: isMounted ? 1 : 0,
                 transform: isMounted ? 'translateY(0) scale(1)' : 'translateY(20px) scale(0.9)',
                 transition: `opacity 0.5s 0.6s ${springEasing.default}, transform 0.5s 0.6s ${springEasing.gentle}`,
+                boxShadow: '0 10px 32px rgba(255, 125, 66, 0.35), 0 6px 16px rgba(255, 126, 66, 0.25)',
+                pointerEvents: 'auto',
+                zIndex: 10,
+                position: 'relative',
+                lineHeight: '1.4',
               }}
               onMouseDown={(e) => {
                 e.currentTarget.style.transform = 'scale(0.97)'
-                e.currentTarget.style.boxShadow = '0 0 25px rgba(255, 125, 66, 0.6)'
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 125, 66, 0.5)'
               }}
               onMouseUp={(e) => {
                 e.currentTarget.style.transform = 'scale(1)'
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 125, 66, 0.2)'
+                e.currentTarget.style.boxShadow = '0 10px 32px rgba(255, 125, 66, 0.35), 0 6px 16px rgba(255, 126, 66, 0.25)'
               }}
             >
               {foodEmoji ? (
-                <span className="text-lg">{foodEmoji}</span>
+                <span style={{ fontSize: 'clamp(24px, 6vw, 28px)' }}>{foodEmoji}</span>
               ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                <svg 
+                  className="flex-shrink-0" 
+                  style={{ width: 'clamp(24px, 6vw, 28px)', height: 'clamp(24px, 6vw, 28px)' }}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
                 </svg>
               )}
-              Starte deine erste Foodspot-Liste
+              <span>Erstelle jetzt deine erste Liste</span>
             </button>
           </div>
         ) : (
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
               hapticFeedback.medium()
-              onCreateList()
+              if (typeof onCreateList === 'function') {
+                onCreateList()
+              }
             }}
             onTouchStart={() => hapticFeedback.light()}
-            className="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white py-3 rounded-xl font-semibold text-sm hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] active:scale-[0.97] transition-all duration-200 shadow-[0_2px_8px_rgba(0,0,0,0.06)] flex items-center justify-center gap-2 mt-2"
+            className="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-[28px] font-bold active:scale-[0.97] transition-all duration-200 flex items-center justify-center gap-3 cursor-pointer"
             style={{ 
               fontFamily: "'Poppins', sans-serif", 
-              fontWeight: 600,
-              fontSize: '16px',
+              fontWeight: 700,
+              fontSize: 'clamp(20px, 5vw, 24px)',
+              paddingTop: 'clamp(28px, 7vw, 34px)',
+              paddingBottom: 'clamp(28px, 7vw, 34px)',
+              paddingLeft: 'clamp(32px, 8vw, 40px)',
+              paddingRight: 'clamp(32px, 8vw, 40px)',
+              minHeight: 'clamp(76px, 19vw, 84px)',
+              boxShadow: '0 10px 32px rgba(255, 125, 66, 0.35), 0 6px 16px rgba(255, 126, 66, 0.25)',
+              pointerEvents: 'auto',
+              zIndex: 10,
+              position: 'relative',
+              lineHeight: '1.4',
             }}
             onMouseDown={(e) => {
               e.currentTarget.style.transform = 'scale(0.97)'
-              e.currentTarget.style.boxShadow = '0 0 25px rgba(234, 88, 12, 0.6)'
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 125, 66, 0.5)'
             }}
             onMouseUp={(e) => {
               e.currentTarget.style.transform = 'scale(1)'
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'
+              e.currentTarget.style.boxShadow = '0 10px 32px rgba(255, 125, 66, 0.35), 0 6px 16px rgba(255, 126, 66, 0.25)'
             }}
           >
             {foodEmoji ? (
-              <span className="text-base">{foodEmoji}</span>
+              <span style={{ fontSize: 'clamp(24px, 6vw, 28px)' }}>{foodEmoji}</span>
             ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+              <svg 
+                className="flex-shrink-0" 
+                style={{ width: 'clamp(24px, 6vw, 28px)', height: 'clamp(24px, 6vw, 28px)' }}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
               </svg>
             )}
-            Erstelle eine neue Liste
+            <span>Erstelle jetzt deine erste Liste</span>
           </button>
         )}
       </div>

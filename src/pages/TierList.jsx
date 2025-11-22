@@ -623,7 +623,7 @@ function TierList() {
         }`}
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(24px + env(safe-area-inset-bottom, 0px))`
+          paddingBottom: `calc(60px + env(safe-area-inset-bottom, 0px))`
         }}
       >
         <div className="max-w-5xl mx-auto flex flex-col gap-4 pt-0 pb-4">
