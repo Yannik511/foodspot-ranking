@@ -29,13 +29,22 @@ function Landing() {
   useEffect(() => {
     if (typeof document === 'undefined') return
     const previousBodyValue = document.body.style.getPropertyValue('--safe-area-bg-current')
+    const previousBodyBg = document.body.style.backgroundColor
     document.body.style.setProperty('--safe-area-bg-current', 'transparent')
+    // Setze body background auf transparent, damit Safe-Area nicht weiß ist
+    document.body.style.backgroundColor = 'transparent'
 
     return () => {
       if (previousBodyValue) {
         document.body.style.setProperty('--safe-area-bg-current', previousBodyValue)
       } else {
         document.body.style.removeProperty('--safe-area-bg-current')
+      }
+      // Stelle body background wieder her
+      if (previousBodyBg) {
+        document.body.style.backgroundColor = previousBodyBg
+      } else {
+        document.body.style.removeProperty('backgroundColor')
       }
     }
   }, [])
@@ -46,35 +55,35 @@ function Landing() {
 
   return (
     <div 
-      className="fixed inset-0 w-full h-full relative overflow-hidden"
+      className="fixed w-full h-full relative overflow-hidden"
       style={{
-        height: '100dvh',
-        width: '100vw',
+        position: 'fixed',
+        top: `calc(-1 * env(safe-area-inset-top, 0px))`,
+        left: `calc(-1 * env(safe-area-inset-left, 0px))`,
+        right: `calc(-1 * env(safe-area-inset-right, 0px))`,
+        bottom: `calc(-1 * env(safe-area-inset-bottom, 0px))`,
+        width: `calc(100vw + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px))`,
+        height: `calc(100dvh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px))`,
         margin: 0,
         padding: 0,
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
         overflow: 'hidden',
         zIndex: 0,
       }}
     >
       {/* Burger Background Image - Edge-to-Edge, vollständig abgedeckt inkl. Safe Area */}
       <div 
-        className="absolute"
+        className="absolute inset-0"
         style={{
           backgroundImage: 'url("https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1920&q=80")',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
-          top: `calc(-1 * env(safe-area-inset-top, 0px))`,
-          left: `calc(-1 * env(safe-area-inset-left, 0px))`,
-          right: `calc(-1 * env(safe-area-inset-right, 0px))`,
-          bottom: `calc(-1 * env(safe-area-inset-bottom, 0px))`,
-          width: `calc(100% + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px))`,
-          height: `calc(100% + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px))`,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100%',
+          height: '100%',
           transform: 'scale(1.05)',
           transition: 'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
           zIndex: 0,
@@ -97,31 +106,33 @@ function Landing() {
 
       {/* Gradient Overlay - von unten dunkel nach oben transparent + Dark Mode Support */}
       <div 
-        className="absolute"
+        className="absolute inset-0"
         style={{
-          top: `calc(-1 * env(safe-area-inset-top, 0px))`,
-          left: `calc(-1 * env(safe-area-inset-left, 0px))`,
-          right: `calc(-1 * env(safe-area-inset-right, 0px))`,
-          bottom: `calc(-1 * env(safe-area-inset-bottom, 0px))`,
-          width: `calc(100% + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px))`,
-          height: `calc(100% + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px))`,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100%',
+          height: '100%',
           background: isDark 
             ? 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0) 100%)'
             : 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 100%)',
+          zIndex: 1,
         }}
       />
 
       {/* Zusätzliche transparente Overlay-Schicht für besseren Textkontrast */}
       <div 
-        className="absolute"
+        className="absolute inset-0"
         style={{
-          top: `calc(-1 * env(safe-area-inset-top, 0px))`,
-          left: `calc(-1 * env(safe-area-inset-left, 0px))`,
-          right: `calc(-1 * env(safe-area-inset-right, 0px))`,
-          bottom: `calc(-1 * env(safe-area-inset-bottom, 0px))`,
-          width: `calc(100% + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px))`,
-          height: `calc(100% + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px))`,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100%',
+          height: '100%',
           backgroundColor: isDark ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+          zIndex: 1,
         }}
       />
 
@@ -129,12 +140,12 @@ function Landing() {
       <div 
         className="relative z-10 w-full h-full flex flex-col"
         style={{
-          minHeight: '100dvh',
-          height: '100dvh',
-          paddingTop: 'max(env(safe-area-inset-top), 0px)',
-          paddingBottom: 'max(env(safe-area-inset-bottom), 0px)',
-          paddingLeft: 'max(env(safe-area-inset-left), 0px)',
-          paddingRight: 'max(env(safe-area-inset-right), 0px)',
+          minHeight: '100%',
+          height: '100%',
+          paddingTop: 'max(env(safe-area-inset-top, 0px), 0px)',
+          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0px)',
+          paddingLeft: 'max(env(safe-area-inset-left, 0px), 0px)',
+          paddingRight: 'max(env(safe-area-inset-right, 0px), 0px)',
           overflow: 'hidden',
         }}
       >
