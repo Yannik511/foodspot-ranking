@@ -233,23 +233,6 @@ function TierList() {
         console.error('Error fetching data:', error)
       } finally {
         setLoading(false)
-        // Force scroll container recalculation after data load
-        // This fixes the scroll bug after creating a new spot
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            // Recalculate scroll container height
-            if (scrollContainerRef.current) {
-              const container = scrollContainerRef.current
-              // Force reflow to recalculate height
-              container.style.height = 'auto'
-              requestAnimationFrame(() => {
-                container.style.height = ''
-              })
-            }
-            // Also trigger resize event as fallback
-            window.dispatchEvent(new Event('resize'))
-          })
-        })
       }
     }
 
@@ -295,6 +278,38 @@ function TierList() {
 
     return () => supabase.removeChannel(channel)
   }, [id, user, sharedContextChecked])
+
+  // Fix scroll container height after navigation or foodspots update
+  // This fixes the scroll bug after creating a new spot
+  useEffect(() => {
+    if (!scrollContainerRef.current || loading) return
+
+    // Force scroll container recalculation after data load or navigation
+    const recalculateHeight = () => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (scrollContainerRef.current) {
+            const container = scrollContainerRef.current
+            // Force reflow to recalculate height
+            const currentHeight = container.style.height
+            container.style.height = 'auto'
+            // Trigger layout recalculation
+            void container.offsetHeight
+            container.style.height = currentHeight || ''
+            // Ensure scroll is enabled
+            container.style.overflowY = 'auto'
+          }
+          // Also trigger resize event as fallback
+          window.dispatchEvent(new Event('resize'))
+        })
+      })
+    }
+
+    // Recalculate after a short delay to ensure DOM is updated
+    const timeoutId = setTimeout(recalculateHeight, 100)
+    
+    return () => clearTimeout(timeoutId)
+  }, [id, foodspots.length, loading, headerHeight])
 
   // Group foodspots by tier
   const foodspotsByTier = TIERS.reduce((acc, tier) => {
@@ -534,11 +549,15 @@ function TierList() {
       {/* Header */}
       <header 
         ref={headerRef}
-        className={`header-safe border-b fixed top-0 left-0 right-0 z-20 shadow-sm backdrop-blur-xl ${
+        className={`header-safe border-b fixed top-0 left-0 right-0 z-30 shadow-sm backdrop-blur-xl ${
           isDark
             ? 'bg-gray-900/80 border-gray-800/50'
             : 'bg-white/80 border-gray-200/50'
         }`}
+        style={{
+          top: 0,
+          paddingTop: 0,
+        }}
       >
         <div className="flex items-center justify-between px-4 py-3">
           <button
@@ -637,14 +656,25 @@ function TierList() {
       {/* Main Content - All Tiers Always Visible */}
       <div 
         ref={scrollContainerRef}
-        className={`page-content px-4 ${
-          isDark ? 'bg-gray-900' : 'bg-gray-50'
-        }`}
+        className="absolute inset-0 overflow-y-auto px-4 py-6"
         style={{
-          paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(60px + env(safe-area-inset-bottom, 0px))`
+          paddingTop: 0,
+          top: 0,
+          paddingBottom: `calc(60px + env(safe-area-inset-bottom, 0px))`,
+          overscrollBehavior: 'none',
+          WebkitOverflowScrolling: 'touch',
+          background: isDark ? '#111827' : '#F9FAFB'
         }}
       >
+        {/* Spacer für Header-Höhe + konsistenter Abstand - Content scrollt darüber */}
+        <div 
+          style={{ 
+            height: headerHeight 
+              ? `${headerHeight + 24}px`
+              : `calc(60px + env(safe-area-inset-top, 0px) + 24px + 24px)`,
+            flexShrink: 0 
+          }} 
+        />
         <div className="max-w-5xl mx-auto flex flex-col gap-4 pt-0 pb-4">
           {TIERS.map((tier, index) => {
             const tierData = TIER_COLORS[tier]

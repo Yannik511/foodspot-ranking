@@ -92,16 +92,19 @@
     left: 0;
     right: 0;
     height: env(safe-area-inset-top, 0px);
-    background: var(--safe-area-bg-current, #FFF5EF);
-    z-index: 3; /* Niedriger als Content (z-10) und Header (z-20), damit Content darüber scrollen kann */
+    background: transparent;
+    z-index: 1; /* Sehr niedrig, damit Content und Header darüber sind */
     pointer-events: none;
-    /* Transparent für transparentes Scrolling unter Header */
+    /* Vollständig transparent für transparentes Scrolling unter Header bis in Safe Area */
     opacity: 0;
+    /* Sicherstellen, dass es wirklich transparent ist */
+    background-color: transparent !important;
   }
   
   .dark body::before {
-    background: var(--safe-area-bg-current, #111827);
+    background: transparent;
     opacity: 0;
+    background-color: transparent !important;
   }
 
   #root {
