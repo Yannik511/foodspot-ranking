@@ -95,7 +95,7 @@
     right: 0;
     height: env(safe-area-inset-top, 0px);
     background: transparent;
-    z-index: 1; /* Sehr niedrig, damit Content und Header darüber sind */
+    z-index: -1; /* Negativer z-index, damit es unter ALLEM liegt - verhindert Blockierung auf iOS PWA */
     pointer-events: none;
     /* Vollständig transparent für transparentes Scrolling unter Header bis in Safe Area */
     opacity: 0;

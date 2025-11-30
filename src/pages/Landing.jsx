@@ -77,7 +77,7 @@ function Landing() {
           backgroundRepeat: 'no-repeat',
           transform: 'scale(1.05)',
           transition: 'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-          zIndex: 0,
+          zIndex: 1, /* Höher als body::before (-1), damit Bild über Safe-Area liegt */
         }}
         onMouseMove={(e) => {
           if (window.innerWidth > 768) {
