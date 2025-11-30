@@ -16,28 +16,45 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <style>
-      /* Critical CSS für Safe-Area auf Landing-Page - inline für sofortige Anwendung
+      /* Critical CSS - Lädt VOR allem anderen
          WICHTIG: Diese Styles werden sofort geladen, bevor React hydriert
-         Sie stellen sicher, dass html/body transparent sind und body::before nicht blockiert */
+         Sie verhindern Race-Conditions zwischen inline CSS und useEffect */
+      
+      /* Basis-Styles für html/body */
       html, body {
-        background: transparent !important;
-        background-color: transparent !important;
+        margin: 0 !important;
+        padding: 0 !important;
         /* iOS PWA: -webkit-fill-available als Fallback für 100vh/dvh */
         height: -webkit-fill-available;
+        height: 100dvh;
+        height: 100vh; /* Fallback */
+        overflow: hidden !important;
       }
-      body::before {
-        display: none !important;
-        opacity: 0 !important;
+
+      /* Landing-Page: Transparenter Background - verhindert weißen Balken im Safe-Area */
+      body[data-page="landing"],
+      body[data-page="landing"]::before {
         background: transparent !important;
         background-color: transparent !important;
-        height: 0 !important;
       }
+      
+      body[data-page="landing"]::before {
+        display: none !important;
+        content: none !important;
+        height: 0 !important;
+        width: 0 !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+      }
+
       /* iOS PWA: Sicherstellen, dass #root die komplette Höhe nutzt */
       #root {
         height: 100dvh;
         height: -webkit-fill-available; /* iOS Safari Fallback */
+        height: 100vh; /* Fallback */
         min-height: 100dvh;
         min-height: -webkit-fill-available; /* iOS Safari Fallback */
+        min-height: 100vh; /* Fallback */
       }
     </style>
     <!-- Android Chrome: Entfernt Browser-Chrome im Homescreen-Modus -->

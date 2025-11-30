@@ -102,6 +102,23 @@
     /* Sicherstellen, dass es wirklich transparent ist */
     background-color: transparent !important;
   }
+
+  /* WICHTIG: Verhindert body::before auf Landing-Page - verhindert Race-Condition */
+  body[data-page="landing"]::before {
+    display: none !important;
+    content: none !important;
+    height: 0 !important;
+    width: 0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+  }
+
+  /* Landing-Page: Transparenter Background */
+  body[data-page="landing"] {
+    background: transparent !important;
+    background-color: transparent !important;
+    --safe-area-bg-current: transparent !important;
+  }
   
   .dark body::before {
     background: transparent;
