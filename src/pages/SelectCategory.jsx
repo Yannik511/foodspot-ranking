@@ -95,10 +95,10 @@ function SelectCategory() {
       {/* Header */}
       <header 
         ref={headerRef}
-        className={`header-safe backdrop-blur-[12px] border-b px-4 flex items-center justify-between fixed top-0 left-0 right-0 z-20 ${
+        className={`header-safe backdrop-blur-xl border-b px-4 flex items-center justify-between fixed top-0 left-0 right-0 z-20 shadow-sm ${
           isDark
-            ? 'bg-gray-800/70 border-gray-700/30'
-            : 'bg-white/70 border-gray-200/30'
+            ? 'bg-gray-900/80 border-gray-800/50'
+            : 'bg-white/80 border-gray-200/50'
         }`}
       >
         <button

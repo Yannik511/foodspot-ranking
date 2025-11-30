@@ -95,10 +95,13 @@
     background: var(--safe-area-bg-current, #FFF5EF);
     z-index: 3; /* Niedriger als Content (z-10) und Header (z-20), damit Content darüber scrollen kann */
     pointer-events: none;
+    /* Transparent für transparentes Scrolling unter Header */
+    opacity: 0;
   }
   
   .dark body::before {
     background: var(--safe-area-bg-current, #111827);
+    opacity: 0;
   }
 
   #root {

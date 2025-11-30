@@ -516,7 +516,9 @@ function Settings() {
       {/* Header */}
       <header 
         ref={headerRef}
-        className={`header-safe ${isDark ? 'bg-gray-800' : 'bg-white'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} flex items-center justify-between fixed top-0 left-0 right-0 z-10`}
+        className={`header-safe shadow-sm backdrop-blur-xl border-b flex items-center justify-between fixed top-0 left-0 right-0 z-10 ${
+          isDark ? 'bg-gray-900/80 border-gray-800/50' : 'bg-white/80 border-gray-200/50'
+        }`}
         style={{
           paddingLeft: 'clamp(16px, 4vw, 24px)',
           paddingRight: 'clamp(16px, 4vw, 24px)'

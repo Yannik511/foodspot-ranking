@@ -822,10 +822,10 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
         {/* Header - Fixed */}
         <header 
           ref={headerRef}
-          className={`header-safe flex items-center justify-between border-b fixed top-0 left-0 right-0 z-20 ${
+          className={`header-safe flex items-center justify-between border-b fixed top-0 left-0 right-0 z-20 shadow-sm backdrop-blur-xl ${
             isDark
-              ? 'bg-gray-800 border-gray-700'
-              : 'bg-white border-gray-200'
+              ? 'bg-gray-900/80 border-gray-800/50'
+              : 'bg-white/80 border-gray-200/50'
           }`}
           style={{
             paddingLeft: 'clamp(16px, 4vw, 24px)',
@@ -852,15 +852,16 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
 
         {/* Main Content - Scrollable */}
         <main 
-          className="absolute inset-0 overflow-y-auto"
+          className="absolute inset-0 overflow-y-auto px-4 py-6"
           style={{
             paddingTop: 0,
+            top: 0,
             paddingBottom: `calc(80px + env(safe-area-inset-bottom, 0px))`,
             overscrollBehavior: 'none',
             WebkitOverflowScrolling: 'touch'
           }}
         >
-          {/* Spacer für Header-Höhe + konsistenter Abstand */}
+          {/* Spacer für Header-Höhe + konsistenter Abstand - Content scrollt darüber */}
           <div 
             style={{ 
               height: headerHeight 
@@ -870,13 +871,13 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
             }} 
           />
           
-          {/* Content-Bereich */}
-          <div className="max-w-2xl mx-auto px-4 py-6" style={{ paddingTop: 'clamp(24px, 6vw, 32px)' }}>
+          {/* Content-Bereich - kein zusätzliches Padding, da bereits im Spacer enthalten */}
+          <div className="max-w-2xl mx-auto" style={{ paddingTop: 'clamp(24px, 6vw, 32px)' }}>
             {/* Stepper Indicator */}
             <div className={`mb-6 p-4 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-center">
                 {[1, 2, 3].map((s) => (
-                  <div key={s} className="flex items-center flex-1">
+                  <div key={s} className="flex items-center">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold ${
                       s < step ? (isDark ? 'bg-green-600 text-white' : 'bg-green-500 text-white') :
                       s === step ? (isDark ? 'bg-[#FF9357] text-white' : 'bg-[#FF7E42] text-white') :
@@ -885,7 +886,7 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
                       {s < step ? '✓' : s}
                     </div>
                     {s < 3 && (
-                      <div className={`flex-1 h-0.5 mx-2 ${s < step ? (isDark ? 'bg-green-600' : 'bg-green-500') : (isDark ? 'bg-gray-700' : 'bg-gray-200')}`} />
+                      <div className={`w-12 h-0.5 mx-2 ${s < step ? (isDark ? 'bg-green-600' : 'bg-green-500') : (isDark ? 'bg-gray-700' : 'bg-gray-200')}`} />
                     )}
                   </div>
                 ))}
@@ -1004,9 +1005,9 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
         
         {/* Stepper Indicator - Sticky */}
         <div className={`px-4 py-3 border-b flex-shrink-0 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-center">
             {[1, 2, 3].map((s) => (
-              <div key={s} className="flex items-center flex-1">
+              <div key={s} className="flex items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold ${
                   s < step ? (isDark ? 'bg-green-600 text-white' : 'bg-green-500 text-white') :
                   s === step ? (isDark ? 'bg-[#FF9357] text-white' : 'bg-[#FF7E42] text-white') :
@@ -1015,7 +1016,7 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
                   {s < step ? '✓' : s}
                 </div>
                 {s < 3 && (
-                  <div className={`flex-1 h-0.5 mx-2 ${s < step ? (isDark ? 'bg-green-600' : 'bg-green-500') : (isDark ? 'bg-gray-700' : 'bg-gray-200')}`} />
+                  <div className={`w-12 h-0.5 mx-2 ${s < step ? (isDark ? 'bg-green-600' : 'bg-green-500') : (isDark ? 'bg-gray-700' : 'bg-gray-200')}`} />
                 )}
               </div>
             ))}

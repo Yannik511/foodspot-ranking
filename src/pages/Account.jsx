@@ -980,10 +980,10 @@ function Account() {
       {/* Header */}
       <header 
         ref={headerRef}
-        className={`header-safe border-b fixed top-0 left-0 right-0 z-20 ${
+        className={`header-safe border-b fixed top-0 left-0 right-0 z-20 shadow-sm backdrop-blur-xl ${
           isDark
-            ? 'bg-gray-800 border-gray-700'
-            : 'bg-white border-gray-200'
+            ? 'bg-gray-900/80 border-gray-800/50'
+            : 'bg-white/80 border-gray-200/50'
         }`}
       >
         <div className="flex items-center justify-between px-4 py-2">

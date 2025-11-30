@@ -54,6 +54,7 @@ function TierList() {
   const [windowHeight, setWindowHeight] = useState(0)
   const scrollRefs = useRef({})
   const menuRef = useRef(null)
+  const scrollContainerRef = useRef(null)
   const [sharedContextChecked, setSharedContextChecked] = useState(false)
   const { headerRef, headerHeight } = useHeaderHeight()
 
@@ -232,6 +233,23 @@ function TierList() {
         console.error('Error fetching data:', error)
       } finally {
         setLoading(false)
+        // Force scroll container recalculation after data load
+        // This fixes the scroll bug after creating a new spot
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            // Recalculate scroll container height
+            if (scrollContainerRef.current) {
+              const container = scrollContainerRef.current
+              // Force reflow to recalculate height
+              container.style.height = 'auto'
+              requestAnimationFrame(() => {
+                container.style.height = ''
+              })
+            }
+            // Also trigger resize event as fallback
+            window.dispatchEvent(new Event('resize'))
+          })
+        })
       }
     }
 
@@ -516,10 +534,10 @@ function TierList() {
       {/* Header */}
       <header 
         ref={headerRef}
-        className={`header-safe border-b fixed top-0 left-0 right-0 z-20 ${
+        className={`header-safe border-b fixed top-0 left-0 right-0 z-20 shadow-sm backdrop-blur-xl ${
           isDark
-            ? 'bg-gray-800 border-gray-700'
-            : 'bg-white border-gray-200'
+            ? 'bg-gray-900/80 border-gray-800/50'
+            : 'bg-white/80 border-gray-200/50'
         }`}
       >
         <div className="flex items-center justify-between px-4 py-3">
@@ -618,6 +636,7 @@ function TierList() {
 
       {/* Main Content - All Tiers Always Visible */}
       <div 
+        ref={scrollContainerRef}
         className={`page-content px-4 ${
           isDark ? 'bg-gray-900' : 'bg-gray-50'
         }`}

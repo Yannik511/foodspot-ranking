@@ -1782,6 +1782,10 @@ function Dashboard() {
         className={`fixed top-0 left-0 right-0 z-30 shadow-sm backdrop-blur-xl ${
           isDark ? 'bg-gray-900/80 border-b border-gray-800/50' : 'bg-white/80 border-b border-gray-200/50'
         }`}
+        style={{
+          top: 0,
+          paddingTop: 0,
+        }}
       >
         <header
           className="header-safe flex items-center justify-between"
@@ -1912,6 +1916,7 @@ function Dashboard() {
         className="absolute inset-0 overflow-y-auto px-4 py-6"
         style={{
           paddingTop: 0,
+          top: 0,
           paddingBottom: isEmpty 
             ? `calc(40px + max(env(safe-area-inset-bottom, 0px), 20px))`
             : `calc(120px + max(env(safe-area-inset-bottom, 0px), 34px))`, // Bottom Nav (~80px) + FAB Button (~88px) + Safe-Area + extra padding
@@ -3664,8 +3669,8 @@ function EditSharedListModal({ list, onClose, onSave }) {
         isDark ? 'bg-gray-800' : 'bg-white'
       }`}>
         {/* Header */}
-        <div className={`header-safe border-b px-6 py-4 flex items-center justify-between flex-shrink-0 ${
-          isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+        <div className={`header-safe border-b px-6 py-4 flex items-center justify-between flex-shrink-0 shadow-sm backdrop-blur-xl ${
+          isDark ? 'bg-gray-900/80 border-gray-800/50' : 'bg-white/80 border-gray-200/50'
         }`}>
           <h2 className={`text-2xl font-bold ${
             isDark ? 'text-white' : 'text-gray-900'
@@ -4291,8 +4296,8 @@ function EditListModal({ list, onClose, onSave }) {
         isDark ? 'bg-gray-800' : 'bg-white'
       }`}>
         {/* Header */}
-        <div className={`header-safe border-b px-6 py-4 flex items-center justify-between flex-shrink-0 ${
-          isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+        <div className={`header-safe border-b px-6 py-4 flex items-center justify-between flex-shrink-0 shadow-sm backdrop-blur-xl ${
+          isDark ? 'bg-gray-900/80 border-gray-800/50' : 'bg-white/80 border-gray-200/50'
         }`}>
           <h2 className={`text-2xl font-bold ${
             isDark ? 'text-white' : 'text-gray-900'

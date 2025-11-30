@@ -724,7 +724,7 @@ function AddSharedFoodspot() {
     } relative overflow-hidden`}>
       <header 
         ref={headerRef}
-        className="header-safe fixed top-0 left-0 right-0 z-20 backdrop-blur-lg bg-white/70 dark:bg-gray-900/70 border-b border-gray-200/40 dark:border-gray-800/60"
+        className="header-safe fixed top-0 left-0 right-0 z-20 shadow-sm backdrop-blur-xl bg-white/80 dark:bg-gray-900/80 border-b border-gray-200/50 dark:border-gray-800/50"
       >
         <div className="max-w-3xl mx-auto px-4 py-2 flex items-center justify-between">
           <button
