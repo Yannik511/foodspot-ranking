@@ -15,6 +15,20 @@
     <!-- iOS: Vollbild & Statusbar (wirkt nur wenn aus Homescreen gestartet) -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <style>
+      /* Critical CSS für Safe-Area auf Landing-Page - inline für sofortige Anwendung */
+      html, body {
+        background: transparent !important;
+        background-color: transparent !important;
+      }
+      body::before {
+        display: none !important;
+        opacity: 0 !important;
+        background: transparent !important;
+        background-color: transparent !important;
+        height: 0 !important;
+      }
+    </style>
     <!-- Android Chrome: Entfernt Browser-Chrome im Homescreen-Modus -->
     <meta name="mobile-web-app-capable" content="yes" />
     <title>Rankify</title>

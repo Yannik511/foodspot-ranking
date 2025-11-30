@@ -30,11 +30,37 @@ function Landing() {
     if (typeof document === 'undefined') return
     const previousBodyValue = document.body.style.getPropertyValue('--safe-area-bg-current')
     const previousBodyBg = document.body.style.backgroundColor
-    document.body.style.setProperty('--safe-area-bg-current', 'transparent')
+    const bodyBefore = document.querySelector('body::before')
+    
     // Setze body background auf transparent, damit Safe-Area nicht weiß ist
+    document.body.style.setProperty('--safe-area-bg-current', 'transparent')
     document.body.style.backgroundColor = 'transparent'
+    
+    // Entferne body::before auf Landing-Page komplett, da es den Safe-Area-Bereich blockieren könnte
+    const style = document.createElement('style')
+    style.id = 'landing-safe-area-override'
+    style.textContent = `
+      body::before {
+        display: none !important;
+        opacity: 0 !important;
+        background: transparent !important;
+        background-color: transparent !important;
+        height: 0 !important;
+      }
+      html, body {
+        background: transparent !important;
+        background-color: transparent !important;
+      }
+    `
+    document.head.appendChild(style)
 
     return () => {
+      // Entferne Override-Style
+      const overrideStyle = document.getElementById('landing-safe-area-override')
+      if (overrideStyle) {
+        overrideStyle.remove()
+      }
+      
       if (previousBodyValue) {
         document.body.style.setProperty('--safe-area-bg-current', previousBodyValue)
       } else {
@@ -64,10 +90,12 @@ function Landing() {
         bottom: `calc(-1 * env(safe-area-inset-bottom, 0px))`,
         width: `calc(100vw + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px))`,
         height: `calc(100dvh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px))`,
+        minHeight: `calc(100dvh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px))`,
         margin: 0,
         padding: 0,
         overflow: 'hidden',
         zIndex: 0,
+        backgroundColor: 'transparent',
       }}
     >
       {/* Burger Background Image - Edge-to-Edge, vollständig abgedeckt inkl. Safe Area */}
