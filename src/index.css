@@ -103,20 +103,6 @@
     background-color: transparent !important;
   }
 
-  /* Landing Page: Verhindert body::before komplett */
-  body[data-page="landing"],
-  body[data-page="landing"]::before {
-    background: transparent !important;
-    background-color: transparent !important;
-  }
-  body[data-page="landing"]::before {
-    display: none !important;
-    content: none !important;
-    height: 0 !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-  }
-  
   .dark body::before {
     background: transparent;
     opacity: 0;
@@ -256,6 +242,33 @@
 .backdrop-blur-md {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+}
+
+/* ============================================
+   iOS PWA Safe Area Fix für Landing Page
+   ============================================ */
+/* Landing Page: Verhindert body::before komplett */
+body[data-page="landing"] {
+  background: transparent !important;
+  background-color: transparent !important;
+  --safe-area-bg-current: transparent !important;
+}
+
+body[data-page="landing"]::before {
+  display: none !important;
+  content: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* Zusätzlicher Schutz: html/body transparent auf Landing */
+html:has(body[data-page="landing"]) {
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 .backdrop-blur-lg {
