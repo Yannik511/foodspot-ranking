@@ -16,10 +16,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <style>
-      /* Critical CSS für Safe-Area auf Landing-Page - inline für sofortige Anwendung */
+      /* Critical CSS für Safe-Area auf Landing-Page - inline für sofortige Anwendung
+         WICHTIG: Diese Styles werden sofort geladen, bevor React hydriert
+         Sie stellen sicher, dass html/body transparent sind und body::before nicht blockiert */
       html, body {
         background: transparent !important;
         background-color: transparent !important;
+        /* iOS PWA: -webkit-fill-available als Fallback für 100vh/dvh */
+        height: -webkit-fill-available;
       }
       body::before {
         display: none !important;
@@ -27,6 +31,13 @@
         background: transparent !important;
         background-color: transparent !important;
         height: 0 !important;
+      }
+      /* iOS PWA: Sicherstellen, dass #root die komplette Höhe nutzt */
+      #root {
+        height: 100dvh;
+        height: -webkit-fill-available; /* iOS Safari Fallback */
+        min-height: 100dvh;
+        min-height: -webkit-fill-available; /* iOS Safari Fallback */
       }
     </style>
     <!-- Android Chrome: Entfernt Browser-Chrome im Homescreen-Modus -->

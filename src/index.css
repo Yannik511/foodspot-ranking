@@ -111,8 +111,10 @@
 
   #root {
     height: 100dvh;
+    height: -webkit-fill-available; /* iOS Safari Fallback - wichtig für PWA */
     height: 100vh; /* Fallback for browsers that don't support dvh */
     min-height: 100dvh;
+    min-height: -webkit-fill-available; /* iOS Safari Fallback */
     min-height: 100vh; /* Fallback */
     overflow: hidden;
     display: flex;
@@ -152,6 +154,13 @@
     padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
     padding-bottom: 12px;
     min-height: calc(60px + env(safe-area-inset-top, 0px));
+  }
+
+  /* Landing Page: Full-Screen Container für iOS PWA Safe-Area Support */
+  .landing-fullscreen-container {
+    height: 100dvh;
+    height: -webkit-fill-available; /* iOS Safari Fallback - wichtig für PWA */
+    height: 100vh; /* Fallback for browsers that don't support dvh */
   }
 
   /* Einheitlicher Content-Bereich für alle Pages */
