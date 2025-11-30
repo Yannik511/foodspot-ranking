@@ -45,46 +45,41 @@ function Landing() {
 
   return (
     <div 
-      className="fixed w-full h-full relative overflow-hidden landing-fullscreen-container"
+      className="fixed inset-0 w-full h-full overflow-hidden"
       style={{
         position: 'fixed',
-        // RADIKALER ANSATZ FÜR iOS PWA: Container startet direkt im Safe-Bereich
-        // Dies stellt sicher, dass der Container wirklich von ganz oben startet
-        top: `calc(-1 * env(safe-area-inset-top, 0px))`,
-        left: `calc(-1 * env(safe-area-inset-left, 0px))`,
-        right: `calc(-1 * env(safe-area-inset-right, 0px))`,
-        bottom: `calc(-1 * env(safe-area-inset-bottom, 0px))`,
-        width: `calc(100vw + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px))`,
-        height: `calc(100dvh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px))`,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100dvh',
         margin: 0,
         padding: 0,
         overflow: 'hidden',
-        zIndex: 0,
         backgroundColor: 'transparent',
       }}
     >
-      {/* Burger Background Image - Edge-to-Edge, vollständig abgedeckt inkl. Safe Area
-          WICHTIG: Da der Container bereits im Safe-Bereich startet, füllt das Bild jetzt
-          den kompletten Container aus, inklusive Safe-Area */}
+      {/* Burger Background Image - Erweitert nach oben in Safe Area */}
       <div 
-        className="absolute inset-0"
+        className="absolute"
         style={{
+          // KRITISCH: Bild startet ÜBER dem Viewport und reicht in Safe Area
+          top: `calc(-1 * env(safe-area-inset-top, 0px))`,
+          left: `calc(-1 * env(safe-area-inset-left, 0px))`,
+          right: `calc(-1 * env(safe-area-inset-right, 0px))`,
+          bottom: `calc(-1 * env(safe-area-inset-bottom, 0px))`,
+          width: `calc(100vw + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px))`,
+          height: `calc(100dvh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px))`,
           backgroundImage: 'url("https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1920&q=80")',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          width: '100%',
-          height: '100%',
           transform: 'scale(1.05)',
           transition: 'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
           zIndex: 0,
         }}
         onMouseMove={(e) => {
-          // Subtiler Parallax-Effekt bei Mausbewegung (nur Desktop)
           if (window.innerWidth > 768) {
             const rect = e.currentTarget.getBoundingClientRect()
             const x = (e.clientX - rect.left) / rect.width
@@ -99,17 +94,10 @@ function Landing() {
         }}
       />
 
-      {/* Gradient Overlay - von unten dunkel nach oben transparent + Dark Mode Support
-          Füllt den kompletten Container aus, da Container bereits im Safe-Bereich startet */}
+      {/* Gradient Overlay */}
       <div 
         className="absolute inset-0"
         style={{
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          width: '100%',
-          height: '100%',
           background: isDark 
             ? 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0) 100%)'
             : 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 100%)',
@@ -117,32 +105,21 @@ function Landing() {
         }}
       />
 
-      {/* Zusätzliche transparente Overlay-Schicht für besseren Textkontrast
-          Füllt den kompletten Container aus */}
+      {/* Zusätzliche Overlay-Schicht */}
       <div 
         className="absolute inset-0"
         style={{
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          width: '100%',
-          height: '100%',
           backgroundColor: isDark ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.1)',
           zIndex: 1,
         }}
       />
 
-      {/* Content Container - Edge-to-Edge mit Safe Area, Flexbox-Layout
-          WICHTIG: Da der äußere Container bereits im Safe-Bereich startet, brauchen wir hier
-          paddingTop, damit der Content nicht direkt unter der Statusbar liegt */}
+      {/* Content Container */}
       <div 
         className="relative z-10 w-full h-full flex flex-col"
         style={{
           minHeight: '100%',
           height: '100%',
-          // iOS PWA: paddingTop berücksichtigt Safe-Area, damit Text/Buttons nicht unter Statusbar liegen
-          // Da Container bereits im Safe-Bereich startet, müssen wir hier die Safe-Area als Padding addieren
           paddingTop: `calc(env(safe-area-inset-top, 0px) + 0px)`,
           paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 0px)`,
           paddingLeft: `calc(env(safe-area-inset-left, 0px) + 0px)`,
