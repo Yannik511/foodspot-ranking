@@ -20,11 +20,13 @@ import FriendProfile from './pages/FriendProfile'
 import Compare from './pages/Compare'
 import CreateSharedListPage from './pages/CreateSharedListPage'
 import ProtectedRoute from './components/ProtectedRoute'
+import { PresenceProvider } from './contexts/PresenceContext'
 
 function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
+        <PresenceProvider>
         <ProfileProvider>
           <BrowserRouter>
         <Routes>
@@ -146,6 +148,7 @@ function App() {
         </Routes>
           </BrowserRouter>
         </ProfileProvider>
+        </PresenceProvider>
       </AuthProvider>
     </ThemeProvider>
   )

@@ -990,7 +990,7 @@ function SharedTierList() {
                   ) : (
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                        {tierSpots.slice(0, 3).map((spot) => {
+                        {tierSpots.slice(0, 5).map((spot) => {
                         const photos = spotPhotos[spot.id] || []
                         const displayPhotos = photos.slice(0, 3)
                         
@@ -1109,7 +1109,7 @@ function SharedTierList() {
                     </div>
 
                       {/* "Alle ansehen" Button - ab 4 Spots */}
-                      {tierSpots.length >= 4 && (
+                      {tierSpots.length >= 6 && (
                         <button
                           onClick={() => setShowTierModal(tier)}
                           className={`w-full mt-4 py-3 px-4 rounded-2xl border-2 border-dashed font-semibold transition-all hover:scale-[1.01] active:scale-[0.99] ${

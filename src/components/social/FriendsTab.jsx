@@ -6,6 +6,7 @@ import UserAvatar from './UserAvatar'
 import { supabase } from '../../services/supabase'
 import { hapticFeedback } from '../../utils/haptics'
 import { useProfilesStore } from '../../contexts/ProfileContext'
+import { usePresence } from '../../contexts/PresenceContext'
 
 const SectionSkeleton = ({ isDark, rows = 3 }) => (
   <div className="p-4 space-y-3">
@@ -34,6 +35,7 @@ function FriendsTab() {
   const { isDark } = useTheme()
   const navigate = useNavigate()
   const { upsertProfiles } = useProfilesStore()
+  const { isOnline } = usePresence()
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [searchLoading, setSearchLoading] = useState(false)
@@ -1978,8 +1980,9 @@ function FriendsTab() {
                     <div className="flex items-center gap-3">
                       <div className="relative flex-shrink-0">
                         <UserAvatar user={friend} size={48} />
-                        {/* Online indicator - placeholder */}
-                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-800" />
+                        {isOnline(friend.id) && (
+                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-800" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`font-semibold text-sm truncate ${
