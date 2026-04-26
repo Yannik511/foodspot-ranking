@@ -64,6 +64,7 @@ function SharedTierList() {
   const selectedSpotIdRef = useRef(null)
   const fileInputRef = useRef(null)
   const { headerRef, headerHeight } = useHeaderHeight()
+  const scrollContainerRef = useRef(null)
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
   const [photoUploadQueue, setPhotoUploadQueue] = useState([])
   const [photoActionLoading, setPhotoActionLoading] = useState(null)
@@ -345,6 +346,14 @@ function SharedTierList() {
     selectedSpotIdRef.current = selectedSpot ? selectedSpot.id : null
   }, [selectedSpot])
 
+  // Reset scroll position when navigating to this page
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      // Reset scroll to top when list ID changes (navigation)
+      scrollContainerRef.current.scrollTop = 0
+    }
+  }, [id])
+
   useEffect(() => {
     fetchTierData()
 
@@ -384,6 +393,34 @@ function SharedTierList() {
       }
     }
   }, [fetchTierData, id, scheduleBackgroundRefresh])
+
+  // Fix scroll container after content update
+  useEffect(() => {
+    if (!scrollContainerRef.current || loading) return
+
+    // Reset scroll position to top after content update
+    const resetScroll = () => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (scrollContainerRef.current) {
+            const container = scrollContainerRef.current
+            // Reset scroll to top
+            container.scrollTop = 0
+          }
+        })
+      })
+    }
+
+    // Reset scroll immediately and after a short delay to ensure DOM is updated
+    resetScroll()
+    const timeoutId = setTimeout(resetScroll, 100)
+    const timeoutId2 = setTimeout(resetScroll, 300) // Extra retry for production
+    
+    return () => {
+      clearTimeout(timeoutId)
+      clearTimeout(timeoutId2)
+    }
+  }, [foodspots.length, loading, headerHeight])
 
   const foodspotsByTier = useMemo(() => {
     return TIERS.reduce((acc, tier) => {
@@ -887,23 +924,19 @@ function SharedTierList() {
 
       {/* Main Content - scrollt von top: 0 (unter Dynamic Island) */}
       <main 
-        className="absolute inset-0 overflow-y-auto flex flex-col" 
+        ref={scrollContainerRef}
+        className="absolute overflow-y-auto flex flex-col" 
         style={{
-          paddingTop: 0,
+          top: headerHeight || 'calc(60px + env(safe-area-inset-top, 0px))',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          paddingTop: 24,
           paddingBottom: `calc(60px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'
         }}
       >
-        {/* Spacer für Header-Höhe + konsistenter Abstand - Content scrollt darüber */}
-        <div 
-          style={{ 
-            height: headerHeight 
-              ? `${headerHeight + 24}px` // Gemessene Header-Höhe + 24px konsistenter Abstand
-              : `calc(60px + env(safe-area-inset-top, 0px) + 24px + 24px)`, // Fallback: Header + Safe-Area + 24px Abstand
-            flexShrink: 0 
-          }} 
-        />
         
         {/* Content-Bereich - kein zusätzliches Padding, da bereits im Spacer enthalten */}
         <div className="max-w-5xl mx-auto px-4 py-6 space-y-12 flex flex-col flex-1 w-full">

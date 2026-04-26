@@ -1924,12 +1924,12 @@ function Dashboard() {
           WebkitOverflowScrolling: 'touch'
         }}
       >
-        {/* Spacer für Header-Höhe + konsistenter Abstand - Content scrollt darüber */}
+        {/* Spacer für Header-Höhe (inkl. Tabs) + konsistenter Abstand - Content scrollt transparent darüber */}
         <div 
           style={{ 
             height: headerHeight 
-              ? `${headerHeight + 24}px` // Gemessene Header-Höhe + 24px konsistenter Abstand
-              : `calc(60px + env(safe-area-inset-top, 0px) + 24px + 24px)`, // Fallback: Header + Safe-Area + 24px Abstand
+              ? `${headerHeight + 24}px` // Gemessene Header-Höhe (inkl. Tabs) + 24px konsistenter Abstand
+              : `calc(${isEmpty ? 60 : 108}px + env(safe-area-inset-top, 0px) + 24px)`, // Fallback: Header (60px) + Tabs (48px wenn nicht empty) + Safe-Area + 24px Abstand
             flexShrink: 0 
           }} 
         />

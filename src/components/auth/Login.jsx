@@ -16,6 +16,15 @@ function Login() {
   const { signIn } = useAuth()
   const navigate = useNavigate()
 
+  // Setze data-page Attribut für CSS (ähnlich wie Landing)
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    document.body.setAttribute('data-page', 'login')
+    return () => {
+      document.body.removeAttribute('data-page')
+    }
+  }, [])
+
   // Lade gespeicherte Credentials
   useEffect(() => {
     const savedEmail = localStorage.getItem('foodspot_saved_email')
@@ -73,17 +82,22 @@ function Login() {
 
   return (
     <div 
-      className={`min-h-screen flex flex-col p-4 overflow-y-auto ${
+      className={`fixed inset-0 flex flex-col overflow-y-auto ${
         isDark 
           ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' 
           : 'bg-gradient-to-br from-orange-50 via-white to-pink-50'
       }`}
       style={{ 
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100dvh',
         paddingTop: `max(clamp(3rem, 15vh, 6rem), calc(env(safe-area-inset-top) + clamp(2rem, 12vh, 4rem)))`,
         paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
         paddingLeft: 'max(1rem, env(safe-area-inset-left))',
         paddingRight: 'max(1rem, env(safe-area-inset-right))',
-        minHeight: '100dvh',
       }}
     >
       {/* Back Button - Top Left */}

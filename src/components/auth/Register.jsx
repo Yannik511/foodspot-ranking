@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTheme } from '../../contexts/ThemeContext'
@@ -16,6 +16,15 @@ function Register() {
   const [loading, setLoading] = useState(false)
   const { signUp } = useAuth()
   const navigate = useNavigate()
+
+  // Setze data-page Attribut für CSS (ähnlich wie Landing)
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    document.body.setAttribute('data-page', 'register')
+    return () => {
+      document.body.removeAttribute('data-page')
+    }
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -59,12 +68,18 @@ function Register() {
 
   return (
     <div 
-      className={`min-h-screen flex flex-col p-4 overflow-y-auto ${
+      className={`fixed inset-0 flex flex-col overflow-y-auto ${
         isDark 
           ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' 
           : 'bg-gradient-to-br from-orange-50 via-white to-pink-50'
       }`}
-      style={{ 
+      style={{
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100dvh', 
         paddingTop: `max(clamp(3rem, 15vh, 6rem), calc(env(safe-area-inset-top) + clamp(2rem, 12vh, 4rem)))`,
         paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
         paddingLeft: 'max(1rem, env(safe-area-inset-left))',

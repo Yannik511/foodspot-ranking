@@ -66,6 +66,14 @@ function TierList() {
     return () => window.removeEventListener('resize', updateHeight)
   }, [])
 
+  // Reset scroll position when navigating to this page
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      // Reset scroll to top when list ID changes (navigation)
+      scrollContainerRef.current.scrollTop = 0
+    }
+  }, [id])
+
   // Shared list detection – redirect to shared component if necessary
   useEffect(() => {
     if (!user || !id || sharedContextChecked) return
@@ -284,12 +292,15 @@ function TierList() {
   useEffect(() => {
     if (!scrollContainerRef.current || loading) return
 
-    // Force scroll container recalculation after data load or navigation
-    const recalculateHeight = () => {
+    // Reset scroll position to top after navigation or content update
+    const resetScroll = () => {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           if (scrollContainerRef.current) {
             const container = scrollContainerRef.current
+            // Reset scroll to top
+            container.scrollTop = 0
+            
             // Force reflow to recalculate height
             const currentHeight = container.style.height
             container.style.height = 'auto'
@@ -299,16 +310,19 @@ function TierList() {
             // Ensure scroll is enabled
             container.style.overflowY = 'auto'
           }
-          // Also trigger resize event as fallback
-          window.dispatchEvent(new Event('resize'))
         })
       })
     }
 
-    // Recalculate after a short delay to ensure DOM is updated
-    const timeoutId = setTimeout(recalculateHeight, 100)
+    // Reset scroll immediately and after a short delay to ensure DOM is updated
+    resetScroll()
+    const timeoutId = setTimeout(resetScroll, 100)
+    const timeoutId2 = setTimeout(resetScroll, 300) // Extra retry for production
     
-    return () => clearTimeout(timeoutId)
+    return () => {
+      clearTimeout(timeoutId)
+      clearTimeout(timeoutId2)
+    }
   }, [id, foodspots.length, loading, headerHeight])
 
   // Group foodspots by tier
@@ -554,10 +568,6 @@ function TierList() {
             ? 'bg-gray-900/80 border-gray-800/50'
             : 'bg-white/80 border-gray-200/50'
         }`}
-        style={{
-          top: 0,
-          paddingTop: 0,
-        }}
       >
         <div className="flex items-center justify-between px-4 py-3">
           <button
@@ -656,25 +666,19 @@ function TierList() {
       {/* Main Content - All Tiers Always Visible */}
       <div 
         ref={scrollContainerRef}
-        className="absolute inset-0 overflow-y-auto px-4 py-6"
+        className="absolute overflow-y-auto px-4 py-6"
         style={{
-          paddingTop: 0,
-          top: 0,
+          top: headerHeight || 'calc(88px + env(safe-area-inset-top, 0px))',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          paddingTop: 24,
           paddingBottom: `calc(60px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch',
           background: isDark ? '#111827' : '#F9FAFB'
         }}
       >
-        {/* Spacer für Header-Höhe + konsistenter Abstand - Content scrollt darüber */}
-        <div 
-          style={{ 
-            height: headerHeight 
-              ? `${headerHeight + 24}px`
-              : `calc(60px + env(safe-area-inset-top, 0px) + 24px + 24px)`,
-            flexShrink: 0 
-          }} 
-        />
         <div className="max-w-5xl mx-auto flex flex-col gap-4 pt-0 pb-4">
           {TIERS.map((tier, index) => {
             const tierData = TIER_COLORS[tier]

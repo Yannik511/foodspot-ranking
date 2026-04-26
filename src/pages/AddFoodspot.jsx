@@ -718,7 +718,9 @@ function AddFoodspot() {
 
       // Navigate immediately (optimistic) - no loading screen
       setIsSubmitting(false)
-      navigate(`/tierlist/${id}`)
+      navigate(`/tierlist/${id}`, { 
+        state: { scrollToTop: true } // Signal für Scroll-Reset
+      })
       
       // Update/Insert in background (non-blocking)
       if (isEditMode) {

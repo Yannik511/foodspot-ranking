@@ -87,25 +87,17 @@
     overflow: hidden; /* Prevent body scroll, only content areas scroll */
   }
 
+  /* body::before entfernt - verursacht Scroll-Probleme auf Vercel */
+  /* Safe-Area wird jetzt direkt in den Komponenten behandelt */
   body::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: env(safe-area-inset-top, 0px);
-    background: transparent;
-    z-index: -1; /* Negativer z-index, damit es unter ALLEM liegt - verhindert Blockierung auf iOS PWA */
-    pointer-events: none;
-    /* Vollständig transparent für transparentes Scrolling unter Header bis in Safe Area */
-    opacity: 0;
-    /* Sicherstellen, dass es wirklich transparent ist */
-    background-color: transparent !important;
-  }
-
-  .dark body::before {
-    background: transparent;
-    opacity: 0;
+    display: none !important;
+    content: none !important;
+    height: 0 !important;
+    width: 0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    background: transparent !important;
     background-color: transparent !important;
   }
 
@@ -245,16 +237,20 @@
 }
 
 /* ============================================
-   iOS PWA Safe Area Fix für Landing Page
+   iOS PWA Safe Area Fix für Landing/Login/Register Pages
    ============================================ */
-/* Landing Page: Verhindert body::before komplett */
-body[data-page="landing"] {
+/* Landing/Login/Register Pages: Verhindert body::before komplett */
+body[data-page="landing"],
+body[data-page="login"],
+body[data-page="register"] {
   background: transparent !important;
   background-color: transparent !important;
   --safe-area-bg-current: transparent !important;
 }
 
-body[data-page="landing"]::before {
+body[data-page="landing"]::before,
+body[data-page="login"]::before,
+body[data-page="register"]::before {
   display: none !important;
   content: none !important;
   height: 0 !important;
@@ -265,8 +261,10 @@ body[data-page="landing"]::before {
   background-color: transparent !important;
 }
 
-/* Zusätzlicher Schutz: html/body transparent auf Landing */
-html:has(body[data-page="landing"]) {
+/* Zusätzlicher Schutz: html/body transparent auf Landing/Login/Register */
+html:has(body[data-page="landing"]),
+html:has(body[data-page="login"]),
+html:has(body[data-page="register"]) {
   background: transparent !important;
   background-color: transparent !important;
 }

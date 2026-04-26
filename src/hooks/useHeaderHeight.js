@@ -52,6 +52,15 @@ export function useHeaderHeight() {
     const delayedTimeout = setTimeout(() => {
       measureHeader()
     }, 100)
+    
+    // 4. Zusätzliche Retries für Production (Vercel)
+    const delayedTimeout2 = setTimeout(() => {
+      measureHeader()
+    }, 300)
+    
+    const delayedTimeout3 = setTimeout(() => {
+      measureHeader()
+    }, 500)
 
     // ResizeObserver für automatische Updates bei Größenänderungen
     // (z.B. wenn Text umbricht, Schriftgröße ändert, etc.)
@@ -95,6 +104,8 @@ export function useHeaderHeight() {
     return () => {
       if (rafId1) cancelAnimationFrame(rafId1)
       clearTimeout(delayedTimeout)
+      clearTimeout(delayedTimeout2)
+      clearTimeout(delayedTimeout3)
       resizeObserver.disconnect()
       mutationObserver.disconnect()
       window.removeEventListener('resize', handleResize)
