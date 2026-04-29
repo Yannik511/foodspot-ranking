@@ -6,15 +6,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <!-- PWA: Manifest + Icons -->
-    <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <!-- PWA: Theme Colors (separate for Light/Dark) -->
-    <meta name="theme-color" content="#FF7E42" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
-    <!-- iOS: Vollbild & Statusbar (wirkt nur wenn aus Homescreen gestartet) -->
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <style>
       /* Critical CSS für Safe-Area auf Landing-Page - inline für sofortige Anwendung */
       html, body {
@@ -49,16 +41,12 @@
         visibility: hidden !important;
       }
     </style>
-    <!-- Android Chrome: Entfernt Browser-Chrome im Homescreen-Modus -->
-    <meta name="mobile-web-app-capable" content="yes" />
     <title>Rankify</title>
     <!-- Google Fonts - Poppins for premium look -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- Google Maps Places API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places" async defer></script>
   </head>
   <body>
     <div id="root"></div>

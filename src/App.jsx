@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import { initNative } from './lib/native'
 import { ProfileProvider } from './contexts/ProfileContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import Landing from './pages/Landing'
@@ -23,6 +25,8 @@ import ProtectedRoute from './components/ProtectedRoute'
 import { PresenceProvider } from './contexts/PresenceContext'
 
 function App() {
+  useEffect(() => { initNative() }, [])
+
   return (
     <ThemeProvider>
       <AuthProvider>

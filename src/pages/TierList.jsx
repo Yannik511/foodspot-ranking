@@ -561,7 +561,7 @@ function TierList() {
       isDark ? 'bg-gray-900' : 'bg-gray-50'
     } relative overflow-hidden`}>
       {/* Header */}
-      <header 
+      <header
         ref={headerRef}
         className={`header-safe border-b fixed top-0 left-0 right-0 z-30 shadow-sm backdrop-blur-xl ${
           isDark
