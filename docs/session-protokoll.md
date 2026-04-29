@@ -62,21 +62,49 @@
 - Bottom Safe Area prüfen (`env(safe-area-inset-bottom)`) bei Pages mit FABs/Tab-Bars
 - Haptic Feedback an sinnvollen Stellen einbauen (`@capacitor/haptics`)
 
-### Priorität 2 — App Store Vorbereitung
+### Priorität 2 — Echte Karte & Standort in AddFoodspot
+
+**Ziel:** Statt Texteingabe für Adresse → echte Kartensuche wie Apple Maps
+
+**Technologie-Entscheidung: `@capacitor/google-maps` + Google Places API**
+- Karte rendert nativ auf iOS (kein WebView-Rendering)
+- Google Places Autocomplete → Vorschläge beim Tippen wie Apple Maps
+- Benötigt: Google Maps API Key (Google Cloud Console, kostenloses Kontingent $200/Monat reicht für kleine App)
+- APIs aktivieren: *Maps SDK for iOS* + *Places API*
+
+**Geplanter Flow in `AddFoodspot.jsx`:**
+1. Suchfeld → Autocomplete-Vorschläge erscheinen
+2. Vorschlag antippen → Pin fällt auf Karte, Karte zoomt hin
+3. Bestätigen → Name, Adresse, Latitude, Longitude werden automatisch befüllt & gespeichert
+
+**Datenbankänderung (rückwärtskompatibel):**
+```sql
+ALTER TABLE foodspots ADD COLUMN latitude FLOAT;
+ALTER TABLE foodspots ADD COLUMN longitude FLOAT;
+```
+- Bestehende Spots ohne Koordinaten funktionieren weiterhin normal (Spalten nullable)
+- TierList, Dashboard, SharedTierList — keine Änderungen nötig
+
+**Was nicht kaputt geht:**
+- Bestehende Spots ohne Koordinaten → werden weiterhin normal angezeigt
+- Supabase Schema → nur ADD, kein DROP
+- Gesamte bestehende Datenbanklogik bleibt unverändert
+
+### Priorität 3 — App Store Vorbereitung
 - App Icons für alle Größen generieren
 - Splash Screen Assets erstellen
 - Bundle ID & Signing in Xcode konfigurieren
 - TestFlight Build
 
-### Priorität 3 — Entdecken Tab
+### Priorität 4 — Entdecken Tab
 - Supabase RPC Funktion schreiben
-- `Discover.jsx` Page mit: "In deiner Nähe", "Beste Spots", "Neu hinzugefügt"
+- `Discover.jsx` Page mit: "In deiner Nähe" (nutzt Koordinaten), "Beste Spots", "Neu hinzugefügt"
 - Filter: Kategorie, Tier
 - Tab im Dashboard einbinden
 
 ### Später
 - feat/service-worker nach main mergen
-- Apple Maps via Capacitor MapKit
+- Push Notifications (braucht Apple Developer Account, $99/Jahr)
 
 ---
 
@@ -117,6 +145,7 @@
 - "Passwort speichern" Label irreführend (`Login.jsx`) — speichert nur E-Mail
 - Toast ohne Schließen-Button (`CreateList.jsx`)
 - Duplicate Emoji bei "Fast Food" Kategorie (`SelectCategory.jsx`)
+- `CHHapticPattern`-Fehler im Xcode Log (`hapticpatternlibrary.plist not found`) — **nur im Simulator**, auf echtem iPhone nicht relevant, ignorieren
 
 ---
 
