@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import BottomTabBar, { isTabBarPage } from './components/BottomTabBar'
 import { AuthProvider } from './contexts/AuthContext'
 import { initNative } from './lib/native'
 import { ProfileProvider } from './contexts/ProfileContext'
@@ -24,6 +25,12 @@ import CreateSharedListPage from './pages/CreateSharedListPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import { PresenceProvider } from './contexts/PresenceContext'
 
+function TabBarContainer() {
+  const location = useLocation()
+  if (!isTabBarPage(location.pathname)) return null
+  return <BottomTabBar />
+}
+
 function App() {
   useEffect(() => { initNative() }, [])
 
@@ -33,6 +40,7 @@ function App() {
         <PresenceProvider>
         <ProfileProvider>
           <BrowserRouter>
+          <TabBarContainer />
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />

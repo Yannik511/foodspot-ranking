@@ -214,7 +214,29 @@ function Social() {
             )}
           </h1>
 
-          <div className="w-10" />
+          <button
+            onClick={() => { navigate('/create-shared-list') }}
+            onTouchStart={e => { e.currentTarget.style.transform = 'scale(0.88)' }}
+            onTouchEnd={e => { e.currentTarget.style.transform = 'scale(1)' }}
+            style={{
+              width: '36px', height: '36px', flexShrink: 0,
+              borderRadius: '50%', border: 'none', cursor: 'pointer',
+              background: isDark
+                ? 'linear-gradient(135deg, #FF9357 0%, #B85C2C 100%)'
+                : 'linear-gradient(135deg, #FF7E42 0%, #FFB25A 100%)',
+              boxShadow: isDark
+                ? '0 3px 12px rgba(255,147,87,0.40)'
+                : '0 3px 12px rgba(255,126,66,0.35)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+            aria-label="Geteilte Liste erstellen"
+          >
+            <svg width="18" height="18" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24">
+              <path d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
         </div>
       </header>
 
@@ -224,7 +246,7 @@ function Social() {
         className={`page-content ${isDark ? 'bg-gray-900' : 'bg-white'}`}
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(60px + env(safe-area-inset-bottom, 0px))`
+          paddingBottom: `calc(100px + env(safe-area-inset-bottom, 0px))`
         }}
       >
         <FriendsTab />

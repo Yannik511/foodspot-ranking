@@ -9,6 +9,7 @@ import { supabase } from '../services/supabase'
 import { hapticFeedback } from '../utils/haptics'
 import { springEasing, staggerDelay } from '../utils/animations'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
+import { useSocialNotifications } from '../hooks/useSocialNotifications'
 
 const PRIVATE_FILTER_STORAGE_KEY = 'dashboard_private_filters'
 const SHARED_FILTER_STORAGE_KEY = 'dashboard_shared_filters'
@@ -75,73 +76,6 @@ const SkeletonListSection = ({ isDark, count = 3 }) => (
     ))}
   </div>
 )
-
-// Hook to check for unread social notifications (including list invitations)
-const useSocialNotifications = () => {
-  const { user } = useAuth()
-  const [hasUnread, setHasUnread] = useState(false)
-
-  useEffect(() => {
-    if (!user) return
-
-    const checkUnread = async () => {
-      try {
-        const lastViewed = localStorage.getItem('social_tab_last_viewed')
-        const lastViewedTime = lastViewed ? new Date(lastViewed).getTime() : 0
-
-        const [incomingRequests, acceptedRequests, listInvitations] = await Promise.all([
-          supabase.from('friendships').select('id').eq('addressee_id', user.id).eq('status', 'pending').limit(1),
-          supabase.from('friendships').select('id, created_at').eq('requester_id', user.id).eq('status', 'accepted').gt('updated_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()).limit(1),
-          supabase.from('list_invitations').select('id, created_at').eq('invitee_id', user.id).eq('status', 'pending').limit(1)
-        ])
-
-        const hasIncoming = (incomingRequests.data?.length || 0) > 0
-        const hasAccepted = (acceptedRequests.data?.length || 0) > 0 && 
-          acceptedRequests.data.some(r => new Date(r.created_at).getTime() > lastViewedTime)
-        const hasListInvitations = (listInvitations.data?.length || 0) > 0
-
-        setHasUnread(hasIncoming || hasAccepted || hasListInvitations)
-      } catch (error) {
-        // Tabellen existieren möglicherweise noch nicht - das ist okay
-        if (error.code !== 'PGRST200' && !error.message?.includes('does not exist')) {
-        console.error('Error checking notifications:', error)
-        }
-      }
-    }
-
-    checkUnread()
-    const interval = setInterval(checkUnread, 30000) // Check every 30 seconds
-
-    const channel = supabase
-      .channel('dashboard_social_notifications')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'friendships',
-        filter: `addressee_id=eq.${user.id}`
-      }, () => checkUnread())
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'friendships',
-        filter: `requester_id=eq.${user.id}`
-      }, () => checkUnread())
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'list_invitations',
-        filter: `invitee_id=eq.${user.id}`
-      }, () => checkUnread())
-      .subscribe()
-
-    return () => {
-      clearInterval(interval)
-      supabase.removeChannel(channel)
-    }
-  }, [user])
-
-  return hasUnread
-}
 
 function Dashboard() {
   const { user } = useAuth()
@@ -1975,8 +1909,8 @@ function Dashboard() {
             {/* Private Lists View */}
             {listView === 'meine' && (
               <>
-                <div className="max-w-5xl mx-auto w-full mb-6" style={{ paddingTop: '16px' }}>
-                  <div className={`rounded-2xl border shadow-sm ${
+                <div className="max-w-5xl mx-auto w-full mb-6 flex items-start gap-3" style={{ paddingTop: '16px' }}>
+                  <div className={`flex-1 rounded-2xl border shadow-sm ${
                     isDark ? 'bg-gray-800/80 border-gray-700/60' : 'bg-white/80 border-gray-200/60'
                   }`}>
                     <button
@@ -2094,6 +2028,30 @@ function Dashboard() {
                       </div>
                     )}
                   </div>
+                  {/* + Neue Liste */}
+                  <button
+                    onClick={() => { hapticFeedback.medium(); navigate('/select-category') }}
+                    onTouchStart={e => { e.currentTarget.style.transform = 'scale(0.90)' }}
+                    onTouchEnd={e => { e.currentTarget.style.transform = 'scale(1)' }}
+                    style={{
+                      width: '48px', height: '48px', flexShrink: 0,
+                      borderRadius: '50%', border: 'none', cursor: 'pointer',
+                      background: isDark
+                        ? 'linear-gradient(135deg, #FF9357 0%, #B85C2C 100%)'
+                        : 'linear-gradient(135deg, #FF7E42 0%, #FFB25A 100%)',
+                      boxShadow: isDark
+                        ? '0 4px 16px rgba(255,147,87,0.40), inset 0 1px 0 rgba(255,255,255,0.2)'
+                        : '0 4px 16px rgba(255,126,66,0.35), inset 0 1px 0 rgba(255,255,255,0.35)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                      WebkitTapHighlightColor: 'transparent',
+                    }}
+                    aria-label="Neue Liste erstellen"
+                  >
+                    <svg width="20" height="20" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24">
+                      <path d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
                 </div>
 
                 {currentLoading ? (
@@ -2362,8 +2320,8 @@ function Dashboard() {
             {/* Shared Lists View */}
             {listView === 'geteilt' && (
           <>
-            <div className="max-w-5xl mx-auto w-full mb-6" style={{ paddingTop: '16px' }}>
-              <div className={`rounded-2xl border shadow-sm ${
+            <div className="max-w-5xl mx-auto w-full mb-6 flex items-start gap-3" style={{ paddingTop: '16px' }}>
+              <div className={`flex-1 rounded-2xl border shadow-sm ${
                 isDark ? 'bg-gray-800/80 border-gray-700/60' : 'bg-white/80 border-gray-200/60'
               }`}>
                 <button
@@ -2481,6 +2439,30 @@ function Dashboard() {
                   </div>
                 )}
               </div>
+              {/* + Geteilte Liste */}
+              <button
+                onClick={() => { hapticFeedback.medium(); navigate('/create-shared-list') }}
+                onTouchStart={e => { e.currentTarget.style.transform = 'scale(0.90)' }}
+                onTouchEnd={e => { e.currentTarget.style.transform = 'scale(1)' }}
+                style={{
+                  width: '48px', height: '48px', flexShrink: 0,
+                  borderRadius: '50%', border: 'none', cursor: 'pointer',
+                  background: isDark
+                    ? 'linear-gradient(135deg, #FF9357 0%, #B85C2C 100%)'
+                    : 'linear-gradient(135deg, #FF7E42 0%, #FFB25A 100%)',
+                  boxShadow: isDark
+                    ? '0 4px 16px rgba(255,147,87,0.40), inset 0 1px 0 rgba(255,255,255,0.2)'
+                    : '0 4px 16px rgba(255,126,66,0.35), inset 0 1px 0 rgba(255,255,255,0.35)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+                aria-label="Geteilte Liste erstellen"
+              >
+                <svg width="20" height="20" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24">
+                  <path d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
             </div>
 
             {sharedListsLoading && sharedLists.length === 0 ? (
@@ -2790,70 +2772,6 @@ function Dashboard() {
         </div>
       </main>
 
-      {/* FAB: Nur anzeigen wenn listView === 'meine' UND nicht im Welcome-Screen (!isEmpty) */}
-      {/* FAB für "Meine Listen" - Private Liste erstellen */}
-      {listView === 'meine' && !isEmpty && (
-        <button
-          onClick={() => {
-            if (loading) return
-            hapticFeedback.medium()
-            navigate('/create-list')
-          }}
-          onTouchStart={() => !loading && hapticFeedback.light()}
-          className={`fixed right-6 bottom-20 sm:bottom-24 md:bottom-28 lg:bottom-32 w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-white transition-all active:scale-95 hover:shadow-2xl hover:scale-105 z-40 ${
-            loading
-              ? 'opacity-80 cursor-not-allowed'
-              : ''
-          } ${
-            isDark
-              ? 'bg-gradient-to-br from-[#FF9357] to-[#B85C2C]'
-              : 'bg-gradient-to-br from-[#FF7E42] to-[#FFB25A]'
-          }`}
-          style={{
-            bottom: `calc(env(safe-area-inset-bottom, 16px) + 72px)`
-          }}
-          aria-label="Neue Liste erstellen"
-          aria-disabled={loading}
-        >
-          {loading ? (
-            <svg className="w-6 h-6 animate-spin text-white" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-            </svg>
-          ) : (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
-            </svg>
-          )}
-          <span className="sr-only">Neue Liste</span>
-        </button>
-      )}
-
-      {/* FAB für "Geteilte Listen" - Geteilte Liste erstellen */}
-      {listView === 'geteilt' && !isEmpty && (
-        <button
-          onClick={() => {
-            hapticFeedback.medium()
-            navigate('/create-shared-list')
-          }}
-          onTouchStart={() => hapticFeedback.light()}
-          className={`fixed right-6 w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-white transition-all active:scale-95 hover:shadow-2xl hover:scale-105 z-40 ${
-            isDark
-              ? 'bg-gradient-to-br from-[#FF9357] to-[#B85C2C]'
-              : 'bg-gradient-to-br from-[#FF7E42] to-[#FFB25A]'
-          }`}
-          style={{
-            bottom: `calc(env(safe-area-inset-bottom, 16px) + 72px)`
-          }}
-          aria-label="Geteilte Liste erstellen"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
-          </svg>
-          <span className="sr-only">Geteilte Liste erstellen</span>
-        </button>
-      )}
-
       {toast && (
         <div 
           className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 px-4 py-3 rounded-2xl shadow-lg z-50 ${
@@ -2914,60 +2832,6 @@ function Dashboard() {
             // Shared lists will auto-refresh via realtime subscription
           }}
         />
-      )}
-
-      {/* Bottom Navigation - Only Friends & Account, Settings removed */}
-      {!isEmpty && (
-        <nav 
-          className="fixed bottom-0 left-0 right-0 backdrop-blur-[12px] px-4 py-3 flex items-center justify-around bg-white/75 dark:bg-gray-800/75 border-t border-gray-200/50 dark:border-gray-700/50"
-          style={{
-            paddingBottom: `max(12px, env(safe-area-inset-bottom))`,
-          }}
-        >
-          <button 
-            onClick={() => {
-              hapticFeedback.light()
-              navigate('/social')
-            }}
-            className="flex flex-col items-center gap-1 active:scale-95 transition-transform relative"
-            style={{
-              minWidth: '44px',
-              minHeight: '44px',
-            }}
-            aria-label="Social"
-          >
-            <div className="relative">
-              <svg className="w-6 h-6 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              {hasSocialNotifications && (
-                <span 
-                  className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"
-                  style={{ animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}
-                />
-              )}
-            </div>
-            <span className="text-xs font-semibold text-gray-700 dark:text-gray-200" style={{ fontFamily: "'Poppins', sans-serif" }}>Social</span>
-          </button>
-
-          <button 
-            onClick={() => {
-              hapticFeedback.light()
-              navigate('/account')
-            }}
-            className="flex flex-col items-center gap-1 active:scale-95 transition-transform"
-            style={{
-              minWidth: '44px',
-              minHeight: '44px',
-            }}
-            aria-label="Account"
-          >
-            <svg className="w-6 h-6 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            <span className="text-xs font-semibold text-gray-700 dark:text-gray-200" style={{ fontFamily: "'Poppins', sans-serif" }}>Profil</span>
-          </button>
-        </nav>
       )}
 
       {/* Delete Confirmation Modal */}

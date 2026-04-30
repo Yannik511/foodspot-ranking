@@ -26,6 +26,48 @@
 - **`setBackgroundColor`** aus `native.js` entfernt (nur relevant bei `overlaysWebView: false`)
 - **Ergebnis**: Header-Hintergrund zieht sich nahtlos hinter die Statusleiste / Dynamic Island — exakt wie native iOS Apps
 
+### Liquid Glass Tab Bar + UI-Überarbeitung
+
+#### Analyse & Entscheidungen
+- Bestehende Bottom Nav in Dashboard war primitiv (full-width, kein Glassmorphism, nur 2 Tabs)
+- UI/UX Analyse ergab 7 Verbesserungspunkte: Liquid Glass, Tab Bar, Spring-Animationen, Bottom Sheets, Tier-Card-Tiefe, Contextual Tinting, Empty States
+- **Entscheidung**: Floating Pill Tab Bar im Apple Liquid Glass Stil als größter einzelner UX-Sprung
+
+#### Was gebaut wurde
+- **`src/components/BottomTabBar.jsx`** — neue Komponente erstellt
+  - Floating Pill, zentriert, `width: min(92vw, 340px)`
+  - Liquid Glass: `backdrop-filter: blur(48px) saturate(200%)`, transparenter Hintergrund (52% Light / 58% Dark)
+  - Specular Highlight: `inset 0 1px 0 rgba(255,255,255,0.95)`
+  - Spring-Animation auf Tab-Wechsel: `cubic-bezier(0.34, 1.56, 0.64, 1)`
+  - 3 Tabs: Home / Social / Profil — alle mit filled/outlined Icon-Wechsel
+  - Notification-Dot auf Social Tab (roter Punkt wenn ungelesene Anfragen)
+  - Nur sichtbar auf `/dashboard`, `/social`, `/account`
+- **`src/hooks/useSocialNotifications.js`** — aus Dashboard extrahiert als eigener Hook
+- **`src/App.jsx`** — `TabBarContainer` Komponente hinzugefügt (nutzt `useLocation` für bedingte Anzeige)
+- **Alte Bottom Nav in `Dashboard.jsx` entfernt**
+- `paddingBottom` auf Social + Account auf 100px angehoben
+
+#### Iterationen nach User-Feedback
+- **Feedback 1**: Tab Bar breiter, weiter unten, transparenter → umgesetzt
+- **Feedback 2**: Mitte-+ Button in Tab Bar konkurriert mit FAB → + in Tab Bar entfernt, + Button neben Filter-Bereich platziert
+- **Feedback 3**: Beide Dashboard-FABs (Meine Listen + Geteilte Listen) entfernt, + direkt neben Filter-Row
+
+#### Finale Struktur der + Buttons
+- **Dashboard "Meine Listen"**: Filter-Row (flex) + oranger 48px + Button rechts → `/select-category`
+- **Dashboard "Geteilte Listen"**: Filter-Row (flex) + oranger 48px + Button rechts → `/create-shared-list`
+- **Social Header**: oranger 36px + Button oben rechts (war leerer `div`) → `/create-shared-list`
+- **FriendsTab FAB entfernt** — war `bottom-6 right-6`, kollidierte mit Tab Bar, Logik jetzt im Social Header
+
+#### Nicht committeter Stand (lokal gespeichert)
+Geänderte Dateien (noch kein `git commit`):
+- `src/App.jsx` — TabBarContainer
+- `src/components/BottomTabBar.jsx` — neu
+- `src/hooks/useSocialNotifications.js` — neu (aus Dashboard extrahiert)
+- `src/components/social/FriendsTab.jsx` — FAB entfernt
+- `src/pages/Dashboard.jsx` — alte Nav entfernt, Filter-Row + Button
+- `src/pages/Social.jsx` — Header + Button, paddingBottom
+- `src/pages/Account.jsx` — paddingBottom
+
 ---
 
 ## Aktueller Stand
@@ -34,7 +76,7 @@
 |--------|--------|
 | `main` | Stabil, läuft auf Vercel live |
 | `feat/service-worker` | Service Worker + Online-Presence, wartet auf Merge |
-| `feat/capacitor` | Capacitor iOS App, Safe Area behoben, läuft auf echtem iPhone ✓ |
+| `feat/capacitor` | Capacitor iOS App, Safe Area behoben, Tab Bar + UI in Arbeit (lokal, noch kein Commit) |
 
 ---
 
@@ -43,6 +85,8 @@
 - **Kein PWA mehr** — direkt Capacitor für iOS. PWA "Add to Homescreen" war nie das Ziel
 - **`overlaysWebView: true`** ist Standard für alle iOS Apps die Safe Area korrekt handhaben wollen
 - **`header-safe` CSS-Klasse** (`@layer components`) funktioniert korrekt auf dem outer `fixed top-0` Element — `position: fixed; top: 0` positioniert immer am physischen Bildschirm-Top unabhängig von Padding
+- **FABs gehören nicht ins Tab Bar** — Tab Bar ist Navigation, + Buttons sind kontextabhängige Aktionen → deshalb neben Filter-Row bzw. im Header
+- **`useSocialNotifications`** ist jetzt ein eigener Hook (`src/hooks/`) statt inline in Dashboard — kann von Tab Bar und anderen Komponenten genutzt werden
 
 ---
 
@@ -52,12 +96,13 @@
 - "Passwort speichern" Label irreführend (`Login.jsx`) — speichert nur E-Mail
 - Toast ohne Schließen-Button (`CreateList.jsx`)
 - Duplicate Emoji bei "Fast Food" Kategorie (`SelectCategory.jsx`)
+- `CHHapticPattern`-Fehler im Xcode Log (`hapticpatternlibrary.plist not found`) — **nur im Simulator**, auf echtem iPhone nicht relevant, ignorieren
 
 ---
 
 ## Plan für nächste Session
 
-### Priorität 1 — feat/capacitor fertigstellen & testen
+### Priorität 1 — Tab Bar & UI committen
 - Alle Pages auf echtem iPhone durchklicken
 - Bottom Safe Area prüfen (`env(safe-area-inset-bottom)`) bei Pages mit FABs/Tab-Bars
 - Haptic Feedback an sinnvollen Stellen einbauen (`@capacitor/haptics`)

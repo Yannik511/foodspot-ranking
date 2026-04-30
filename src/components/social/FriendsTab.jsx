@@ -2080,62 +2080,6 @@ function FriendsTab() {
         </div>
       )}
 
-      {/* Floating Action Button with Menu */}
-      <div className="fixed bottom-6 right-6 z-10">
-        {/* FAB Menu */}
-        {showFABMenu && (
-          <div className="absolute bottom-20 right-0 mb-2">
-            <div className={`rounded-xl shadow-2xl p-2 min-w-[200px] ${
-              isDark ? 'bg-gray-800' : 'bg-white'
-            }`}>
-        <button
-          onClick={() => {
-            setShowFABMenu(false)
-            hapticFeedback.light()
-            navigate('/create-shared-list')
-          }}
-                className={`w-full px-4 py-3 rounded-lg text-left transition-all active:scale-95 flex items-center gap-3 ${
-                  isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-                }`}
-              >
-                <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  Geteilte Liste erstellen
-                </span>
-              </button>
-            </div>
-          </div>
-        )}
-        
-        {/* FAB Button */}
-        <button
-          onClick={() => {
-            setShowFABMenu(!showFABMenu)
-            hapticFeedback.light()
-          }}
-          className={`w-14 h-14 text-white rounded-full shadow-xl flex items-center justify-center hover:shadow-2xl hover:scale-105 transition-all active:scale-95 ${
-            isDark
-              ? 'bg-gradient-to-br from-[#FF9357] to-[#B85C2C]'
-              : 'bg-gradient-to-br from-[#FF7E42] to-[#FFB25A]'
-          } ${showFABMenu ? 'rotate-45' : ''}`}
-          style={{ boxShadow: '0 8px 24px rgba(255, 125, 66, 0.35)' }}
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Click outside to close FAB menu */}
-      {showFABMenu && (
-        <div
-          className="fixed inset-0 z-[5]"
-          onClick={() => setShowFABMenu(false)}
-        />
-      )}
-
       {/* Invitation Details Modal */}
       {selectedList && (
         <div

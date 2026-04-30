@@ -1024,7 +1024,7 @@ function Account() {
         className="page-content px-4"
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(60px + env(safe-area-inset-bottom, 0px))`
+          paddingBottom: `calc(100px + env(safe-area-inset-bottom, 0px))`
         }}
       >
         <div className="max-w-4xl mx-auto space-y-6">
