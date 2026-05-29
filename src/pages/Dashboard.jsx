@@ -9,7 +9,9 @@ import { supabase } from '../services/supabase'
 import { hapticFeedback } from '../utils/haptics'
 import { springEasing, staggerDelay } from '../utils/animations'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
+import { useScrollHeader } from '../hooks/useScrollHeader'
 import { useSocialNotifications } from '../hooks/useSocialNotifications'
+import { usePlusAction } from '../contexts/TabBarActionsContext'
 
 const PRIVATE_FILTER_STORAGE_KEY = 'dashboard_private_filters'
 const SHARED_FILTER_STORAGE_KEY = 'dashboard_shared_filters'
@@ -86,6 +88,7 @@ function Dashboard() {
   const hasSocialNotifications = useSocialNotifications()
   const { headerRef, headerHeight } = useHeaderHeight()
   const scrollContainerRef = useRef(null)
+  const scrolled = useScrollHeader(scrollContainerRef)
 
   const fetchEntryCountMap = useCallback(async (listIds = []) => {
     const uniqueIds = Array.from(new Set((listIds || []).filter(Boolean)))
@@ -133,7 +136,12 @@ function Dashboard() {
   // Prüfe URL-Parameter für initialen View
   const initialView = searchParams.get('view') === 'geteilt' ? 'geteilt' : 'meine'
   const [listView, setListView] = useState(initialView)
-  
+
+  usePlusAction(() => {
+    hapticFeedback.medium()
+    navigate(listView === 'geteilt' ? '/create-shared-list' : '/select-category')
+  }, [listView])
+
   // Update URL when view changes
   useEffect(() => {
     if (listView === 'geteilt') {
@@ -1711,10 +1719,12 @@ function Dashboard() {
       </div>
 
       {/* Top Navigation (Fixed) - Transparent mit Glass-Effekt */}
-      <div 
+      <div
         ref={headerRef}
-        className={`fixed top-0 left-0 right-0 z-30 shadow-sm backdrop-blur-xl ${
-          isDark ? 'bg-gray-900/80 border-b border-gray-800/50' : 'bg-white/80 border-b border-gray-200/50'
+        className={`fixed top-0 left-0 right-0 z-30 backdrop-blur-xl transition-all duration-300 ${
+          scrolled
+            ? (isDark ? 'bg-gray-900/80 border-b border-gray-800/50 shadow-sm' : 'bg-white/80 border-b border-gray-200/50 shadow-sm')
+            : 'bg-transparent border-b border-transparent'
         }`}
         style={{
           top: 0,
@@ -2028,30 +2038,6 @@ function Dashboard() {
                       </div>
                     )}
                   </div>
-                  {/* + Neue Liste */}
-                  <button
-                    onClick={() => { hapticFeedback.medium(); navigate('/select-category') }}
-                    onTouchStart={e => { e.currentTarget.style.transform = 'scale(0.90)' }}
-                    onTouchEnd={e => { e.currentTarget.style.transform = 'scale(1)' }}
-                    style={{
-                      width: '48px', height: '48px', flexShrink: 0,
-                      borderRadius: '50%', border: 'none', cursor: 'pointer',
-                      background: isDark
-                        ? 'linear-gradient(135deg, #FF9357 0%, #B85C2C 100%)'
-                        : 'linear-gradient(135deg, #FF7E42 0%, #FFB25A 100%)',
-                      boxShadow: isDark
-                        ? '0 4px 16px rgba(255,147,87,0.40), inset 0 1px 0 rgba(255,255,255,0.2)'
-                        : '0 4px 16px rgba(255,126,66,0.35), inset 0 1px 0 rgba(255,255,255,0.35)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                      WebkitTapHighlightColor: 'transparent',
-                    }}
-                    aria-label="Neue Liste erstellen"
-                  >
-                    <svg width="20" height="20" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24">
-                      <path d="M12 4v16m8-8H4" />
-                    </svg>
-                  </button>
                 </div>
 
                 {currentLoading ? (
@@ -2439,30 +2425,6 @@ function Dashboard() {
                   </div>
                 )}
               </div>
-              {/* + Geteilte Liste */}
-              <button
-                onClick={() => { hapticFeedback.medium(); navigate('/create-shared-list') }}
-                onTouchStart={e => { e.currentTarget.style.transform = 'scale(0.90)' }}
-                onTouchEnd={e => { e.currentTarget.style.transform = 'scale(1)' }}
-                style={{
-                  width: '48px', height: '48px', flexShrink: 0,
-                  borderRadius: '50%', border: 'none', cursor: 'pointer',
-                  background: isDark
-                    ? 'linear-gradient(135deg, #FF9357 0%, #B85C2C 100%)'
-                    : 'linear-gradient(135deg, #FF7E42 0%, #FFB25A 100%)',
-                  boxShadow: isDark
-                    ? '0 4px 16px rgba(255,147,87,0.40), inset 0 1px 0 rgba(255,255,255,0.2)'
-                    : '0 4px 16px rgba(255,126,66,0.35), inset 0 1px 0 rgba(255,255,255,0.35)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                  WebkitTapHighlightColor: 'transparent',
-                }}
-                aria-label="Geteilte Liste erstellen"
-              >
-                <svg width="20" height="20" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24">
-                  <path d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
             </div>
 
             {sharedListsLoading && sharedLists.length === 0 ? (

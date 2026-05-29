@@ -4,7 +4,10 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
+import { useScrollHeader } from '../hooks/useScrollHeader'
+import { usePlusAction } from '../contexts/TabBarActionsContext'
 import { getCategoryTerms } from '../utils/categoryTerms'
+import { hapticFeedback } from '../utils/haptics'
 
 const TIER_COLORS = {
   S: { 
@@ -57,6 +60,12 @@ function TierList() {
   const scrollContainerRef = useRef(null)
   const [sharedContextChecked, setSharedContextChecked] = useState(false)
   const { headerRef, headerHeight } = useHeaderHeight()
+  const scrolled = useScrollHeader(scrollContainerRef)
+
+  usePlusAction(() => {
+    hapticFeedback.medium()
+    navigate(`/add-foodspot/${id}`)
+  }, [id])
 
   // Track window height for responsive calculations
   useEffect(() => {
@@ -563,10 +572,10 @@ function TierList() {
       {/* Header */}
       <header
         ref={headerRef}
-        className={`header-safe border-b fixed top-0 left-0 right-0 z-30 shadow-sm backdrop-blur-xl ${
-          isDark
-            ? 'bg-gray-900/80 border-gray-800/50'
-            : 'bg-white/80 border-gray-200/50'
+        className={`header-safe fixed top-0 left-0 right-0 z-30 backdrop-blur-xl transition-all duration-300 ${
+          scrolled
+            ? (isDark ? 'bg-gray-900/80 border-b border-gray-800/50 shadow-sm' : 'bg-white/80 border-b border-gray-200/50 shadow-sm')
+            : 'bg-transparent border-b border-transparent'
         }`}
       >
         <div className="flex items-center justify-between px-4 py-3">
@@ -673,7 +682,7 @@ function TierList() {
           left: 0,
           right: 0,
           paddingTop: 24,
-          paddingBottom: `calc(60px + env(safe-area-inset-bottom, 0px))`,
+          paddingBottom: `calc(100px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch',
           background: isDark ? '#111827' : '#F9FAFB'
@@ -859,20 +868,6 @@ function TierList() {
         </div>
       </div>
 
-      {/* Floating Add Button */}
-      <button
-        onClick={() => navigate(`/add-foodspot/${id}`)}
-        className={`fixed bottom-6 right-6 w-14 h-14 text-white rounded-full shadow-xl flex items-center justify-center hover:shadow-2xl hover:scale-105 transition-all active:scale-95 z-10 ${
-          isDark
-            ? 'bg-gradient-to-br from-[#FF9357] to-[#B85C2C]'
-            : 'bg-gradient-to-br from-[#FF7E42] to-[#FFB25A]'
-        }`}
-        style={{ boxShadow: '0 8px 24px rgba(255, 125, 66, 0.35)' }}
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
-        </svg>
-      </button>
 
       {/* Edit Modal */}
       {showEditModal && (

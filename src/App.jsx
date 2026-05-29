@@ -22,8 +22,12 @@ import Social from './pages/Social'
 import FriendProfile from './pages/FriendProfile'
 import Compare from './pages/Compare'
 import CreateSharedListPage from './pages/CreateSharedListPage'
+import RateSpot from './pages/shared/RateSpot'
+import EditSpot from './pages/shared/EditSpot'
 import ProtectedRoute from './components/ProtectedRoute'
 import { PresenceProvider } from './contexts/PresenceContext'
+import { TabBarActionsProvider } from './contexts/TabBarActionsContext'
+import Discover from './pages/Discover'
 
 function TabBarContainer() {
   const location = useLocation()
@@ -39,6 +43,7 @@ function App() {
       <AuthProvider>
         <PresenceProvider>
         <ProfileProvider>
+          <TabBarActionsProvider>
           <BrowserRouter>
           <TabBarContainer />
         <Routes>
@@ -157,8 +162,33 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/discover"
+            element={
+              <ProtectedRoute>
+                <Discover />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/shared/rate-spot/:id"
+            element={
+              <ProtectedRoute>
+                <RateSpot />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/shared/edit-spot/:id"
+            element={
+              <ProtectedRoute>
+                <EditSpot />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
           </BrowserRouter>
+          </TabBarActionsProvider>
         </ProfileProvider>
         </PresenceProvider>
       </AuthProvider>

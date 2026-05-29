@@ -5,6 +5,9 @@ import { useTheme } from '../contexts/ThemeContext'
 import FriendsTab from '../components/social/FriendsTab'
 import { supabase } from '../services/supabase'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
+import { useScrollHeader } from '../hooks/useScrollHeader'
+import { usePlusAction } from '../contexts/TabBarActionsContext'
+import { hapticFeedback } from '../utils/haptics'
 
 function Social() {
   const { user } = useAuth()
@@ -14,6 +17,14 @@ function Social() {
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false)
   const { headerRef, headerHeight } = useHeaderHeight()
   const scrollContainerRef = useRef(null)
+  const scrolled = useScrollHeader(scrollContainerRef)
+
+  const [showSheet, setShowSheet] = useState(false)
+
+  usePlusAction(() => {
+    hapticFeedback.medium()
+    setShowSheet(true)
+  }, [])
 
   // Check for unread notifications
   useEffect(() => {
@@ -184,18 +195,18 @@ function Social() {
   return (
     <div className={`h-full flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'} relative overflow-hidden`}>
       {/* Header */}
-      <header 
+      <header
         ref={headerRef}
-        className={`header-safe border-b fixed top-0 left-0 right-0 z-20 shadow-sm backdrop-blur-xl ${
-          isDark
-            ? 'bg-gray-900/80 border-gray-800/50'
-            : 'bg-white/80 border-gray-200/50'
+        className={`header-safe fixed top-0 left-0 right-0 z-20 backdrop-blur-xl transition-all duration-300 ${
+          scrolled
+            ? (isDark ? 'bg-gray-900/80 border-b border-gray-800/50 shadow-sm' : 'bg-white/80 border-b border-gray-200/50 shadow-sm')
+            : 'bg-transparent border-b border-transparent'
         }`}
       >
-        <div className="flex items-center justify-between px-4 py-2">
+        <div className="flex items-center gap-3 px-4 py-2">
           <button
             onClick={() => navigate('/dashboard')}
-            className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
+            className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all flex-shrink-0 ${
               isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
             }`}
           >
@@ -213,35 +224,11 @@ function Social() {
               </span>
             )}
           </h1>
-
-          <button
-            onClick={() => { navigate('/create-shared-list') }}
-            onTouchStart={e => { e.currentTarget.style.transform = 'scale(0.88)' }}
-            onTouchEnd={e => { e.currentTarget.style.transform = 'scale(1)' }}
-            style={{
-              width: '36px', height: '36px', flexShrink: 0,
-              borderRadius: '50%', border: 'none', cursor: 'pointer',
-              background: isDark
-                ? 'linear-gradient(135deg, #FF9357 0%, #B85C2C 100%)'
-                : 'linear-gradient(135deg, #FF7E42 0%, #FFB25A 100%)',
-              boxShadow: isDark
-                ? '0 3px 12px rgba(255,147,87,0.40)'
-                : '0 3px 12px rgba(255,126,66,0.35)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
-              WebkitTapHighlightColor: 'transparent',
-            }}
-            aria-label="Geteilte Liste erstellen"
-          >
-            <svg width="18" height="18" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24">
-              <path d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
         </div>
       </header>
 
       {/* Content */}
-      <main 
+      <main
         ref={scrollContainerRef}
         className={`page-content ${isDark ? 'bg-gray-900' : 'bg-white'}`}
         style={{
@@ -251,6 +238,62 @@ function Social() {
       >
         <FriendsTab />
       </main>
+
+      {/* Plus bottom sheet */}
+      {showSheet && (
+        <>
+          <div
+            onClick={() => setShowSheet(false)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 80,
+              background: 'rgba(0,0,0,0.45)',
+              backdropFilter: 'blur(4px)',
+              WebkitBackdropFilter: 'blur(4px)',
+            }}
+          />
+          <div style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 90,
+            borderRadius: '28px 28px 0 0',
+            background: isDark ? '#1c1c22' : '#fff',
+            paddingBottom: 'env(safe-area-inset-bottom, 16px)',
+            boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
+          }}>
+            {/* Handle */}
+            <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.15)' }} />
+            </div>
+
+            <div style={{ padding: '8px 16px 20px' }}>
+              <button
+                onClick={() => { hapticFeedback.light(); setShowSheet(false); navigate('/create-shared-list') }}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 16,
+                  padding: '14px 16px', borderRadius: 18, border: 'none', cursor: 'pointer',
+                  background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <span style={{
+                  width: 44, height: 44, borderRadius: 14, flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: isDark ? 'rgba(255,147,87,0.15)' : 'rgba(255,126,66,0.12)',
+                }}>
+                  <svg width="20" height="20" fill="none" stroke="#FF7E42" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 00-3-3.87" />
+                    <path d="M16 3.13a4 4 0 010 7.75" />
+                  </svg>
+                </span>
+                <div style={{ textAlign: 'left' }}>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: isDark ? '#fff' : '#000', fontFamily: "'Poppins', sans-serif", margin: 0 }}>Geteilte Liste erstellen</p>
+                  <p style={{ fontSize: 12, color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)', fontFamily: "'Poppins', sans-serif", margin: 0, marginTop: 2 }}>Mit Freunden gemeinsam ranken</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

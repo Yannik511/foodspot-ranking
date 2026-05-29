@@ -1,9 +1,17 @@
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, matchPath } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
 import { useSocialNotifications } from '../hooks/useSocialNotifications'
+import { useTabBarActions } from '../contexts/TabBarActionsContext'
 import { hapticFeedback } from '../utils/haptics'
 
-const TAB_PATHS = ['/dashboard', '/social', '/account']
+const TAB_BAR_PATTERNS = [
+  '/dashboard',
+  '/social',
+  '/discover',
+  '/account',
+  '/tierlist/:id',
+  '/shared/tierlist/:id',
+]
 
 function IconHome({ active, color }) {
   return active ? (
@@ -30,6 +38,19 @@ function IconSocial({ active, color }) {
   )
 }
 
+function IconDiscover({ active, color }) {
+  return active ? (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill={color}>
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1.41 14.06l-2.12-5.65 5.65-2.12-2.12 5.65-1.41-1.41z" />
+    </svg>
+  ) : (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+    </svg>
+  )
+}
+
 function IconProfile({ active, color }) {
   return active ? (
     <svg width="22" height="22" viewBox="0 0 24 24" fill={color}>
@@ -43,13 +64,15 @@ function IconProfile({ active, color }) {
 }
 
 const TABS = [
-  { path: '/dashboard', label: 'Home',   Icon: IconHome    },
-  { path: '/social',    label: 'Social',  Icon: IconSocial  },
-  { path: '/account',   label: 'Profil',  Icon: IconProfile },
+  { path: '/dashboard', label: 'Home',      Icon: IconHome     },
+  { path: '/social',    label: 'Social',    Icon: IconSocial   },
+  null, // center plus slot
+  { path: '/discover',  label: 'Entdecken', Icon: IconDiscover },
+  { path: '/account',   label: 'Profil',    Icon: IconProfile  },
 ]
 
 export function isTabBarPage(pathname) {
-  return TAB_PATHS.includes(pathname)
+  return TAB_BAR_PATTERNS.some(pattern => matchPath(pattern, pathname) !== null)
 }
 
 export default function BottomTabBar() {
@@ -57,8 +80,9 @@ export default function BottomTabBar() {
   const navigate = useNavigate()
   const location = useLocation()
   const hasSocialNotifications = useSocialNotifications()
+  const { trigger, hasAction } = useTabBarActions()
 
-  const activeColor = isDark ? '#FF9357' : '#FF7E42'
+  const activeColor  = isDark ? '#FF9357' : '#FF7E42'
   const inactiveColor = isDark ? 'rgba(255,255,255,0.40)' : 'rgba(0,0,0,0.32)'
 
   const glassStyle = isDark ? {
@@ -86,13 +110,56 @@ export default function BottomTabBar() {
         alignItems: 'center',
         padding: '6px',
         gap: '0px',
-        width: 'min(92vw, 340px)',
+        width: 'min(94vw, 420px)',
         ...glassStyle,
       }}
     >
-      {TABS.map(({ path, label, Icon }) => {
+      {TABS.map((tab, i) => {
+        if (tab === null) {
+          // Center + button
+          return (
+            <div key="plus" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button
+                onClick={() => { if (hasAction) { hapticFeedback.medium(); trigger() } }}
+                onTouchStart={e => { if (hasAction) e.currentTarget.style.transform = 'scale(0.88)' }}
+                onTouchEnd={e => { e.currentTarget.style.transform = 'scale(1)' }}
+                style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '50%',
+                  border: 'none',
+                  cursor: hasAction ? 'pointer' : 'default',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: hasAction
+                    ? (isDark
+                        ? 'linear-gradient(135deg, #FF9357 0%, #B85C2C 100%)'
+                        : 'linear-gradient(135deg, #FF7E42 0%, #FFB25A 100%)')
+                    : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'),
+                  boxShadow: hasAction
+                    ? (isDark
+                        ? '0 4px 16px rgba(255,147,87,0.45), inset 0 1px 0 rgba(255,255,255,0.2)'
+                        : '0 4px 16px rgba(255,126,66,0.35), inset 0 1px 0 rgba(255,255,255,0.35)')
+                    : 'none',
+                  opacity: hasAction ? 1 : 0.35,
+                  transition: 'background 0.25s ease, box-shadow 0.25s ease, opacity 0.2s ease, transform 0.15s ease',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+                aria-label="Aktion"
+              >
+                <svg width="20" height="20" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24">
+                  <path d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </div>
+          )
+        }
+
+        const { path, label, Icon } = tab
         const isActive = location.pathname === path
         const isNotif = path === '/social' && hasSocialNotifications
+
         return (
           <button
             key={path}
@@ -106,7 +173,7 @@ export default function BottomTabBar() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '3px',
-              padding: '8px 4px',
+              padding: '8px 2px',
               borderRadius: '999px',
               border: 'none',
               cursor: 'pointer',

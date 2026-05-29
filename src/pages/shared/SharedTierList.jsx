@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useTheme } from '../../contexts/ThemeContext'
 import { supabase } from '../../services/supabase'
 import { useHeaderHeight, getContentPaddingTop } from '../../hooks/useHeaderHeight'
+import { useScrollHeader } from '../../hooks/useScrollHeader'
 import {
   uploadSharedSpotPhoto,
   deleteSharedSpotPhoto,
@@ -12,6 +13,8 @@ import {
   MAX_SPOT_PHOTOS
 } from '../../services/sharedPhotos'
 import { useProfilesStore } from '../../contexts/ProfileContext'
+import { usePlusAction } from '../../contexts/TabBarActionsContext'
+import { hapticFeedback } from '../../utils/haptics'
 
 const TIER_COLORS = {
   S: { 
@@ -43,6 +46,37 @@ const TIER_COLORS = {
 
 const TIERS = ['S', 'A', 'B', 'C', 'D']
 
+function AvatarCircle({ size, isFirst, avatarUrl, displayInitial, username, isLoading, isDark }) {
+  const [imgError, setImgError] = useState(false)
+
+  useEffect(() => { setImgError(false) }, [avatarUrl])
+
+  return (
+    <div
+      className={`flex items-center justify-center rounded-full overflow-hidden flex-shrink-0 ${
+        isFirst ? 'ring-2 ring-offset-2 ring-[#FF7E42]' : ''
+      } ${isDark ? 'bg-gray-700 border border-gray-600' : 'bg-gray-100 border border-gray-300'}`}
+      style={{ width: size, height: size }}
+      title={username || 'Mitglied'}
+    >
+      {isLoading ? (
+        <div className={`w-full h-full animate-pulse ${isDark ? 'bg-gray-600' : 'bg-gray-300'}`} />
+      ) : (avatarUrl && !imgError) ? (
+        <img
+          src={avatarUrl}
+          alt={username || 'Avatar'}
+          className="w-full h-full object-cover"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        <span style={{ fontSize: size <= 20 ? 9 : size <= 26 ? 11 : 14 }}>
+          {displayInitial}
+        </span>
+      )}
+    </div>
+  )
+}
+
 function SharedTierList() {
   const { id } = useParams()
   const { user } = useAuth()
@@ -50,6 +84,7 @@ function SharedTierList() {
   const navigate = useNavigate()
 
   const [list, setList] = useState(null)
+  const [listMemberOrder, setListMemberOrder] = useState([])
   const [foodspots, setFoodspots] = useState([])
   const [spotRatings, setSpotRatings] = useState({})
   const [spotPhotos, setSpotPhotos] = useState({})
@@ -65,6 +100,8 @@ function SharedTierList() {
   const fileInputRef = useRef(null)
   const { headerRef, headerHeight } = useHeaderHeight()
   const scrollContainerRef = useRef(null)
+  const scrolled = useScrollHeader(scrollContainerRef)
+
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
   const [photoUploadQueue, setPhotoUploadQueue] = useState([])
   const [photoActionLoading, setPhotoActionLoading] = useState(null)
@@ -73,6 +110,13 @@ function SharedTierList() {
   const canEditSpots = userRole === 'owner' || userRole === 'editor'
   const canUploadPhotos = canEditSpots
   const isOwner = userRole === 'owner'
+
+  usePlusAction(() => {
+    if (!canEditSpots) return
+    hapticFeedback.medium()
+    navigate(`/shared/add-foodspot/${id}`)
+  }, [id, canEditSpots])
+
   const spotPhotosRef = useRef({})
   const { ensureProfiles, getProfile, profiles } = useProfilesStore()
   const fetchRequestIdRef = useRef(0)
@@ -177,7 +221,11 @@ function SharedTierList() {
     }
 
     try {
-      const [{ data: listData, error: listError }, { data: membership, error: membershipError }] = await Promise.all([
+      const [
+        { data: listData, error: listError },
+        { data: membership, error: membershipError },
+        { data: allMembersData },
+      ] = await Promise.all([
         supabase
           .from('lists')
           .select('id, list_name, user_id, city, category, cover_image_url, updated_at')
@@ -188,7 +236,12 @@ function SharedTierList() {
           .select('role')
           .eq('list_id', id)
           .eq('user_id', user.id)
-          .maybeSingle()
+          .maybeSingle(),
+        supabase
+          .from('list_members')
+          .select('user_id, created_at')
+          .eq('list_id', id)
+          .order('created_at', { ascending: true }),
       ])
 
       if (fetchRequestIdRef.current !== requestId) return
@@ -202,6 +255,15 @@ function SharedTierList() {
       }
 
       setList(listData)
+
+      // Build member join order: owner always first, then others by joined_at
+      const memberOrder = listData.user_id ? [listData.user_id] : []
+      allMembersData?.forEach(m => {
+        if (m.user_id && !memberOrder.includes(m.user_id)) {
+          memberOrder.push(m.user_id)
+        }
+      })
+      setListMemberOrder(memberOrder)
 
       let role = 'viewer'
       if (listData.user_id === user.id) {
@@ -228,6 +290,7 @@ function SharedTierList() {
       let ratingsMap = {}
       let photosMap = {}
       const userIdSet = new Set(spotsData.map(s => s.first_uploader_id).filter(Boolean))
+      allMembersData?.forEach(m => { if (m.user_id) userIdSet.add(m.user_id) })
       if (listData?.user_id) {
         userIdSet.add(listData.user_id)
       }
@@ -458,108 +521,76 @@ function SharedTierList() {
     return getProfile(userId)
   }, [getProfile])
 
-  // renderSpotAvatars als useMemo, damit es neu rendert wenn Profile geladen werden
-  const renderSpotAvatars = useCallback((spot) => {
-    // WICHTIG: Nur Personen anzeigen, die tatsächlich bewertet haben
+  const renderSpotAvatars = useCallback((spot, isDetailView = false) => {
     const ratingEntries = spotRatings[spot.id] || []
-    const participants = []
-    
-    // Sammle nur User-IDs aus den tatsächlichen Bewertungen
-    ratingEntries.forEach(rating => {
-      if (rating.user_id && !participants.includes(rating.user_id)) {
-        participants.push(rating.user_id)
-      }
-    })
 
-    // Keine Teilnehmer = keine Avatare anzeigen
-    if (participants.length === 0) {
-      return null
+    if (ratingEntries.length === 0) return null
+
+    let orderedIds
+
+    if (isDetailView) {
+      // Spot-Detailansicht: Spot-Ersteller zuerst, dann nach Rating-Datum aufsteigend (Erstbewertung)
+      const spotCreatorId = spot.user_id
+      const sortedByDate = [...ratingEntries].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+      const seen = new Set()
+      orderedIds = []
+      // Spot-Ersteller zuerst (falls er bewertet hat)
+      if (spotCreatorId) {
+        const creatorRated = sortedByDate.some(r => r.user_id === spotCreatorId)
+        if (creatorRated) {
+          orderedIds.push(spotCreatorId)
+          seen.add(spotCreatorId)
+        }
+      }
+      // Restliche Bewerter in Reihenfolge ihrer Erstbewertung
+      sortedByDate.forEach(r => {
+        if (r.user_id && !seen.has(r.user_id)) {
+          orderedIds.push(r.user_id)
+          seen.add(r.user_id)
+        }
+      })
+    } else {
+      // Listen-Ansicht: Listen-Owner zuerst, dann nach Beitrittsdatum
+      const raterSet = new Set()
+      ratingEntries.forEach(r => { if (r.user_id) raterSet.add(r.user_id) })
+      orderedIds = Array.from(raterSet).sort((a, b) => {
+        const ai = listMemberOrder.indexOf(a)
+        const bi = listMemberOrder.indexOf(b)
+        return (ai === -1 ? Infinity : ai) - (bi === -1 ? Infinity : bi)
+      })
     }
 
-    const ownerId = list?.user_id || null
-    
-    // Sortiere: Owner zuerst (wenn er bewertet hat), dann alphabetisch
-    const uniqueParticipants = Array.from(new Set(participants))
-    uniqueParticipants.sort((a, b) => {
-      if (ownerId) {
-        if (a === ownerId && b !== ownerId) return -1
-        if (b === ownerId && a !== ownerId) return 1
-      }
-      const profileA = getProfile(a)
-      const profileB = getProfile(b)
-      const nameA = (profileA?.username || '').toLowerCase()
-      const nameB = (profileB?.username || '').toLowerCase()
-      return nameA.localeCompare(nameB)
-    })
-
-    // Maximal 6 Avatare anzeigen
-    const displayUsers = uniqueParticipants.slice(0, 6)
-    const extraCount = uniqueParticipants.length - displayUsers.length
+    const displayUsers = orderedIds.slice(0, 6)
+    const extraCount = orderedIds.length - displayUsers.length
 
     return (
       <div className="flex items-center gap-1 mt-1.5">
         {displayUsers.map((userId, index) => {
           const profile = getProfileForUser(userId)
-          const size = index === 0 ? 26 : 20
-          const isOwner = ownerId ? userId === ownerId : false
-          const displayInitial = profile?.username?.charAt(0)?.toUpperCase() || '🍽️'
           const avatarUrl = profile?.profile_visibility === 'private' ? null : profile?.avatar_url
-
-          // Prüfe ob Profile noch geladen wird (kein Profile vorhanden, aber userId existiert)
-          const isProfileLoading = !profile && userId
-          
           return (
-            <div
+            <AvatarCircle
               key={`${spot.id}-${userId}-${index}`}
-              className={`flex items-center justify-center rounded-full overflow-hidden ${
-                isOwner ? 'ring-2 ring-offset-2 ring-[#FF7E42]' : ''
-              } ${isDark ? 'bg-gray-700 border border-gray-600' : 'bg-gray-100 border border-gray-300'}`}
-              style={{ width: size, height: size }}
-              title={profile?.username || 'Mitglied'}
-            >
-              {isProfileLoading ? (
-                // Loading-State: Zeige Skeleton während Profile geladen wird
-                <div className={`w-full h-full animate-pulse ${
-                  isDark ? 'bg-gray-600' : 'bg-gray-300'
-                }`} />
-              ) : avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={profile?.username || 'Avatar'}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    // Fallback zu Initialen wenn Bild nicht lädt
-                    e.target.style.display = 'none'
-                    const parent = e.target.parentElement
-                    if (parent) {
-                      const fallback = parent.querySelector('.avatar-fallback')
-                      if (fallback) fallback.style.display = 'flex'
-                    }
-                  }}
-                />
-              ) : null}
-              {/* Fallback Initialen - wird angezeigt wenn kein Avatar oder Bild-Fehler */}
-              <span 
-                className="text-xs avatar-fallback" 
-                style={{ display: (avatarUrl && !isProfileLoading) ? 'none' : 'flex' }}
-              >
-                {displayInitial}
-              </span>
-            </div>
+              size={index === 0 ? 26 : 20}
+              isFirst={index === 0}
+              avatarUrl={avatarUrl}
+              displayInitial={profile?.username?.charAt(0)?.toUpperCase() || '?'}
+              username={profile?.username}
+              isLoading={!profile && !!userId}
+              isDark={isDark}
+            />
           )
         })}
         {extraCount > 0 && (
-          <div
-            className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-              isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'
-            }`}
-          >
+          <div className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+            isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'
+          }`}>
             +{extraCount}
           </div>
         )}
       </div>
     )
-  }, [getProfileForUser, spotRatings, list, profiles, isDark, getProfile])
+  }, [getProfileForUser, spotRatings, listMemberOrder, profiles, isDark])
 
   const canDeletePhoto = useCallback((photo) => {
     if (!photo) return false
@@ -894,9 +925,13 @@ function SharedTierList() {
 
   return (
     <div className={`h-full flex flex-col ${isDark ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'} relative overflow-hidden`}>
-      <header 
+      <header
         ref={headerRef}
-        className="header-safe shadow-sm backdrop-blur-xl border-b fixed top-0 left-0 right-0 z-20 bg-white/80 dark:bg-gray-900/80 border-gray-200/50 dark:border-gray-800/50"
+        className={`header-safe fixed top-0 left-0 right-0 z-20 backdrop-blur-xl transition-all duration-300 ${
+          scrolled
+            ? (isDark ? 'bg-gray-900/80 border-b border-gray-800/50 shadow-sm' : 'bg-white/80 border-b border-gray-200/50 shadow-sm')
+            : 'bg-transparent border-b border-transparent'
+        }`}
       >
         <div className="max-w-5xl mx-auto px-4 py-2 flex items-center justify-between">
           <button
@@ -932,7 +967,7 @@ function SharedTierList() {
           left: 0,
           right: 0,
           paddingTop: 24,
-          paddingBottom: `calc(60px + env(safe-area-inset-bottom, 0px))`,
+          paddingBottom: `calc(100px + env(safe-area-inset-bottom, 0px))`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'
         }}
@@ -1329,15 +1364,36 @@ function SharedTierList() {
                         </button>
                       ))}
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="mt-3 flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
                       {canUploadPhotos && (
                         <button
                           onClick={() => fileInputRef.current?.click()}
+                          style={{ flexShrink: 0 }}
                           className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
                             isDark ? 'bg-gray-800 hover:bg-gray-700 text-gray-100' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
                           }`}
                         >
                           Foto hinzufügen
+                        </button>
+                      )}
+                      {canEditSpots && (
+                        <button
+                          onClick={() => { closeSpotDetails(); navigate(`/shared/rate-spot/${id}?spotId=${selectedSpot.id}`) }}
+                          style={{ flexShrink: 0 }}
+                          className="px-4 py-2 rounded-full text-sm font-semibold text-white transition-all bg-gradient-to-r from-[#FF7E42] to-[#FFB25A] shadow-sm hover:shadow-md"
+                        >
+                          {selectedSpotHasRating ? 'Bewertung ändern' : 'Bewertung hinzufügen'}
+                        </button>
+                      )}
+                      {(isOwner || selectedSpot?.user_id === user?.id) && (
+                        <button
+                          onClick={() => { closeSpotDetails(); navigate(`/shared/edit-spot/${id}?spotId=${selectedSpot.id}`) }}
+                          style={{ flexShrink: 0 }}
+                          className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all ${
+                            isDark ? 'border-gray-700 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          Spot bearbeiten
                         </button>
                       )}
                     </div>
@@ -1420,7 +1476,7 @@ function SharedTierList() {
                 </div>
                 <div className="flex flex-col gap-2 items-start sm:items-end">
                   <span className="text-sm font-semibold text-gray-400">Mitglieder</span>
-                  {renderSpotAvatars(selectedSpot)}
+                  {renderSpotAvatars(selectedSpot, true)}
                 </div>
               </div>
 
@@ -1499,21 +1555,15 @@ function SharedTierList() {
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex items-center gap-3">
-                              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                isDark ? 'bg-gray-800' : 'bg-gray-200'
-                              }`}>
-                                {profile?.avatar_url ? (
-                                  <img
-                                    src={profile.avatar_url}
-                                    alt={profile?.username || 'Avatar'}
-                                    className="w-full h-full rounded-full object-cover"
-                                  />
-                                ) : (
-                                  <span className="text-sm">
-                                    {profile?.food_emoji || profile?.username?.charAt(0)?.toUpperCase() || '🍽️'}
-                                  </span>
-                                )}
-                              </div>
+                              <AvatarCircle
+                                size={40}
+                                isFirst={false}
+                                avatarUrl={profile?.profile_visibility === 'private' ? null : profile?.avatar_url}
+                                displayInitial={profile?.username?.charAt(0)?.toUpperCase() || '?'}
+                                username={profile?.username}
+                                isLoading={!profile && !!rating.user_id}
+                                isDark={isDark}
+                              />
                               <div>
                                 <p className="text-sm font-semibold">
                                   {profile?.username || 'Mitglied'}
@@ -1568,36 +1618,6 @@ function SharedTierList() {
                 )}
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={() => {
-                    closeSpotDetails()
-                    navigate(`/shared/add-foodspot/${id}?spotId=${selectedSpot.id}`)
-                  }}
-                  className={`flex-1 py-3 rounded-2xl font-semibold text-base shadow-lg transition-all ${
-                    isDark
-                      ? 'bg-gradient-to-r from-[#FF9357] to-[#B85C2C] text-white hover:shadow-xl'
-                      : 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A] text-white hover:shadow-xl'
-                  }`}
-                >
-                  {selectedSpotHasRating ? 'Meine Bewertung ändern' : 'Meine Bewertung hinzufügen'}
-                </button>
-                {canEditSpots && (
-                  <button
-                    onClick={() => {
-                      closeSpotDetails()
-                      navigate(`/shared/add-foodspot/${id}?spotId=${selectedSpot.id}`)
-                    }}
-                    className={`flex-1 py-3 rounded-2xl font-semibold text-base border transition-all ${
-                      isDark
-                        ? 'border-gray-700 text-gray-200 hover:bg-gray-800'
-                        : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    Spot bearbeiten
-                  </button>
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -1612,22 +1632,6 @@ function SharedTierList() {
         onChange={handlePhotoInputChange}
       />
 
-      {canEditSpots && (
-        <button
-          onClick={handleAddFoodspot}
-          className={`fixed bottom-6 right-6 w-auto px-5 h-14 text-white rounded-full shadow-xl flex items-center gap-2 justify-center hover:shadow-2xl hover:scale-105 transition-all active:scale-95 z-30 ${
-            isDark
-              ? 'bg-gradient-to-br from-[#FF9357] to-[#B85C2C]'
-              : 'bg-gradient-to-br from-[#FF7E42] to-[#FFB25A]'
-          }`}
-          style={{ boxShadow: '0 8px 24px rgba(255, 125, 66, 0.35)' }}
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
-          </svg>
-          <span className="font-semibold">Spot hinzufügen</span>
-        </button>
-      )}
 
       {toast && (
         <div 

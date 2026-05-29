@@ -6,6 +6,7 @@ import Avatar from '../components/Avatar'
 import { supabase } from '../services/supabase'
 import { useProfilesStore } from '../contexts/ProfileContext'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
+import { useScrollHeader } from '../hooks/useScrollHeader'
 
 // Category emojis for display
 const CATEGORY_EMOJIS = {
@@ -89,7 +90,9 @@ function Account() {
   const { isDark } = useTheme()
   const navigate = useNavigate()
   const fileInputRef = useRef(null)
+  const scrollContainerRef = useRef(null)
   const { headerRef, headerHeight } = useHeaderHeight()
+  const scrolled = useScrollHeader(scrollContainerRef)
   const [uploading, setUploading] = useState(false)
   const [toast, setToast] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -978,12 +981,12 @@ function Account() {
   return (
     <div className={`h-full flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'} relative overflow-hidden`}>
       {/* Header */}
-      <header 
+      <header
         ref={headerRef}
-        className={`header-safe border-b fixed top-0 left-0 right-0 z-20 shadow-sm backdrop-blur-xl ${
-          isDark
-            ? 'bg-gray-900/80 border-gray-800/50'
-            : 'bg-white/80 border-gray-200/50'
+        className={`header-safe fixed top-0 left-0 right-0 z-20 backdrop-blur-xl transition-all duration-300 ${
+          scrolled
+            ? (isDark ? 'bg-gray-900/80 border-b border-gray-800/50 shadow-sm' : 'bg-white/80 border-b border-gray-200/50 shadow-sm')
+            : 'bg-transparent border-b border-transparent'
         }`}
       >
         <div className="flex items-center justify-between px-4 py-2">
@@ -1020,7 +1023,8 @@ function Account() {
       </header>
 
       {/* Main Content */}
-      <main 
+      <main
+        ref={scrollContainerRef}
         className="page-content px-4"
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
