@@ -239,9 +239,9 @@ function SharedTierList() {
           .maybeSingle(),
         supabase
           .from('list_members')
-          .select('user_id, created_at')
+          .select('user_id, joined_at')
           .eq('list_id', id)
-          .order('created_at', { ascending: true }),
+          .order('joined_at', { ascending: true }),
       ])
 
       if (fetchRequestIdRef.current !== requestId) return
@@ -289,7 +289,10 @@ function SharedTierList() {
       const spotIds = (spotsData || []).map(spot => spot.id).filter(Boolean)
       let ratingsMap = {}
       let photosMap = {}
-      const userIdSet = new Set(spotsData.map(s => s.first_uploader_id).filter(Boolean))
+      const userIdSet = new Set([
+        ...spotsData.map(s => s.first_uploader_id).filter(Boolean),
+        ...spotsData.map(s => s.user_id).filter(Boolean),
+      ])
       allMembersData?.forEach(m => { if (m.user_id) userIdSet.add(m.user_id) })
       if (listData?.user_id) {
         userIdSet.add(listData.user_id)
@@ -521,44 +524,28 @@ function SharedTierList() {
     return getProfile(userId)
   }, [getProfile])
 
-  const renderSpotAvatars = useCallback((spot, isDetailView = false) => {
+  const renderSpotAvatars = useCallback((spot) => {
     const ratingEntries = spotRatings[spot.id] || []
 
     if (ratingEntries.length === 0) return null
 
-    let orderedIds
+    // Spot-Ersteller immer zuerst (auch ohne eigene Bewertung),
+    // dann restliche Bewerter in Reihenfolge ihrer Erstbewertung (aufsteigend)
+    const spotCreatorId = spot.user_id
+    const sortedByDate = [...ratingEntries].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    const seen = new Set()
+    const orderedIds = []
 
-    if (isDetailView) {
-      // Spot-Detailansicht: Spot-Ersteller zuerst, dann nach Rating-Datum aufsteigend (Erstbewertung)
-      const spotCreatorId = spot.user_id
-      const sortedByDate = [...ratingEntries].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-      const seen = new Set()
-      orderedIds = []
-      // Spot-Ersteller zuerst (falls er bewertet hat)
-      if (spotCreatorId) {
-        const creatorRated = sortedByDate.some(r => r.user_id === spotCreatorId)
-        if (creatorRated) {
-          orderedIds.push(spotCreatorId)
-          seen.add(spotCreatorId)
-        }
-      }
-      // Restliche Bewerter in Reihenfolge ihrer Erstbewertung
-      sortedByDate.forEach(r => {
-        if (r.user_id && !seen.has(r.user_id)) {
-          orderedIds.push(r.user_id)
-          seen.add(r.user_id)
-        }
-      })
-    } else {
-      // Listen-Ansicht: Listen-Owner zuerst, dann nach Beitrittsdatum
-      const raterSet = new Set()
-      ratingEntries.forEach(r => { if (r.user_id) raterSet.add(r.user_id) })
-      orderedIds = Array.from(raterSet).sort((a, b) => {
-        const ai = listMemberOrder.indexOf(a)
-        const bi = listMemberOrder.indexOf(b)
-        return (ai === -1 ? Infinity : ai) - (bi === -1 ? Infinity : bi)
-      })
+    if (spotCreatorId) {
+      orderedIds.push(spotCreatorId)
+      seen.add(spotCreatorId)
     }
+    sortedByDate.forEach(r => {
+      if (r.user_id && !seen.has(r.user_id)) {
+        orderedIds.push(r.user_id)
+        seen.add(r.user_id)
+      }
+    })
 
     const displayUsers = orderedIds.slice(0, 6)
     const extraCount = orderedIds.length - displayUsers.length
@@ -590,7 +577,7 @@ function SharedTierList() {
         )}
       </div>
     )
-  }, [getProfileForUser, spotRatings, listMemberOrder, profiles, isDark])
+  }, [getProfileForUser, spotRatings, profiles, isDark])
 
   const canDeletePhoto = useCallback((photo) => {
     if (!photo) return false
@@ -1476,7 +1463,7 @@ function SharedTierList() {
                 </div>
                 <div className="flex flex-col gap-2 items-start sm:items-end">
                   <span className="text-sm font-semibold text-gray-400">Mitglieder</span>
-                  {renderSpotAvatars(selectedSpot, true)}
+                  {renderSpotAvatars(selectedSpot)}
                 </div>
               </div>
 
