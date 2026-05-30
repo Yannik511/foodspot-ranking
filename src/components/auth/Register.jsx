@@ -11,6 +11,8 @@ function Register() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -45,7 +47,7 @@ function Register() {
 
     try {
       const { data, error } = await signUp(email, password, username)
-      
+
       if (error) {
         setError(error.message)
         setLoading(false)
@@ -53,7 +55,6 @@ function Register() {
       }
 
       if (data?.user) {
-        // Automatisch zum Dashboard weiterleiten - User ist bereits eingeloggt
         setSuccess(true)
         hapticFeedback.success()
         setTimeout(() => {
@@ -66,233 +67,301 @@ function Register() {
     }
   }
 
-  return (
-    <div 
-      className={`fixed inset-0 flex flex-col overflow-y-auto ${
-        isDark 
-          ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' 
-          : 'bg-gradient-to-br from-orange-50 via-white to-pink-50'
-      }`}
+  const inputGroupStyle = {
+    borderRadius: 16,
+    overflow: 'hidden',
+    border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.09)'}`,
+    background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+  }
+
+  const inputStyle = {
+    padding: '17px 18px',
+    fontSize: 16,
+    background: 'transparent',
+    border: 'none',
+    width: '100%',
+    outline: 'none',
+    color: isDark ? '#ffffff' : '#0f0f13',
+    fontFamily: 'inherit',
+  }
+
+  const dividerStyle = {
+    height: 1,
+    background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)',
+    margin: '0 18px',
+  }
+
+  const EyeToggle = ({ show, onToggle }) => (
+    <button
+      type="button"
+      onClick={() => {
+        onToggle()
+        hapticFeedback.light()
+      }}
       style={{
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+        position: 'absolute',
+        right: 14,
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+        padding: 6,
+        display: 'flex',
+        alignItems: 'center',
+        color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)',
+      }}
+      aria-label={show ? 'Passwort verbergen' : 'Passwort anzeigen'}
+    >
+      {show ? (
+        <svg style={{ width: 20, height: 20 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+        </svg>
+      ) : (
+        <svg style={{ width: 20, height: 20 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+      )}
+    </button>
+  )
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
         width: '100vw',
-        height: '100dvh', 
-        paddingTop: `max(clamp(3rem, 15vh, 6rem), calc(env(safe-area-inset-top) + clamp(2rem, 12vh, 4rem)))`,
-        paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
-        paddingLeft: 'max(1rem, env(safe-area-inset-left))',
-        paddingRight: 'max(1rem, env(safe-area-inset-right))',
-        minHeight: '100dvh',
+        height: '100dvh',
+        background: isDark ? '#0f0f13' : '#f5f5f7',
+        overflowY: 'auto',
       }}
     >
-      {/* Back Button - Top Left */}
+      {/* Ambient glow */}
+      <div
+        style={{
+          position: 'absolute',
+          background: 'radial-gradient(circle, rgba(255,126,66,0.15) 0%, transparent 65%)',
+          width: 350,
+          height: 350,
+          top: -80,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}
+      />
+
+      {/* Back Button */}
       <Link
         to="/"
-        className={`fixed z-20 w-10 h-10 flex items-center justify-center backdrop-blur-sm rounded-full shadow-lg active:scale-95 transition-all duration-200 ${
-          isDark 
-            ? 'bg-gray-800/80 hover:bg-gray-700/80' 
-            : 'bg-white/80 hover:bg-white'
-        }`}
-        style={{ 
-          top: 'max(1.5rem, calc(env(safe-area-inset-top) + 1.5rem))',
-          left: 'max(1.5rem, calc(env(safe-area-inset-left) + 1.5rem))',
+        style={{
+          position: 'fixed',
+          zIndex: 20,
+          top: 'calc(env(safe-area-inset-top, 0px) + 16px)',
+          left: 'calc(env(safe-area-inset-left, 0px) + 16px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backdropFilter: 'blur(24px) saturate(180%)',
+          background: isDark ? 'rgba(15,15,19,0.88)' : 'rgba(255,255,255,0.88)',
+          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.09)'}`,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
+          textDecoration: 'none',
+          transition: 'transform 0.15s ease',
         }}
       >
-        <svg className={`w-5 h-5 ${isDark ? 'text-gray-200' : 'text-gray-900'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg
+          style={{ width: 18, height: 18, color: isDark ? '#ffffff' : '#0f0f13' }}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
         </svg>
       </Link>
 
-      <div className="max-w-md w-full mx-auto">
-        <div className={`backdrop-blur-sm rounded-3xl shadow-2xl p-8 md:p-10 ${
-          isDark 
-            ? 'bg-gray-800/95 border border-gray-700/50' 
-            : 'bg-white/95 border border-white/50'
-        }`}>
-          {/* Modern Food Icon */}
-          <div className="flex justify-center mb-6">
-            <div className="relative">
-              <div 
-                className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E53 50%, #FF6B9D 100%)',
-                  boxShadow: '0 8px 24px rgba(255, 107, 107, 0.3)',
-                }}
-              >
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-            </div>
-          </div>
+      {/* Scrollable content */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          maxWidth: 420,
+          margin: '0 auto',
+          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 80px)',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 32px)',
+          paddingLeft: 24,
+          paddingRight: 24,
+        }}
+      >
+        {/* Logo section */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 40 }}>
+          <img
+            src="/icon.png"
+            alt="Rankify"
+            style={{
+              width: 68,
+              height: 68,
+              borderRadius: 18,
+              boxShadow: '0 8px 28px rgba(255,126,66,0.35)',
+              objectFit: 'cover',
+              marginBottom: 14,
+            }}
+          />
+          <h1
+            style={{
+              fontFamily: "'Poppins', sans-serif",
+              fontWeight: 700,
+              fontSize: 28,
+              color: isDark ? '#ffffff' : '#0f0f13',
+              margin: 0,
+              marginBottom: 6,
+            }}
+          >
+            Rankify
+          </h1>
+          <p
+            style={{
+              fontSize: 15,
+              color: isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.4)',
+              margin: 0,
+              fontFamily: "'Poppins', sans-serif",
+            }}
+          >
+            Erstelle deinen Account
+          </p>
+        </div>
 
-          {/* Title & Subtext */}
-          <div className="text-center mb-8">
-            <h1 
-              className={`text-3xl md:text-4xl font-bold mb-2 tracking-tight ${
-                isDark ? 'text-white' : 'text-gray-900'
-              }`}
-              style={{ fontFamily: "'Poppins', sans-serif" }}
-            >
-              Erstelle deinen Account
-            </h1>
-            <p 
-              className={`text-base font-medium ${
-                isDark ? 'text-gray-300' : 'text-gray-600'
-              }`}
-              style={{ fontFamily: "'Poppins', sans-serif" }}
-            >
-              Entdecke die besten Foodspots deiner Stadt
-            </p>
-          </div>
-
-          {error && (
-            <div className={`mb-6 p-4 border rounded-xl ${
-              isDark 
-                ? 'bg-red-900/20 border-red-800' 
-                : 'bg-red-50 border-red-200'
-            }`}>
-              <p className={`text-sm font-medium ${
-                isDark ? 'text-red-300' : 'text-red-800'
-              }`}>{error}</p>
-            </div>
-          )}
-
-          {success && (
-            <div className={`mb-6 p-4 border rounded-xl ${
-              isDark 
-                ? 'bg-green-900/20 border-green-800' 
-                : 'bg-green-50 border-green-200'
-            }`}>
-              <p className={`text-sm font-medium ${
-                isDark ? 'text-green-300' : 'text-green-800'
-              }`}>
-                ✓ Account erfolgreich erstellt! Du wirst automatisch eingeloggt...
-              </p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label htmlFor="username" className={`block text-sm font-semibold mb-2.5 ${
-                isDark ? 'text-gray-200' : 'text-gray-700'
-              }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-                Username
-              </label>
-              <input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                className={`w-full px-4 py-3.5 border-2 rounded-xl focus:ring-2 focus:ring-[#FF6B6B] focus:border-[#FF6B6B] outline-none transition font-medium shadow-sm ${
-                  isDark
-                    ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:bg-gray-700'
-                    : 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:bg-white'
-                }`}
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-                placeholder="dein-username"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="email" className={`block text-sm font-semibold mb-2.5 ${
-                isDark ? 'text-gray-200' : 'text-gray-700'
-              }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-                E-Mail
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className={`w-full px-4 py-3.5 border-2 rounded-xl focus:ring-2 focus:ring-[#FF6B6B] focus:border-[#FF6B6B] outline-none transition font-medium shadow-sm ${
-                  isDark
-                    ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:bg-gray-700'
-                    : 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:bg-white'
-                }`}
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-                placeholder="deine@email.de"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className={`block text-sm font-semibold mb-2.5 ${
-                isDark ? 'text-gray-200' : 'text-gray-700'
-              }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-                Passwort
-              </label>
+        <form onSubmit={handleSubmit}>
+          {/* iOS grouped input card */}
+          <div style={inputGroupStyle}>
+            {/* Username */}
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              style={inputStyle}
+              placeholder="Username"
+              autoComplete="username"
+            />
+            <div style={dividerStyle} />
+            {/* Email */}
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              style={inputStyle}
+              placeholder="E-Mail"
+              autoComplete="email"
+            />
+            <div style={dividerStyle} />
+            {/* Password */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <input
                 id="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
-                className={`w-full px-4 py-3.5 border-2 rounded-xl focus:ring-2 focus:ring-[#FF6B6B] focus:border-[#FF6B6B] outline-none transition font-medium shadow-sm ${
-                  isDark
-                    ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:bg-gray-700'
-                    : 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:bg-white'
-                }`}
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-                placeholder="Mindestens 6 Zeichen"
+                style={{ ...inputStyle, paddingRight: 52 }}
+                placeholder="Passwort (mind. 6 Zeichen)"
+                autoComplete="new-password"
               />
-              <p className={`mt-2 text-xs font-medium ${
-                isDark ? 'text-gray-400' : 'text-gray-500'
-              }`} style={{ fontFamily: "'Poppins', sans-serif" }}>Mindestens 6 Zeichen</p>
+              <EyeToggle show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
             </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className={`block text-sm font-semibold mb-2.5 ${
-                isDark ? 'text-gray-200' : 'text-gray-700'
-              }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-                Passwort bestätigen
-              </label>
+            <div style={dividerStyle} />
+            {/* Confirm Password */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <input
                 id="confirmPassword"
-                type="password"
+                type={showConfirmPassword ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                className={`w-full px-4 py-3.5 border-2 rounded-xl focus:ring-2 focus:ring-[#FF6B6B] focus:border-[#FF6B6B] outline-none transition font-medium shadow-sm ${
-                  isDark
-                    ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:bg-gray-700'
-                    : 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:bg-white'
-                }`}
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-                placeholder="••••••••"
+                style={{ ...inputStyle, paddingRight: 52 }}
+                placeholder="Passwort bestätigen"
+                autoComplete="new-password"
               />
+              <EyeToggle show={showConfirmPassword} onToggle={() => setShowConfirmPassword(!showConfirmPassword)} />
             </div>
+          </div>
 
-            <button
-              type="submit"
-              disabled={loading || success}
-              onClick={() => hapticFeedback.medium()}
-              onTouchStart={() => hapticFeedback.light()}
-              className="w-full bg-gradient-to-r from-[#FF6B6B] via-[#FF8E53] to-[#FF6B9D] text-white py-4 rounded-xl font-semibold text-base hover:from-[#FF5252] hover:via-[#FF7A3D] hover:to-[#FF5C8D] active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-[#FF6B6B] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg"
-              style={{ 
+          {/* Error message */}
+          {error && (
+            <div
+              style={{
+                background: isDark ? 'rgba(239,68,68,0.1)' : 'rgba(239,68,68,0.06)',
+                border: '1px solid rgba(239,68,68,0.25)',
+                borderRadius: 12,
+                padding: '12px 16px',
+                color: '#EF4444',
+                fontSize: 14,
+                marginTop: 16,
+                marginBottom: 0,
                 fontFamily: "'Poppins', sans-serif",
-                transition: `all 0.2s ${springEasing.default}`
               }}
             >
-              {loading ? 'Wird erstellt...' : success ? 'Erfolgreich!' : 'Sign Up'}
-            </button>
-          </form>
+              {error}
+            </div>
+          )}
 
-          <div className="mt-6 text-center">
-            <p className={`text-sm ${
-              isDark ? 'text-gray-300' : 'text-gray-600'
-            }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-              Bereits einen Account?{' '}
-              <Link to="/login" className="text-[#FF6B6B] hover:text-[#FF5252] font-semibold">
-                Jetzt anmelden
-              </Link>
-            </p>
-          </div>
+          {/* CTA Button */}
+          <button
+            type="submit"
+            disabled={loading || success}
+            onClick={() => hapticFeedback.medium()}
+            onTouchStart={() => hapticFeedback.light()}
+            style={{
+              width: '100%',
+              padding: '17px',
+              borderRadius: 16,
+              border: 'none',
+              background: isDark
+                ? 'linear-gradient(135deg, #FF9357, #B85C2C)'
+                : 'linear-gradient(135deg, #FF7E42, #FFB25A)',
+              boxShadow: '0 4px 20px rgba(255,126,66,0.4)',
+              color: '#ffffff',
+              fontSize: 16,
+              fontWeight: 700,
+              fontFamily: "'Poppins', sans-serif",
+              cursor: loading || success ? 'not-allowed' : 'pointer',
+              opacity: loading || success ? 0.85 : 1,
+              marginTop: 20,
+              transition: `all 0.2s ${springEasing.default}`,
+            }}
+          >
+            {loading ? 'Wird erstellt...' : success ? '✓ Erfolgreich!' : 'Registrieren'}
+          </button>
+        </form>
+
+        {/* Login link */}
+        <div style={{ marginTop: 24, textAlign: 'center' }}>
+          <p
+            style={{
+              fontSize: 14,
+              color: isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.4)',
+              fontFamily: "'Poppins', sans-serif",
+              margin: 0,
+            }}
+          >
+            Bereits einen Account?{' '}
+            <Link
+              to="/login"
+              style={{
+                color: '#FF7E42',
+                fontWeight: 600,
+                textDecoration: 'none',
+              }}
+            >
+              Anmelden
+            </Link>
+          </p>
         </div>
       </div>
     </div>
@@ -300,4 +369,3 @@ function Register() {
 }
 
 export default Register
-

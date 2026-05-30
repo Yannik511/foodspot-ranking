@@ -11,7 +11,7 @@ import { springEasing, staggerDelay } from '../utils/animations'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 import { useScrollHeader } from '../hooks/useScrollHeader'
 import { useSocialNotifications } from '../hooks/useSocialNotifications'
-import { usePlusAction } from '../contexts/TabBarActionsContext'
+import { usePlusAction, useTabBarActions } from '../contexts/TabBarActionsContext'
 
 const PRIVATE_FILTER_STORAGE_KEY = 'dashboard_private_filters'
 const SHARED_FILTER_STORAGE_KEY = 'dashboard_shared_filters'
@@ -136,6 +136,8 @@ function Dashboard() {
   // Prüfe URL-Parameter für initialen View
   const initialView = searchParams.get('view') === 'geteilt' ? 'geteilt' : 'meine'
   const [listView, setListView] = useState(initialView)
+
+  const { setTabBarHidden } = useTabBarActions()
 
   usePlusAction(() => {
     hapticFeedback.medium()
@@ -799,7 +801,10 @@ function Dashboard() {
             category,
             cover_image_url,
             created_at,
-            updated_at
+            updated_at,
+            members_can_add_spots,
+            members_can_edit_spots,
+            members_can_edit_list
           )
         `)
         .eq('user_id', user.id)
@@ -1668,7 +1673,12 @@ function Dashboard() {
   // WICHTIG: Pending Einladungen zählen NICHT
   // Zero-State: totalListsCount === 0 UND nicht am Laden
   const isEmpty = totalListsCount === 0 && !isCountingLists && !loading && !sharedListsLoading
-  
+
+  useEffect(() => {
+    setTabBarHidden(isEmpty)
+    return () => setTabBarHidden(false)
+  }, [isEmpty, setTabBarHidden])
+
   // Verwende Math.max(1, length) um Division durch 0 zu vermeiden
   const { cardHeight, gap, titleSize, subtitleSize, padding, borderRadius } = calculateCardLayout(Math.max(1, currentLists.length))
 
@@ -1882,38 +1892,16 @@ function Dashboard() {
         <div>
           {/* Zero-State: Welcome Screen (keine Tabs, keine Bottom Navigation) */}
           {isEmpty ? (
-            <div 
-              className="flex flex-col items-center w-full gap-6"
-              style={{
-                minHeight: `calc(100vh - ${headerHeight || 100}px)`,
-                paddingTop: 'clamp(16px, 4vw, 24px)',
-                paddingBottom: `calc(96px + env(safe-area-inset-bottom, 0px))`,
-                paddingLeft: 'clamp(16px, 4vw, 20px)',
-                paddingRight: 'clamp(16px, 4vw, 20px)',
-              }}
-            >
-            {/* Abschnitt 1: WelcomeCard in Bubble */}
-            <div 
-              className="w-full max-w-md mx-auto"
-              style={{
-                borderRadius: '28px',
-                padding: 'clamp(24px, 6vw, 32px)',
-                background: isDark
-                  ? 'linear-gradient(145deg, #FF9357 0%, #D67A47 40%, #B85C2C 100%)'
-                  : 'linear-gradient(145deg, #FFB25A 0%, #FF9C68 40%, #FF7E42 100%)',
-                boxShadow: '0 12px 40px rgba(255, 125, 66, 0.35), 0 4px 16px rgba(255, 126, 66, 0.2)',
-              }}
-            >
-              <WelcomeCard 
-                username={getUsername()} 
-                onCreateList={() => navigate('/select-category')} 
-                foodEmoji={userFoodEmoji} 
-                isCompact={true}
+            <div style={{
+              margin: '0 -16px',
+              height: headerHeight ? `calc(100dvh - ${headerHeight + 24}px)` : 'calc(100dvh - 84px)',
+            }}>
+              <WelcomeCard
+                username={getUsername()}
+                onCreateList={() => navigate('/select-category')}
+                foodEmoji={userFoodEmoji}
               />
             </div>
-            
-            <FeaturesSection onCreateList={() => navigate('/select-category')} />
-          </div>
         ) : (
           <>
             {/* Private Lists View */}
@@ -2580,8 +2568,8 @@ function Dashboard() {
                           <div className={`absolute top-12 right-0 rounded-xl shadow-xl overflow-hidden min-w-fit sm:min-w-[160px] z-50 ${
                             isDark ? 'bg-gray-800' : 'bg-white'
                           }`}>
-                            {/* Bearbeiten - für Owner & Editor */}
-                            {(list.isOwner || list.role === 'editor') && (
+                            {/* Bearbeiten - nur für Owner */}
+                            {list.isOwner && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -2596,6 +2584,26 @@ function Dashboard() {
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
                                 <span className="font-medium">Bearbeiten</span>
+                              </button>
+                            )}
+
+                            {/* Einstellungen - nur für Owner */}
+                            {list.isOwner && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setMenuOpenForList(null)
+                                  navigate(`/shared/list-settings/${list.id}`)
+                                }}
+                                className={`w-full px-4 py-3 flex items-center gap-2 transition-colors ${
+                                  isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'
+                                }`}
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span className="font-medium">Einstellungen</span>
                               </button>
                             )}
                             

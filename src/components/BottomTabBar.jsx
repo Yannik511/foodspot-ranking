@@ -80,7 +80,8 @@ export default function BottomTabBar() {
   const navigate = useNavigate()
   const location = useLocation()
   const hasSocialNotifications = useSocialNotifications()
-  const { trigger, hasAction } = useTabBarActions()
+  const { trigger, hasAction, tabBarHidden } = useTabBarActions()
+  if (tabBarHidden) return null
 
   const activeColor  = isDark ? '#FF9357' : '#FF7E42'
   const inactiveColor = isDark ? 'rgba(255,255,255,0.40)' : 'rgba(0,0,0,0.32)'

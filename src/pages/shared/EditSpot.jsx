@@ -17,7 +17,10 @@ export default function EditSpot() {
   const scrolled = useScrollHeader(scrollContainerRef)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [spot, setSpot] = useState(null)
+  const [listOwnerUserId, setListOwnerUserId] = useState(null)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [errors, setErrors] = useState({})
@@ -27,22 +30,25 @@ export default function EditSpot() {
     if (!user || !id || !spotId) return
     const load = async () => {
       try {
-        const [{ data: listData }, { data: spotData }] = await Promise.all([
-          supabase.from('lists').select('user_id').eq('id', id).single(),
+        const [{ data: listData }, { data: spotData }, { data: memberData }] = await Promise.all([
+          supabase.from('lists').select('user_id, members_can_edit_spots').eq('id', id).single(),
           supabase.from('foodspots').select('*').eq('id', spotId).eq('list_id', id).single(),
+          supabase.from('list_members').select('role').eq('list_id', id).eq('user_id', user.id).maybeSingle(),
         ])
 
         if (!spotData) { navigate(-1); return }
 
         const isListOwner = listData?.user_id === user.id
-        const isSpotOwner = spotData.user_id === user.id
+        const isMember = !!memberData
+        const membersCanEdit = listData?.members_can_edit_spots ?? false
 
-        if (!isListOwner && !isSpotOwner) {
+        if (!isListOwner && !(isMember && membersCanEdit)) {
           navigate(-1)
           return
         }
 
         setSpot(spotData)
+        setListOwnerUserId(listData?.user_id ?? null)
         setName(spotData.name || '')
         setDescription(spotData.description || '')
       } catch {
@@ -53,6 +59,10 @@ export default function EditSpot() {
     }
     load()
   }, [user, id, spotId, navigate])
+
+  const isListOwner = listOwnerUserId === user?.id
+  const isSpotOwner = spot?.user_id === user?.id
+  const canDelete = isListOwner || isSpotOwner
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
@@ -82,6 +92,21 @@ export default function EditSpot() {
       showToast(e?.message || 'Fehler beim Speichern', 'error')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    try {
+      const { error } = await supabase.from('foodspots').delete().eq('id', spotId)
+      if (error) throw error
+      showToast('Spot gelöscht')
+      setTimeout(() => navigate(`/shared/tierlist/${id}`), 1000)
+    } catch (e) {
+      showToast(e?.message || 'Fehler beim Löschen', 'error')
+      setShowDeleteConfirm(false)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -205,6 +230,74 @@ export default function EditSpot() {
             }}
           />
         </div>
+
+        {/* Delete Section */}
+        {canDelete && (
+          <div style={{
+            borderRadius: 20, padding: 20,
+            background: isDark ? 'rgba(239,68,68,0.06)' : 'rgba(239,68,68,0.04)',
+            border: `1px solid ${isDark ? 'rgba(239,68,68,0.18)' : 'rgba(239,68,68,0.14)'}`,
+          }}>
+            {!showDeleteConfirm ? (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                style={{
+                  width: '100%', padding: '13px', borderRadius: 14,
+                  border: `1.5px solid ${isDark ? 'rgba(239,68,68,0.35)' : 'rgba(239,68,68,0.3)'}`,
+                  background: 'transparent', cursor: 'pointer',
+                  fontSize: 15, fontWeight: 600, fontFamily: "'Poppins', sans-serif",
+                  color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+                </svg>
+                Spot löschen
+              </button>
+            ) : (
+              <div>
+                <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 600, color: '#EF4444', fontFamily: "'Poppins', sans-serif", textAlign: 'center' }}>
+                  Spot wirklich löschen?
+                </p>
+                <p style={{ margin: '0 0 16px', fontSize: 13, color: isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)', fontFamily: "'Poppins', sans-serif", textAlign: 'center', lineHeight: 1.5 }}>
+                  Der Spot wird für alle Mitglieder der Liste entfernt. Diese Aktion kann nicht rückgängig gemacht werden.
+                </p>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={deleting}
+                    style={{
+                      flex: 1, padding: '13px', borderRadius: 14,
+                      border: `1.5px solid ${isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'}`,
+                      background: 'transparent', cursor: 'pointer',
+                      fontSize: 14, fontWeight: 600, fontFamily: "'Poppins', sans-serif",
+                      color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
+                      WebkitTapHighlightColor: 'transparent',
+                      opacity: deleting ? 0.5 : 1,
+                    }}
+                  >
+                    Abbrechen
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    style={{
+                      flex: 1, padding: '13px', borderRadius: 14, border: 'none', cursor: 'pointer',
+                      background: '#EF4444',
+                      fontSize: 14, fontWeight: 700, fontFamily: "'Poppins', sans-serif",
+                      color: '#fff', opacity: deleting ? 0.6 : 1,
+                      WebkitTapHighlightColor: 'transparent',
+                      boxShadow: '0 4px 14px rgba(239,68,68,0.35)',
+                    }}
+                  >
+                    {deleting ? 'Löschen...' : 'Ja, löschen'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       {/* Sticky Buttons */}

@@ -24,6 +24,7 @@ import Compare from './pages/Compare'
 import CreateSharedListPage from './pages/CreateSharedListPage'
 import RateSpot from './pages/shared/RateSpot'
 import EditSpot from './pages/shared/EditSpot'
+import ListSettings from './pages/shared/ListSettings'
 import ProtectedRoute from './components/ProtectedRoute'
 import { PresenceProvider } from './contexts/PresenceContext'
 import { TabBarActionsProvider } from './contexts/TabBarActionsContext'
@@ -183,6 +184,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <EditSpot />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/shared/list-settings/:id"
+            element={
+              <ProtectedRoute>
+                <ListSettings />
               </ProtectedRoute>
             }
           />

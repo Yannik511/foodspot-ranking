@@ -107,15 +107,17 @@ function SharedTierList() {
   const [photoActionLoading, setPhotoActionLoading] = useState(null)
   const [isOffline, setIsOffline] = useState(typeof navigator !== 'undefined' ? !navigator.onLine : false)
 
-  const canEditSpots = userRole === 'owner' || userRole === 'editor'
-  const canUploadPhotos = canEditSpots
   const isOwner = userRole === 'owner'
+  const isMember = userRole !== 'viewer' && !!userRole
+  const canAddSpots    = isOwner || (isMember && (list?.members_can_add_spots  ?? false))
+  const canEditSpots   = isOwner || (isMember && (list?.members_can_edit_spots ?? false))
+  const canEditList    = isOwner
+  const canUploadPhotos = isOwner || isMember
 
-  usePlusAction(() => {
-    if (!canEditSpots) return
+  usePlusAction(canAddSpots ? () => {
     hapticFeedback.medium()
     navigate(`/shared/add-foodspot/${id}`)
-  }, [id, canEditSpots])
+  } : null, [id, canAddSpots])
 
   const spotPhotosRef = useRef({})
   const { ensureProfiles, getProfile, profiles } = useProfilesStore()
@@ -228,7 +230,7 @@ function SharedTierList() {
       ] = await Promise.all([
         supabase
           .from('lists')
-          .select('id, list_name, user_id, city, category, cover_image_url, updated_at')
+          .select('id, list_name, user_id, city, category, cover_image_url, updated_at, members_can_add_spots, members_can_edit_spots, members_can_edit_list')
           .eq('id', id)
           .maybeSingle(),
         supabase
@@ -448,6 +450,14 @@ function SharedTierList() {
         filter: `list_id=eq.${id}`
       }, () => {
         scheduleBackgroundRefresh()
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'lists',
+        filter: `id=eq.${id}`
+      }, (payload) => {
+        setList(prev => prev ? { ...prev, ...payload.new } : prev)
       })
       .subscribe()
 
@@ -1363,7 +1373,7 @@ function SharedTierList() {
                           Foto hinzufügen
                         </button>
                       )}
-                      {canEditSpots && (
+                      {isMember && (
                         <button
                           onClick={() => { closeSpotDetails(); navigate(`/shared/rate-spot/${id}?spotId=${selectedSpot.id}`) }}
                           style={{ flexShrink: 0 }}
@@ -1372,7 +1382,7 @@ function SharedTierList() {
                           {selectedSpotHasRating ? 'Bewertung ändern' : 'Bewertung hinzufügen'}
                         </button>
                       )}
-                      {(isOwner || selectedSpot?.user_id === user?.id) && (
+                      {(isOwner || canEditSpots) && (
                         <button
                           onClick={() => { closeSpotDetails(); navigate(`/shared/edit-spot/${id}?spotId=${selectedSpot.id}`) }}
                           style={{ flexShrink: 0 }}
@@ -1472,13 +1482,13 @@ function SharedTierList() {
               }`}>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold">Gemeinsame Beschreibung</h3>
-                  {canEditSpots && (
+                  {canEditList && (
                     <span className="text-xs px-2 py-1 rounded-full bg-[#FF7E42]/10 text-[#FF7E42] font-semibold">
-                      Owner / Editor
+                      {isOwner ? 'Owner' : 'Editor'}
                     </span>
                   )}
                 </div>
-                {canEditSpots ? (
+                {canEditList ? (
                   <div className="space-y-3">
                     <textarea
                       value={descriptionDraft}
