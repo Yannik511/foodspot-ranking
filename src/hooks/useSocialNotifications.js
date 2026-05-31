@@ -34,17 +34,18 @@ export function useSocialNotifications() {
     }
 
     checkUnread()
-    const interval = setInterval(checkUnread, 30000)
 
     const channel = supabase
       .channel('social_notifications_hook')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships', filter: `addressee_id=eq.${user.id}` }, () => checkUnread())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'friendships', filter: `requester_id=eq.${user.id}` }, () => checkUnread())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'list_invitations', filter: `invitee_id=eq.${user.id}` }, () => checkUnread())
-      .subscribe()
+      .subscribe((status) => {
+        // Re-check after reconnect so we don't miss events that arrived while disconnected
+        if (status === 'SUBSCRIBED') checkUnread()
+      })
 
     return () => {
-      clearInterval(interval)
       supabase.removeChannel(channel)
     }
   }, [user])

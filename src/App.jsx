@@ -26,6 +26,7 @@ import RateSpot from './pages/shared/RateSpot'
 import EditSpot from './pages/shared/EditSpot'
 import ListSettings from './pages/shared/ListSettings'
 import ProtectedRoute from './components/ProtectedRoute'
+import ErrorBoundary from './components/ErrorBoundary'
 import { PresenceProvider } from './contexts/PresenceContext'
 import { TabBarActionsProvider } from './contexts/TabBarActionsContext'
 import Discover from './pages/Discover'
@@ -40,6 +41,7 @@ function App() {
   useEffect(() => { initNative() }, [])
 
   return (
+    <ErrorBoundary>
     <ThemeProvider>
       <AuthProvider>
         <PresenceProvider>
@@ -202,6 +204,7 @@ function App() {
         </PresenceProvider>
       </AuthProvider>
     </ThemeProvider>
+    </ErrorBoundary>
   )
 }
 

@@ -1254,108 +1254,214 @@ function Account() {
           {/* Top 10 Section */}
           {stats.topSpots.length > 0 && (
             <div className={`rounded-[20px] shadow-lg border p-6 ${
-              isDark
-                ? 'bg-gray-800 border-gray-700'
-                : 'bg-white border-gray-100'
+              isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
             }`}>
               <h3 className={`text-lg font-bold mb-4 ${
                 isDark ? 'text-white' : 'text-gray-900'
               }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
                 {topSpotsTitle}
               </h3>
-              <div className="space-y-3">
-                {stats.topSpots.map((spot, index) => (
-                  <button
-                    key={`${spot.id}-${index}`}
-                    onClick={() => handleSpotClick(spot)}
-                    className={`w-full flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl transition-all active:scale-[0.98] ${
-                      isDark
-                        ? 'hover:bg-gray-700'
-                        : 'hover:bg-gray-50'
-                    }`}
-                    style={{
-                      animation: `profileFadeInUp 0.35s ease-in-out forwards`,
-                      animationDelay: `${index * 40}ms`
-                    }}
-                  >
-                    {/* Ranking Badge */}
-                    <div className={`flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-xs sm:text-sm ${
-                      spot.rank <= 3
-                        ? 'bg-gradient-to-br from-[#FF7E42] to-[#FFB25A] text-white'
-                        : isDark
-                          ? 'bg-gray-700 text-gray-300'
-                          : 'bg-gray-200 text-gray-700'
-                    }`}>
-                      {spot.rank}
-                    </div>
 
-                    {/* Cover Photo */}
-                    {spot.cover_photo_url ? (
-                      <img
-                        src={spot.cover_photo_url}
-                        alt={spot.name}
-                        className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover flex-shrink-0"
-                      />
-                    ) : (
-                      <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex-shrink-0 ${
-                        isDark ? 'bg-gray-700' : 'bg-gray-200'
-                      }`} />
-                    )}
+              {/* ── Top 3 Hero Cards ── */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: stats.topSpots.length > 3 ? 20 : 0 }}>
+                {stats.topSpots.slice(0, 3).map((spot, index) => {
+                  const MEDALS = [
+                    { gradient: 'linear-gradient(135deg, #FFD700 0%, #E8970A 100%)', shadow: 'rgba(230,180,0,0.4)', height: 172, label: '#1' },
+                    { gradient: 'linear-gradient(135deg, #D8D8D8 0%, #A0A0A0 100%)', shadow: 'rgba(150,150,150,0.3)', height: 148, label: '#2' },
+                    { gradient: 'linear-gradient(135deg, #CD7F32 0%, #8B5010 100%)', shadow: 'rgba(180,100,30,0.35)', height: 148, label: '#3' },
+                  ]
+                  const medal = MEDALS[index]
+                  const scoreStr = formatNumber(spot.avgScore ?? spot.rating, 1)
 
-                    {/* Text Content - Priority: Always visible */}
-                    <div className="flex-1 min-w-0 text-left flex flex-col justify-center">
-                      <div className={`font-semibold text-sm truncate leading-tight ${
-                        isDark ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        {spot.name}
-                      </div>
-                      <div className={`text-xs truncate leading-tight mt-0.5 ${
-                        isDark ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
-                        {spot.city}
-                      </div>
-                      {spot.category && (
-                        <div className="mt-1">
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium leading-tight ${
-                            isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'
-                          }`}>
-                            {spot.category}
-                          </span>
-                        </div>
+                  return (
+                    <button
+                      key={`hero-${spot.id}-${index}`}
+                      onClick={() => handleSpotClick(spot)}
+                      style={{
+                        position: 'relative',
+                        width: '100%',
+                        height: medal.height,
+                        borderRadius: 18,
+                        overflow: 'hidden',
+                        border: 'none',
+                        cursor: 'pointer',
+                        WebkitTapHighlightColor: 'transparent',
+                        background: medal.gradient,
+                        boxShadow: `0 8px 24px ${medal.shadow}, 0 2px 8px rgba(0,0,0,0.18)`,
+                        display: 'block',
+                        textAlign: 'left',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {/* Photo */}
+                      {spot.cover_photo_url && (
+                        <img
+                          src={spot.cover_photo_url}
+                          alt={spot.name}
+                          style={{
+                            position: 'absolute', inset: 0,
+                            width: '100%', height: '100%',
+                            objectFit: 'cover', zIndex: 0,
+                          }}
+                        />
                       )}
-                    </div>
 
-                    {/* Right side: Avatars & Rating - beide immer sichtbar, adaptive Größe */}
-                    <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 min-w-0">
-                      {/* Avatars - adaptive: 1 auf xs, 2 auf sm, 3 auf md+ */}
-                      <div className="flex sm:hidden">
-                        {renderParticipantAvatars(spot.participants, spot.ownerIds, 1)}
-                      </div>
-                      <div className="hidden sm:flex md:hidden">
-                        {renderParticipantAvatars(spot.participants, spot.ownerIds, 2)}
-                      </div>
-                      <div className="hidden md:flex">
-                        {renderParticipantAvatars(spot.participants, spot.ownerIds, 3)}
-                      </div>
-                      
-                      {/* Rating - Always visible, priority */}
-                      <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
-                        <span className="text-xs sm:text-sm">⭐</span>
-                        <span className={`font-bold text-xs sm:text-sm whitespace-nowrap ${
-                          isDark ? 'text-white' : 'text-gray-900'
-                        }`}>
-                          {(() => {
-                            const scoreValue = spot.avgScore ?? spot.rating
-                            const formatted = formatNumber(scoreValue, 1)
-                            return formatted === '–' ? '–' : `${formatted}/10`
-                          })()}
+                      {/* Gradient overlay */}
+                      <div style={{
+                        position: 'absolute', inset: 0,
+                        background: 'linear-gradient(to top, rgba(0,0,0,0.84) 0%, rgba(0,0,0,0.32) 55%, rgba(0,0,0,0.06) 100%)',
+                        zIndex: 1,
+                      }} />
+
+                      {/* Medal badge */}
+                      <div style={{
+                        position: 'absolute', top: 12, left: 12, zIndex: 2,
+                        background: medal.gradient,
+                        borderRadius: 9,
+                        padding: '3px 10px',
+                        boxShadow: `0 2px 8px ${medal.shadow}, inset 0 1px 0 rgba(255,255,255,0.25)`,
+                      }}>
+                        <span style={{
+                          fontFamily: "'Poppins', sans-serif",
+                          fontWeight: 800, fontSize: 12, color: '#fff',
+                          textShadow: '0 1px 3px rgba(0,0,0,0.35)',
+                          letterSpacing: '0.01em',
+                        }}>
+                          {medal.label}
                         </span>
                       </div>
-                    </div>
-              </button>
-                ))}
+
+                      {/* Bottom content */}
+                      <div style={{
+                        position: 'absolute', bottom: 0, left: 0, right: 0,
+                        padding: '12px 14px',
+                        zIndex: 2,
+                        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8,
+                      }}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{
+                            fontFamily: "'Poppins', sans-serif",
+                            fontWeight: 700, fontSize: 16, color: '#fff',
+                            lineHeight: 1.2,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            textShadow: '0 1px 6px rgba(0,0,0,0.55)',
+                          }}>
+                            {spot.name}
+                          </div>
+                          <div style={{
+                            fontFamily: "'Poppins', sans-serif",
+                            fontSize: 12, color: 'rgba(255,255,255,0.68)',
+                            marginTop: 3,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {[spot.city, spot.category].filter(Boolean).join(' · ')}
+                          </div>
+                        </div>
+
+                        {scoreStr !== '–' && (
+                          <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                            <div style={{
+                              fontFamily: "'Poppins', sans-serif",
+                              fontWeight: 800, fontSize: 26, color: '#FF9357',
+                              lineHeight: 1,
+                              textShadow: '0 1px 8px rgba(0,0,0,0.4)',
+                            }}>
+                              {scoreStr}
+                            </div>
+                            <div style={{
+                              fontFamily: "'Poppins', sans-serif",
+                              fontSize: 11, color: 'rgba(255,255,255,0.5)',
+                              marginTop: 1,
+                            }}>
+                              /10
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* ── Rank 4–10 Strip ── */}
+              {stats.topSpots.length > 3 && (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {stats.topSpots.slice(3).map((spot, index) => {
+                    const scoreStr = formatNumber(spot.avgScore ?? spot.rating, 1)
+                    const categoryEmoji = CATEGORY_EMOJIS[spot.category] || ''
+                    const isLast = index === stats.topSpots.slice(3).length - 1
+
+                    return (
+                      <button
+                        key={`strip-${spot.id}-${index}`}
+                        onClick={() => handleSpotClick(spot)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 12,
+                          padding: '10px 2px',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          width: '100%',
+                          textAlign: 'left',
+                          WebkitTapHighlightColor: 'transparent',
+                          borderBottom: isLast ? 'none' : `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                        }}
+                      >
+                        <div style={{
+                          flexShrink: 0,
+                          width: 28, height: 28, borderRadius: '50%',
+                          background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontFamily: "'Poppins', sans-serif",
+                          fontWeight: 700, fontSize: 12,
+                          color: isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.38)',
+                        }}>
+                          {spot.rank}
+                        </div>
+
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontFamily: "'Poppins', sans-serif",
+                            fontWeight: 600, fontSize: 14,
+                            color: isDark ? '#fff' : '#111',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            lineHeight: 1.25,
+                          }}>
+                            {spot.name}
+                          </div>
+                          {spot.city && (
+                            <div style={{
+                              fontFamily: "'Poppins', sans-serif",
+                              fontSize: 12,
+                              color: isDark ? 'rgba(255,255,255,0.36)' : 'rgba(0,0,0,0.36)',
+                              marginTop: 1,
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            }}>
+                              {spot.city}
+                            </div>
+                          )}
+                        </div>
+
+                        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {categoryEmoji && <span style={{ fontSize: 15 }}>{categoryEmoji}</span>}
+                          {scoreStr !== '–' && (
+                            <span style={{
+                              fontFamily: "'Poppins', sans-serif",
+                              fontWeight: 700, fontSize: 14,
+                              color: isDark ? '#FF9357' : '#FF7E42',
+                            }}>
+                              {scoreStr}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
-          </div>
           )}
 
           {/* Top Cities */}

@@ -162,21 +162,28 @@ export const uploadSharedSpotPhoto = async ({
     throw urlError || new Error('Konnte öffentliche URL nicht abrufen.')
   }
 
-  const { data: photo, error: rpcError } = await supabaseClient.rpc('add_spot_photo', {
-    p_list_id: listId,
-    p_spot_id: spotId,
-    p_storage_path: storagePath,
-    p_public_url: urlData.publicUrl,
-    p_width: width,
-    p_height: height,
-    p_size_bytes: sizeBytes,
-    p_mime_type: mimeType,
-    p_set_as_cover: setAsCover
-  })
+  let photo = null
+  let rpcError = null
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, 500 * attempt))
+    const result = await supabaseClient.rpc('add_spot_photo', {
+      p_list_id: listId,
+      p_spot_id: spotId,
+      p_storage_path: storagePath,
+      p_public_url: urlData.publicUrl,
+      p_width: width,
+      p_height: height,
+      p_size_bytes: sizeBytes,
+      p_mime_type: mimeType,
+      p_set_as_cover: setAsCover
+    })
+    if (!result.error) { photo = result.data; rpcError = null; break }
+    rpcError = result.error
+  }
 
   if (rpcError) {
-    // Rollback Storage, falls RPC fehlschlägt
-    await supabaseClient.storage.from(BUCKET_NAME).remove([storagePath])
+    // Rollback Storage nach 3 fehlgeschlagenen Versuchen
+    await supabaseClient.storage.from(BUCKET_NAME).remove([storagePath]).catch(() => {})
     throw rpcError
   }
 

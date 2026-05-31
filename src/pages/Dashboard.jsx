@@ -283,6 +283,9 @@ function Dashboard() {
   // Track ob gerade ein Fetch läuft (verhindert parallele Fetches)
   const isFetchingPrivateRef = useRef(false)
   const isFetchingSharedRef = useRef(false)
+  // Speichert Filter-Änderungen die während eines laufenden Fetches ankommen
+  const pendingPrivateFiltersRef = useRef(null)
+  const pendingSharedFiltersRef = useRef(null)
 
   // Track window height for responsive calculations
   useEffect(() => {
@@ -302,9 +305,10 @@ function Dashboard() {
   const fetchPrivateLists = async (forceRefresh = false, backgroundRefresh = false, appliedFilters = privateFiltersRef.current) => {
       if (!user) return
       
-    // Verhindere parallele Fetches
+    // Verhindere parallele Fetches; Filter für späteren Nachholbetrieb merken
     if (isFetchingPrivateRef.current) {
-      console.log('[Dashboard] fetchPrivateLists: Already fetching, skipping')
+      console.log('[Dashboard] fetchPrivateLists: Already fetching, queuing filters')
+      pendingPrivateFiltersRef.current = appliedFilters
       return
     }
     
@@ -527,6 +531,13 @@ function Dashboard() {
       isFetchingPrivateRef.current = false
       if (!backgroundRefresh) {
         setLoading(false)
+      }
+      // Falls während des Fetches eine Filter-Änderung ankam, jetzt nachholen
+      if (pendingPrivateFiltersRef.current !== null) {
+        const pending = pendingPrivateFiltersRef.current
+        pendingPrivateFiltersRef.current = null
+        hasLoadedPrivateListsRef.current = false
+        fetchPrivateLists(true, false, pending)
       }
     }
   }
@@ -751,9 +762,10 @@ function Dashboard() {
   const fetchSharedLists = async (forceRefresh = false, backgroundRefresh = false, appliedFilters = sharedFiltersRef.current) => {
     if (!user) return
     
-    // Verhindere parallele Fetches
+    // Verhindere parallele Fetches; Filter für späteren Nachholbetrieb merken
     if (isFetchingSharedRef.current) {
-      console.log('[Dashboard] fetchSharedLists: Already fetching, skipping')
+      console.log('[Dashboard] fetchSharedLists: Already fetching, queuing filters')
+      pendingSharedFiltersRef.current = appliedFilters
       return
     }
     
@@ -1103,6 +1115,13 @@ function Dashboard() {
       isFetchingSharedRef.current = false
       if (!backgroundRefresh) {
         setSharedListsLoading(false)
+      }
+      // Falls während des Fetches eine Filter-Änderung ankam, jetzt nachholen
+      if (pendingSharedFiltersRef.current !== null) {
+        const pending = pendingSharedFiltersRef.current
+        pendingSharedFiltersRef.current = null
+        hasLoadedSharedListsRef.current = false
+        fetchSharedLists(true, false, pending)
       }
     }
   }
