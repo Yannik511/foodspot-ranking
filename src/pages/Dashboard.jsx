@@ -12,6 +12,7 @@ import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 import { useScrollHeader } from '../hooks/useScrollHeader'
 import { useSocialNotifications } from '../hooks/useSocialNotifications'
 import { usePlusAction, useTabBarActions } from '../contexts/TabBarActionsContext'
+import { devLog } from '../utils/devLog'
 
 const PRIVATE_FILTER_STORAGE_KEY = 'dashboard_private_filters'
 const SHARED_FILTER_STORAGE_KEY = 'dashboard_shared_filters'
@@ -307,7 +308,7 @@ function Dashboard() {
       
     // Verhindere parallele Fetches; Filter für späteren Nachholbetrieb merken
     if (isFetchingPrivateRef.current) {
-      console.log('[Dashboard] fetchPrivateLists: Already fetching, queuing filters')
+      devLog('[Dashboard] fetchPrivateLists: Already fetching, queuing filters')
       pendingPrivateFiltersRef.current = appliedFilters
       return
     }
@@ -323,12 +324,12 @@ function Dashboard() {
     // OPTIMIERT: Prüfe zuerst State (schneller), dann Ref
     if (!forceRefresh) {
       if (lists.length > 0 && lastPrivateFilterKeyRef.current === filterKey) {
-        console.log('[Dashboard] fetchPrivateLists: Skipping - data in state (lists:', lists.length, ') for same filters')
+        devLog('[Dashboard] fetchPrivateLists: Skipping - data in state (lists:', lists.length, ') for same filters')
         hasLoadedPrivateListsRef.current = true // Update Ref für zukünftige Prüfungen
         return
       }
       if (hasLoadedPrivateListsRef.current && lastPrivateFilterKeyRef.current === filterKey) {
-        console.log('[Dashboard] fetchPrivateLists: Skipping - already loaded (ref) for current filters')
+        devLog('[Dashboard] fetchPrivateLists: Skipping - already loaded (ref) for current filters')
         return
       }
     }
@@ -764,7 +765,7 @@ function Dashboard() {
     
     // Verhindere parallele Fetches; Filter für späteren Nachholbetrieb merken
     if (isFetchingSharedRef.current) {
-      console.log('[Dashboard] fetchSharedLists: Already fetching, queuing filters')
+      devLog('[Dashboard] fetchSharedLists: Already fetching, queuing filters')
       pendingSharedFiltersRef.current = appliedFilters
       return
     }
@@ -780,17 +781,17 @@ function Dashboard() {
     // OPTIMIERT: Prüfe zuerst State (schneller), dann Ref
     if (!forceRefresh) {
       if (sharedLists.length > 0 && lastSharedFilterKeyRef.current === filterKey) {
-        console.log('[Dashboard] fetchSharedLists: Skipping - data in state (sharedLists:', sharedLists.length, ') for same filters')
+        devLog('[Dashboard] fetchSharedLists: Skipping - data in state (sharedLists:', sharedLists.length, ') for same filters')
         hasLoadedSharedListsRef.current = true // Update Ref für zukünftige Prüfungen
         return
       }
       if (hasLoadedSharedListsRef.current && lastSharedFilterKeyRef.current === filterKey) {
-        console.log('[Dashboard] fetchSharedLists: Skipping - already loaded (ref) for current filters')
+        devLog('[Dashboard] fetchSharedLists: Skipping - already loaded (ref) for current filters')
         return
       }
     }
     
-    console.log('[Dashboard] fetchSharedLists: Starting fetch for user:', user.id, 'backgroundRefresh:', backgroundRefresh, 'filters:', normalizedFilters)
+    devLog('[Dashboard] fetchSharedLists: Starting fetch for user:', user.id, 'backgroundRefresh:', backgroundRefresh, 'filters:', normalizedFilters)
     isFetchingSharedRef.current = true
     if (!backgroundRefresh) {
       setSharedListsLoading(true)
@@ -875,7 +876,7 @@ function Dashboard() {
         ])
 
         sharedOwnedLists = ownedListsData.filter(list => sharedListIds.has(list.id))
-        console.log('[Dashboard] fetchSharedLists: Found', sharedOwnedLists.length, 'shared owned lists (including pending)')
+        devLog('[Dashboard] fetchSharedLists: Found', sharedOwnedLists.length, 'shared owned lists (including pending)')
       }
 
       // Apply filters to member lists (filter after fetching since we use join)
@@ -1048,7 +1049,7 @@ function Dashboard() {
             totalMembers = fallbackMembers.length
           }
 
-          console.log(`[Dashboard] List "${list.list_name}": ${totalMembers} total members`)
+          devLog(`[Dashboard] List "${list.list_name}": ${totalMembers} total members`)
 
           return {
             ...list,
@@ -1094,7 +1095,7 @@ function Dashboard() {
         })
       )
       
-      console.log('[Dashboard] fetchSharedLists: Processed', sharedListsWithStatus.length, 'shared lists')
+      devLog('[Dashboard] fetchSharedLists: Processed', sharedListsWithStatus.length, 'shared lists')
 
       const sortedSharedLists = sharedListsWithStatus.sort((a, b) => {
         const aDate = new Date(a.created_at || 0)
@@ -1154,7 +1155,7 @@ function Dashboard() {
     
     // Initial Mount: Lade beide Listen parallel
     if (isInitialMountRef.current) {
-      console.log('[Dashboard] Initial mount: Loading both lists in parallel')
+      devLog('[Dashboard] Initial mount: Loading both lists in parallel')
       isInitialMountRef.current = false
       
       // Lade beide Listen parallel, unabhängig vom aktuellen Tab
@@ -1183,7 +1184,7 @@ function Dashboard() {
       hasLoadedPrivateListsRef.current = true
       hasLoadedSharedListsRef.current = true
       
-      console.log('[Dashboard] Returning from navigation: Data available in state, using cache (no fetch). Optional background refresh in 1000ms')
+      devLog('[Dashboard] Returning from navigation: Data available in state, using cache (no fetch). Optional background refresh in 1000ms')
       // Optional: Leicht verzögertes Background-Refresh (nicht sofort, um Netzwerk zu schonen)
       // Längerer Delay, da Daten bereits vorhanden sind
       setTimeout(() => {
@@ -1198,7 +1199,7 @@ function Dashboard() {
     } else {
       // Daten fehlen → lade im Hintergrund (ohne sichtbares Loading)
       // Max. 1 Fetch pro Datenquelle
-      console.log('[Dashboard] Returning from navigation: Missing data, refreshing in background')
+      devLog('[Dashboard] Returning from navigation: Missing data, refreshing in background')
       if (!hasPrivateData && !isFetchingPrivateRef.current) {
         fetchPrivateLists(false, true) // backgroundRefresh = true
       }
@@ -1302,7 +1303,7 @@ function Dashboard() {
       }, () => {
         // Refresh shared lists when user becomes a member or leaves
         // OPTIMIERT: Im Hintergrund aktualisieren, nicht nur wenn Tab aktiv
-        console.log('[Dashboard] Realtime: list_members changed for user')
+        devLog('[Dashboard] Realtime: list_members changed for user')
         fetchSharedLists(false, true) // backgroundRefresh = true
       })
       .on('postgres_changes', {
@@ -1312,7 +1313,7 @@ function Dashboard() {
         filter: `invitee_id=eq.${user?.id}`
       }, () => {
         // Refresh shared lists when invitations change (but invitations don't appear in shared lists)
-        console.log('[Dashboard] Realtime: list_invitations changed for user')
+        devLog('[Dashboard] Realtime: list_invitations changed for user')
         // Don't refresh shared lists here - invitations are handled in Social-Tab
       })
       .on('postgres_changes', {
@@ -1322,7 +1323,7 @@ function Dashboard() {
       }, () => {
         // Refresh shared lists when any member changes (for owner view)
         // OPTIMIERT: Im Hintergrund aktualisieren, nicht nur wenn Tab aktiv
-        console.log('[Dashboard] Realtime: list_members changed (any user)')
+        devLog('[Dashboard] Realtime: list_members changed (any user)')
         fetchSharedLists(false, true) // backgroundRefresh = true
       })
       .on('postgres_changes', {
@@ -1331,7 +1332,7 @@ function Dashboard() {
         table: 'lists'
       }, (payload) => {
         // Remove deleted list from shared lists immediately
-        console.log('[Dashboard] Realtime: List deleted:', payload.old?.id)
+        devLog('[Dashboard] Realtime: List deleted:', payload.old?.id)
         if (payload.old?.id) {
           setSharedLists(prev => prev.filter(l => l.id !== payload.old.id))
         }
@@ -1486,7 +1487,7 @@ function Dashboard() {
     hapticFeedback.medium()
     showToast('Liste wird gelöscht...', 'info')
     
-    console.log('[Dashboard] handleDeleteList: Starting deletion for list:', listId, 'user:', user?.id)
+    devLog('[Dashboard] handleDeleteList: Starting deletion for list:', listId, 'user:', user?.id)
     
     try {
       // Check if this is a shared list (has members or invitations)
@@ -1504,11 +1505,11 @@ function Dashboard() {
       
       const isSharedList = (listMembers?.length || 0) > 0 || (listInvitations?.length || 0) > 0
       
-      console.log('[Dashboard] handleDeleteList: Is shared list:', isSharedList)
+      devLog('[Dashboard] handleDeleteList: Is shared list:', isSharedList)
       
       if (isSharedList) {
         // For shared lists: Delete all related data first
-        console.log('[Dashboard] handleDeleteList: Deleting related data (members, invitations)')
+        devLog('[Dashboard] handleDeleteList: Deleting related data (members, invitations)')
         
         // Delete all members
         const { error: membersError } = await supabase
@@ -1532,7 +1533,7 @@ function Dashboard() {
           throw new Error('Fehler beim Löschen der Einladungen')
         }
         
-        console.log('[Dashboard] handleDeleteList: Related data deleted successfully')
+        devLog('[Dashboard] handleDeleteList: Related data deleted successfully')
       }
       
       // First: Delete from database (wait for confirmation)
@@ -1588,7 +1589,7 @@ function Dashboard() {
       setLists(prev => prev.filter(l => l.id !== listId))
       setSharedLists(prev => prev.filter(l => l.id !== listId))
       
-      console.log('[Dashboard] handleDeleteList: List deleted successfully')
+      devLog('[Dashboard] handleDeleteList: List deleted successfully')
       hapticFeedback.success()
       showToast('Liste erfolgreich gelöscht!', 'success')
       
@@ -1628,7 +1629,7 @@ function Dashboard() {
   const handleLeaveList = async (listId) => {
     if (!user) return
     
-    console.log('[Dashboard] handleLeaveList: Starting for list:', listId, 'user:', user.id)
+    devLog('[Dashboard] handleLeaveList: Starting for list:', listId, 'user:', user.id)
     
     // Store previous state for rollback
     const previousSharedLists = [...sharedLists]
@@ -1644,7 +1645,7 @@ function Dashboard() {
         throw error
       }
 
-      console.log('[Dashboard] handleLeaveList: RPC result', data)
+      devLog('[Dashboard] handleLeaveList: RPC result', data)
 
       // Optimistisch aus UI entfernen
       setSharedLists(prev => prev.filter(l => l.id !== listId))
@@ -1652,7 +1653,7 @@ function Dashboard() {
       // Hintergrund-Refresh anstoßen, damit Aggregationen aktualisiert werden
       fetchSharedLists(true, true)
 
-      console.log('[Dashboard] handleLeaveList: Successfully left list via RPC')
+      devLog('[Dashboard] handleLeaveList: Successfully left list via RPC')
       hapticFeedback.success()
       showToast('Liste verlassen – deine Beiträge wurden entfernt.', 'success')
     } catch (error) {
@@ -2929,10 +2930,11 @@ function Dashboard() {
 function EditSharedListModal({ list, onClose, onSave }) {
   const { isDark } = useTheme()
   const { user } = useAuth()
-  
+
   const [formData, setFormData] = useState({
     list_name: list.list_name,
-    city: list.city,
+    city: list.city || '',
+    list_mode: list.list_mode || 'location',
     description: list.description || '',
     coverImageUrl: list.cover_image_url,
     coverImageFile: null,
@@ -2956,6 +2958,11 @@ function EditSharedListModal({ list, onClose, onSave }) {
   const inputRef = useRef(null)
   const suggestionsRef = useRef(null)
   const debounceTimerRef = useRef(null)
+  const previewUrlRef = useRef(null)
+
+  useEffect(() => () => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+  }, [])
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -2975,7 +2982,9 @@ function EditSharedListModal({ list, onClose, onSave }) {
       return
     }
 
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
     const previewUrl = URL.createObjectURL(file)
+    previewUrlRef.current = previewUrl
     setFormData(prev => ({
       ...prev,
       coverImageUrl: previewUrl,
@@ -2989,7 +2998,7 @@ function EditSharedListModal({ list, onClose, onSave }) {
     if (!formData.list_name.trim() || formData.list_name.length < 3) {
       newErrors.list_name = 'Mindestens 3 Zeichen erforderlich'
     }
-    if (!formData.city.trim()) {
+    if (formData.list_mode === 'location' && !formData.city.trim()) {
       newErrors.city = 'Stadt ist erforderlich'
     }
     setErrors(newErrors)
@@ -3002,14 +3011,16 @@ function EditSharedListModal({ list, onClose, onSave }) {
 
     // Optimistic update
     const previousList = { ...list }
+    const cityValue = formData.city.trim() || null
     const updatedList = {
       ...list,
       list_name: formData.list_name.trim(),
-      city: formData.city.trim(),
+      city: cityValue,
+      list_mode: formData.list_mode,
       description: formData.description.trim() || null,
       cover_image_url: formData.coverImageUrl || list.cover_image_url,
     }
-    
+
     onSave(true, updatedList)
 
     try {
@@ -3051,7 +3062,8 @@ function EditSharedListModal({ list, onClose, onSave }) {
         .from('lists')
         .update({
           list_name: formData.list_name.trim(),
-          city: formData.city.trim(),
+          city: cityValue,
+          list_mode: formData.list_mode,
           description: formData.description.trim() || null,
           cover_image_url: imageUrl,
         })
@@ -3097,7 +3109,7 @@ function EditSharedListModal({ list, onClose, onSave }) {
           filter: `list_id=eq.${list.id}`
         },
         (payload) => {
-          console.log('Invitation update:', payload)
+          devLog('Invitation update:', payload)
           fetchParticipants() // Refresh invitations
         }
       )
@@ -3114,7 +3126,7 @@ function EditSharedListModal({ list, onClose, onSave }) {
           filter: `list_id=eq.${list.id}`
         },
         (payload) => {
-          console.log('Member update:', payload)
+          devLog('Member update:', payload)
           fetchParticipants() // Refresh members
         }
       )
@@ -3311,7 +3323,7 @@ function EditSharedListModal({ list, onClose, onSave }) {
         displayName: profile.username || profile.email?.split('@')[0] || ''
       })) || []
 
-      console.log('[EditSharedListModal] Loaded friends:', friends.length)
+      devLog('[EditSharedListModal] Loaded friends:', friends.length)
       setAvailableFriends(friends)
     } catch (error) {
       console.error('Error fetching friends:', error)
@@ -3332,10 +3344,10 @@ function EditSharedListModal({ list, onClose, onSave }) {
     }
 
     debounceTimerRef.current = setTimeout(() => {
-      console.log('[EditSharedListModal] Filtering friends...')
-      console.log('[EditSharedListModal] Search query:', searchQuery)
-      console.log('[EditSharedListModal] Available friends:', availableFriends.length)
-      console.log('[EditSharedListModal] Friends data:', availableFriends)
+      devLog('[EditSharedListModal] Filtering friends...')
+      devLog('[EditSharedListModal] Search query:', searchQuery)
+      devLog('[EditSharedListModal] Available friends:', availableFriends.length)
+      devLog('[EditSharedListModal] Friends data:', availableFriends)
       
       const queryLower = searchQuery.toLowerCase().trim()
       
@@ -3346,13 +3358,13 @@ function EditSharedListModal({ list, onClose, onSave }) {
         const matches = username.startsWith(queryLower) || displayName.startsWith(queryLower)
         
         if (matches) {
-          console.log('[EditSharedListModal] Match found:', { username, displayName, query: queryLower })
+          devLog('[EditSharedListModal] Match found:', { username, displayName, query: queryLower })
         }
         
         return matches
       })
       
-      console.log('[EditSharedListModal] Filtered results:', filtered.length)
+      devLog('[EditSharedListModal] Filtered results:', filtered.length)
       
       // Sort by username match
       const sorted = filtered.sort((a, b) => {
@@ -3569,20 +3581,57 @@ function EditSharedListModal({ list, onClose, onSave }) {
             {errors.list_name && <p className="mt-1 text-sm text-red-500">{errors.list_name}</p>}
           </div>
 
+          {/* List Mode Toggle */}
+          <div>
+            <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+              Listentyp
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { key: 'location', emoji: '📍', label: 'Orte', desc: 'Restaurants, Buden' },
+                { key: 'product', emoji: '🍺', label: 'Produkte', desc: 'Biere, Glühwein' },
+              ].map(opt => {
+                const active = formData.list_mode === opt.key
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => handleInputChange('list_mode', opt.key)}
+                    className={`p-3 rounded-[14px] border-2 text-left transition-all active:scale-[0.98] ${
+                      active
+                        ? (isDark ? 'border-[#FF9357] bg-[#FF9357]/10' : 'border-[#FF7E42] bg-[#FF7E42]/10')
+                        : (isDark ? 'border-gray-700' : 'border-gray-200')
+                    }`}
+                  >
+                    <div className="text-xl mb-1">{opt.emoji}</div>
+                    <div className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{opt.label}</div>
+                    <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{opt.desc}</div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           {/* City */}
           <div>
             <label className={`block text-sm font-semibold mb-2 ${
               isDark ? 'text-gray-200' : 'text-gray-700'
             }`}>
-              Stadt <span className="text-red-500">*</span>
+              {formData.list_mode === 'product' ? 'Ort' : 'Stadt'}
+              {formData.list_mode === 'location' ? (
+                <span className="text-red-500"> *</span>
+              ) : (
+                <span className={`text-xs font-normal ml-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>(optional)</span>
+              )}
             </label>
             <input
               type="text"
               value={formData.city}
               onChange={(e) => handleInputChange('city', e.target.value)}
+              placeholder={formData.list_mode === 'product' ? 'z. B. München (für Karte)' : ''}
               className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
-                errors.city 
-                  ? 'border-red-400' 
+                errors.city
+                  ? 'border-red-400'
                   : isDark
                     ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
                     : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
@@ -4002,10 +4051,11 @@ function EditSharedListModal({ list, onClose, onSave }) {
 function EditListModal({ list, onClose, onSave }) {
   const { isDark } = useTheme()
   const { user } = useAuth()
-  
+
   const [formData, setFormData] = useState({
     list_name: list.list_name,
-    city: list.city,
+    city: list.city || '',
+    list_mode: list.list_mode || 'location',
     description: list.description || '',
     coverImageUrl: list.cover_image_url,
     coverImageFile: null,
@@ -4013,6 +4063,11 @@ function EditListModal({ list, onClose, onSave }) {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [imageRemoved, setImageRemoved] = useState(false)
+  const previewUrlRef = useRef(null)
+
+  useEffect(() => () => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+  }, [])
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -4032,7 +4087,9 @@ function EditListModal({ list, onClose, onSave }) {
       return
     }
 
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
     const previewUrl = URL.createObjectURL(file)
+    previewUrlRef.current = previewUrl
     setFormData(prev => ({
       ...prev,
       coverImageUrl: previewUrl,
@@ -4046,7 +4103,7 @@ function EditListModal({ list, onClose, onSave }) {
     if (!formData.list_name.trim() || formData.list_name.length < 3) {
       newErrors.list_name = 'Mindestens 3 Zeichen erforderlich'
     }
-    if (!formData.city.trim()) {
+    if (formData.list_mode === 'location' && !formData.city.trim()) {
       newErrors.city = 'Stadt ist erforderlich'
     }
     setErrors(newErrors)
@@ -4059,14 +4116,16 @@ function EditListModal({ list, onClose, onSave }) {
 
     // Optimistic update: Update UI immediately
     const previousList = { ...list }
+    const cityValue = formData.city.trim() || null
     const updatedList = {
       ...list,
       list_name: formData.list_name.trim(),
-      city: formData.city.trim(),
+      city: cityValue,
+      list_mode: formData.list_mode,
       description: formData.description.trim() || null,
       cover_image_url: formData.coverImageUrl || list.cover_image_url,
     }
-    
+
     // Update UI immediately
     onSave(true, updatedList)
 
@@ -4113,7 +4172,8 @@ function EditListModal({ list, onClose, onSave }) {
         .from('lists')
         .update({
           list_name: formData.list_name.trim(),
-          city: formData.city.trim(),
+          city: cityValue,
+          list_mode: formData.list_mode,
           description: formData.description.trim() || null,
           cover_image_url: imageUrl,
         })
@@ -4196,20 +4256,57 @@ function EditListModal({ list, onClose, onSave }) {
             {errors.list_name && <p className="mt-1 text-sm text-red-500">{errors.list_name}</p>}
           </div>
 
+          {/* List Mode Toggle */}
+          <div>
+            <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+              Listentyp
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { key: 'location', emoji: '📍', label: 'Orte', desc: 'Restaurants, Buden' },
+                { key: 'product', emoji: '🍺', label: 'Produkte', desc: 'Biere, Glühwein' },
+              ].map(opt => {
+                const active = formData.list_mode === opt.key
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => handleInputChange('list_mode', opt.key)}
+                    className={`p-3 rounded-[14px] border-2 text-left transition-all active:scale-[0.98] ${
+                      active
+                        ? (isDark ? 'border-[#FF9357] bg-[#FF9357]/10' : 'border-[#FF7E42] bg-[#FF7E42]/10')
+                        : (isDark ? 'border-gray-700' : 'border-gray-200')
+                    }`}
+                  >
+                    <div className="text-xl mb-1">{opt.emoji}</div>
+                    <div className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{opt.label}</div>
+                    <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{opt.desc}</div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           {/* City */}
           <div>
             <label className={`block text-sm font-semibold mb-2 ${
               isDark ? 'text-gray-200' : 'text-gray-700'
             }`}>
-              Stadt <span className="text-red-500">*</span>
+              {formData.list_mode === 'product' ? 'Ort' : 'Stadt'}
+              {formData.list_mode === 'location' ? (
+                <span className="text-red-500"> *</span>
+              ) : (
+                <span className={`text-xs font-normal ml-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>(optional)</span>
+              )}
             </label>
             <input
               type="text"
               value={formData.city}
               onChange={(e) => handleInputChange('city', e.target.value)}
+              placeholder={formData.list_mode === 'product' ? 'z. B. München (für Karte)' : ''}
               className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
-                errors.city 
-                  ? 'border-red-400' 
+                errors.city
+                  ? 'border-red-400'
                   : isDark
                     ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
                     : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'

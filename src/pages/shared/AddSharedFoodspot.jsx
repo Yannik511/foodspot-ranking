@@ -12,7 +12,7 @@ import {
   MAX_SPOT_PHOTOS
 } from '../../services/sharedPhotos'
 import { getCategoryTerms } from '../../utils/categoryTerms'
-import { CATEGORIES, CRITERIA_ICONS, getCategoryScale } from '../../lib/categories'
+import { CATEGORIES, CRITERIA_ICONS, getCategoryScale, calculateTier } from '../../lib/categories'
 
 function AddSharedFoodspot() {
   const { id } = useParams()
@@ -193,14 +193,6 @@ function AddSharedFoodspot() {
     if (scale <= 0) return 0
     const normalized = (average / scale) * 10
     return Math.round(normalized * 10) / 10
-  }
-
-  const calculateTier = (overallRating) => {
-    if (overallRating >= 9.0) return 'S'
-    if (overallRating >= 8.0) return 'A'
-    if (overallRating >= 6.5) return 'B'
-    if (overallRating >= 5.0) return 'C'
-    return 'D'
   }
 
   const overallRating = calculateOverallRating()
@@ -793,19 +785,25 @@ function AddSharedFoodspot() {
                 isDark ? 'text-gray-200' : 'text-gray-700'
               }`}>
                 <span className="text-lg">📍</span>
-                Adresse / Stadtteil <span className={`font-normal ${
+                {list?.list_mode === 'product' ? 'Ort' : 'Adresse / Stadtteil'}
+                <span className={`font-normal ${
                   isDark ? 'text-gray-400' : 'text-gray-500'
                 }`}>(Optional)</span>
               </label>
-              
+              {list?.list_mode === 'product' && (
+                <p className={`text-xs mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Bei Produkten optional — wird gespeichert, falls du den Ort für eine spätere Kartenansicht behalten möchtest.
+                </p>
+              )}
+
                   <input
                     type="text"
                 value={formData.address || ''}
-                onChange={(e) => setFormData(prev => ({ 
-                  ...prev, 
-                  address: e.target.value.replace(/[<>]/g, '') 
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  address: e.target.value.replace(/[<>]/g, '')
                 }))}
-                placeholder="z. B. Hauptstr. 5, Gilching oder nur Gilching"
+                placeholder={list?.list_mode === 'product' ? 'z. B. München (optional)' : 'z. B. Hauptstr. 5, Gilching oder nur Gilching'}
                 maxLength={200}
                     className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
                       isDark

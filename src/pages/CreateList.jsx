@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
@@ -22,6 +22,7 @@ function CreateList() {
     city: '',
     description: '',
     category: selectedCategory,
+    list_mode: 'location', // 'location' = ortsbasiert, 'product' = produktbasiert
     coverImageUrl: null,
     coverImageFile: null,
   })
@@ -41,6 +42,13 @@ function CreateList() {
 
   const { isDark } = useTheme()
   const handleFieldFocus = (event) => scrollFieldIntoView(event.currentTarget)
+
+  // Track the active preview Object-URL so we can revoke it before allocating a new one
+  // and on unmount. Without this, every cover-image pick leaks the previous blob.
+  const previewUrlRef = useRef(null)
+  useEffect(() => () => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+  }, [])
 
   // Auto-save to localStorage
   useEffect(() => {
@@ -82,11 +90,15 @@ function CreateList() {
       newValidationState.list_name = 'valid'
     }
 
-    // City validation
-    if (!formData.city.trim()) {
-      newErrors.city = 'Stadt ist erforderlich'
-      newValidationState.city = 'error'
-    } else {
+    // City validation — Pflicht nur im Orts-Modus
+    if (formData.list_mode === 'location') {
+      if (!formData.city.trim()) {
+        newErrors.city = 'Stadt ist erforderlich'
+        newValidationState.city = 'error'
+      } else {
+        newValidationState.city = 'valid'
+      }
+    } else if (formData.city.trim()) {
       newValidationState.city = 'valid'
     }
 
@@ -138,8 +150,10 @@ function CreateList() {
       return
     }
 
-    // Create preview URL
+    // Create preview URL — revoke previous one to avoid memory leak
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
     const previewUrl = URL.createObjectURL(file)
+    previewUrlRef.current = previewUrl
     setFormData(prev => ({
       ...prev,
       coverImageUrl: previewUrl,
@@ -198,12 +212,14 @@ function CreateList() {
       }
 
       // Optimistic update: Create temporary list object for immediate display
-      const tempListId = `temp-${Date.now()}`
+      const tempListId = `temp-${crypto.randomUUID()}`
+      const cityValue = formData.city.trim() || null
       const optimisticList = {
         id: tempListId,
         user_id: user.id,
         list_name: formData.list_name.trim(),
-        city: formData.city.trim(),
+        city: cityValue,
+        list_mode: formData.list_mode,
         description: formData.description.trim() || null,
         category: formData.category || null,
         cover_image_url: imageUrl,
@@ -230,7 +246,8 @@ function CreateList() {
         const insertData = {
           user_id: user.id,
           list_name: formData.list_name.trim(),
-          city: formData.city.trim(),
+          city: cityValue,
+          list_mode: formData.list_mode,
           description: formData.description.trim() || null,
           category: formData.category || null,
           cover_image_url: imageUrl,
@@ -281,7 +298,9 @@ function CreateList() {
 
   // Check if form is valid
   const isFormValid = () => {
-    return formData.list_name.trim().length >= 3 && formData.city.trim().length > 0
+    const nameOk = formData.list_name.trim().length >= 3
+    if (formData.list_mode === 'product') return nameOk
+    return nameOk && formData.city.trim().length > 0
   }
 
   return (
@@ -395,6 +414,50 @@ function CreateList() {
             {errors.list_name && <p className="mt-2 text-sm text-red-500">{errors.list_name}</p>}
           </div>
 
+          {/* List Mode Toggle */}
+          <div className={`rounded-[20px] shadow-lg border p-6 ${
+            isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
+          }`}>
+            <label className={`block text-sm font-semibold mb-3 ${
+              isDark ? 'text-gray-200' : 'text-gray-700'
+            }`}>
+              Listentyp
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { key: 'location', emoji: '📍', label: 'Orte', desc: 'Restaurants, Buden' },
+                { key: 'product', emoji: '🍺', label: 'Produkte', desc: 'Biere, Glühwein' },
+              ].map(opt => {
+                const active = formData.list_mode === opt.key
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => handleInputChange('list_mode', opt.key)}
+                    className={`p-3 rounded-[14px] border-2 text-left transition-all active:scale-[0.98] ${
+                      active
+                        ? (isDark ? 'border-[#FF9357] bg-[#FF9357]/10' : 'border-[#FF7E42] bg-[#FF7E42]/10')
+                        : (isDark ? 'border-gray-700' : 'border-gray-200')
+                    }`}
+                  >
+                    <div className="text-xl mb-1">{opt.emoji}</div>
+                    <div className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {opt.label}
+                    </div>
+                    <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {opt.desc}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+            <p className={`text-xs mt-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              {formData.list_mode === 'product'
+                ? 'Ort ist optional — wird gespeichert wenn angegeben (für spätere Kartenansicht).'
+                : 'Ort ist Pflicht und wird bei jedem Spot abgefragt.'}
+            </p>
+          </div>
+
           {/* City */}
           <div className={`rounded-[20px] shadow-lg border p-6 ${
             isDark
@@ -404,13 +467,18 @@ function CreateList() {
             <label className={`block text-sm font-semibold mb-2 ${
               isDark ? 'text-gray-200' : 'text-gray-700'
             }`}>
-              Stadt <span className="text-red-500">*</span>
+              {formData.list_mode === 'product' ? 'Ort' : 'Stadt'}
+              {formData.list_mode === 'location' ? (
+                <span className="text-red-500"> *</span>
+              ) : (
+                <span className={`text-xs font-normal ml-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>(optional)</span>
+              )}
             </label>
             <input
               type="text"
               value={formData.city}
               onChange={(e) => handleInputChange('city', e.target.value)}
-              placeholder="z. B. München oder Gilching"
+              placeholder={formData.list_mode === 'product' ? 'z. B. München (für Karte)' : 'z. B. München oder Gilching'}
               maxLength={100}
               className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
                 errors.city 
@@ -510,13 +578,13 @@ function CreateList() {
           </div>
 
           {/* Live Preview */}
-          {formData.list_name && formData.city && (
+          {formData.list_name && (formData.city || formData.list_mode === 'product') && (
             <div className="bg-white rounded-[20px] shadow-lg border border-gray-100 overflow-hidden p-6">
               <h2 className="text-xl font-bold mb-4">Vorschau</h2>
               <div className="rounded-2xl overflow-hidden shadow-md border border-gray-100 relative h-48">
                 {/* Background Image */}
                 {formData.coverImageUrl ? (
-                  <div 
+                  <div
                     className="absolute inset-0 bg-cover bg-center"
                     style={{ backgroundImage: `url(${formData.coverImageUrl})` }}
                   />
@@ -532,13 +600,19 @@ function CreateList() {
                   <h3 className="text-2xl font-bold text-white mb-2 drop-shadow-lg">
                     {formData.list_name}
                   </h3>
-                  <p className="text-white/90 text-sm flex items-center gap-1 drop-shadow-md">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    {formData.city}
-                  </p>
+                  {formData.city ? (
+                    <p className="text-white/90 text-sm flex items-center gap-1 drop-shadow-md">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      {formData.city}
+                    </p>
+                  ) : (
+                    <p className="text-white/90 text-sm flex items-center gap-1 drop-shadow-md">
+                      🍺 Produkt-Liste
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

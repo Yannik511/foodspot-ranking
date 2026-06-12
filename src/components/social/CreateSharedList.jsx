@@ -6,6 +6,7 @@ import { useHeaderHeight } from '../../hooks/useHeaderHeight'
 import UserAvatar from './UserAvatar'
 import { supabase } from '../../services/supabase'
 import { hapticFeedback } from '../../utils/haptics'
+import { devLog } from '../../utils/devLog'
 
 // Kategorien (gleiche wie in SelectCategory)
 const CATEGORIES = {
@@ -54,6 +55,7 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
     list_name: '',
     city: '',
     category: null,
+    list_mode: 'location', // 'location' = ortsbasiert, 'product' = produktbasiert
     description: '',
     coverImageFile: null,
     coverImageUrl: null
@@ -309,8 +311,9 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
   }
   
   const canProceedToStep3 = () => {
-    return listDetails.list_name.trim().length >= 3 && 
-           listDetails.city.trim().length >= 2
+    const nameOk = listDetails.list_name.trim().length >= 3
+    if (listDetails.list_mode === 'product') return nameOk
+    return nameOk && listDetails.city.trim().length >= 2
   }
   
   // Create shared list
@@ -322,12 +325,14 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
     
     try {
       // 1. Create list
+      const cityValue = listDetails.city.trim() || null
       const { data: newList, error: listError } = await supabase
         .from('lists')
         .insert({
           user_id: user.id,
           list_name: listDetails.list_name.trim(),
-          city: listDetails.city.trim(),
+          city: cityValue,
+          list_mode: listDetails.list_mode,
           category: listDetails.category,
           description: listDetails.description.trim() || null,
           cover_image_url: listDetails.coverImageUrl
@@ -338,12 +343,12 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
       if (listError) throw listError
       
       // 2. Create invitations for all participants
-      console.log('[CreateSharedList] ==========================================')
-      console.log('[CreateSharedList] STEP 1: Creating invitations')
-      console.log('[CreateSharedList] List ID:', newList.id)
-      console.log('[CreateSharedList] Owner ID (inviter_id):', user.id)
-      console.log('[CreateSharedList] Participants count:', participants.length)
-      console.log('[CreateSharedList] Participants IDs:', participants)
+      devLog('[CreateSharedList] ==========================================')
+      devLog('[CreateSharedList] STEP 1: Creating invitations')
+      devLog('[CreateSharedList] List ID:', newList.id)
+      devLog('[CreateSharedList] Owner ID (inviter_id):', user.id)
+      devLog('[CreateSharedList] Participants count:', participants.length)
+      devLog('[CreateSharedList] Participants IDs:', participants)
       
       // Validate: Ensure no NULL IDs
       if (!newList.id) {
@@ -361,7 +366,7 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
       }
       
       // Check for existing invitations to prevent duplicates
-      console.log('[CreateSharedList] STEP 2: Checking for existing invitations')
+      devLog('[CreateSharedList] STEP 2: Checking for existing invitations')
       const { data: existingInvitations, error: checkError } = await supabase
         .from('list_invitations')
         .select('invitee_id, status, id')
@@ -379,25 +384,25 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
           .map(inv => inv.invitee_id)
       )
       
-      console.log('[CreateSharedList] Existing invitations found:', existingInviteeIds.size)
+      devLog('[CreateSharedList] Existing invitations found:', existingInviteeIds.size)
       if (existingInviteeIds.size > 0) {
-        console.log('[CreateSharedList] Existing invitee IDs:', Array.from(existingInviteeIds))
+        devLog('[CreateSharedList] Existing invitee IDs:', Array.from(existingInviteeIds))
       }
       
       // Filter out users who already have pending or accepted invitations
       const newParticipants = validParticipants.filter(userId => !existingInviteeIds.has(userId))
       
       if (newParticipants.length === 0) {
-        console.log('[CreateSharedList] All participants already have invitations - skipping creation')
+        devLog('[CreateSharedList] All participants already have invitations - skipping creation')
         hapticFeedback.success()
         onClose()
         navigate('/dashboard?view=geteilt')
         return
       }
       
-      console.log('[CreateSharedList] STEP 3: Preparing invitation payload')
-      console.log('[CreateSharedList] New participants to invite:', newParticipants.length)
-      console.log('[CreateSharedList] Skipped (duplicates):', validParticipants.length - newParticipants.length)
+      devLog('[CreateSharedList] STEP 3: Preparing invitation payload')
+      devLog('[CreateSharedList] New participants to invite:', newParticipants.length)
+      devLog('[CreateSharedList] Skipped (duplicates):', validParticipants.length - newParticipants.length)
       
       // Build invitations payload - ensure all required fields are present
       const invitations = newParticipants.map(userId => {
@@ -422,7 +427,7 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
         throw new Error(`Invalid invitation payload: ${invalidInvitations.length} invitations have missing fields`)
       }
       
-      console.log('[CreateSharedList] Invitations payload (validated):', invitations.map(inv => ({
+      devLog('[CreateSharedList] Invitations payload (validated):', invitations.map(inv => ({
         list_id: inv.list_id,
         inviter_id: inv.inviter_id,
         invitee_id: inv.invitee_id,
@@ -430,7 +435,7 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
         status: inv.status
       })))
       
-      console.log('[CreateSharedList] STEP 4: Inserting invitations into database')
+      devLog('[CreateSharedList] STEP 4: Inserting invitations into database')
       const { data: insertedInvitations, error: invitationsError } = await supabase
         .from('list_invitations')
         .insert(invitations)
@@ -447,19 +452,19 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
         console.error('[CreateSharedList] ==========================================')
         
         // Rollback: Delete list if invitations fail
-        console.log('[CreateSharedList] Rolling back: Deleting list', newList.id)
+        devLog('[CreateSharedList] Rolling back: Deleting list', newList.id)
         await supabase.from('lists').delete().eq('id', newList.id)
         throw invitationsError
       }
       
-      console.log('[CreateSharedList] ==========================================')
-      console.log('[CreateSharedList] SUCCESS: Invitations created')
-      console.log('[CreateSharedList] Inserted invitations count:', insertedInvitations?.length || 0)
-      console.log('[CreateSharedList] Invitation IDs:', insertedInvitations?.map(inv => inv.id) || [])
-      console.log('[CreateSharedList] Invitee IDs:', insertedInvitations?.map(inv => inv.invitee_id) || [])
-      console.log('[CreateSharedList] List IDs (all should be same):', insertedInvitations?.map(inv => inv.list_id) || [])
-      console.log('[CreateSharedList] Inviter IDs (all should be same):', insertedInvitations?.map(inv => inv.inviter_id) || [])
-      console.log('[CreateSharedList] ==========================================')
+      devLog('[CreateSharedList] ==========================================')
+      devLog('[CreateSharedList] SUCCESS: Invitations created')
+      devLog('[CreateSharedList] Inserted invitations count:', insertedInvitations?.length || 0)
+      devLog('[CreateSharedList] Invitation IDs:', insertedInvitations?.map(inv => inv.id) || [])
+      devLog('[CreateSharedList] Invitee IDs:', insertedInvitations?.map(inv => inv.invitee_id) || [])
+      devLog('[CreateSharedList] List IDs (all should be same):', insertedInvitations?.map(inv => inv.list_id) || [])
+      devLog('[CreateSharedList] Inviter IDs (all should be same):', insertedInvitations?.map(inv => inv.inviter_id) || [])
+      devLog('[CreateSharedList] ==========================================')
       
       // Verify all invitations were created
       if (!insertedInvitations || insertedInvitations.length !== newParticipants.length) {
@@ -650,16 +655,57 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
         />
       </div>
       
+      {/* List Mode Toggle */}
+      <div>
+        <label className={`block text-sm font-semibold mb-3 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+          Listentyp
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { key: 'location', emoji: '📍', label: 'Orte', desc: 'Restaurants, Buden' },
+            { key: 'product', emoji: '🍺', label: 'Produkte', desc: 'Biere, Glühwein' },
+          ].map(opt => {
+            const active = listDetails.list_mode === opt.key
+            return (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setListDetails({ ...listDetails, list_mode: opt.key })}
+                className={`p-3 rounded-xl border-2 text-left transition-all active:scale-[0.98] ${
+                  active
+                    ? (isDark ? 'border-[#FF9357] bg-[#FF9357]/10' : 'border-[#FF7E42] bg-[#FF7E42]/10')
+                    : (isDark ? 'border-gray-700' : 'border-gray-200')
+                }`}
+              >
+                <div className="text-xl mb-1">{opt.emoji}</div>
+                <div className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{opt.label}</div>
+                <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{opt.desc}</div>
+              </button>
+            )
+          })}
+        </div>
+        <p className={`text-xs mt-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+          {listDetails.list_mode === 'product'
+            ? 'Ort ist optional — wird gespeichert wenn angegeben (für spätere Kartenansicht).'
+            : 'Ort ist Pflicht und wird bei jedem Spot abgefragt.'}
+        </p>
+      </div>
+
       {/* City */}
       <div>
         <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
-          Stadt / Ort <span className="text-red-500">*</span>
+          {listDetails.list_mode === 'product' ? 'Ort' : 'Stadt / Ort'}
+          {listDetails.list_mode === 'location' ? (
+            <span className="text-red-500"> *</span>
+          ) : (
+            <span className={`text-xs font-normal ml-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>(optional)</span>
+          )}
         </label>
         <input
           type="text"
           value={listDetails.city}
           onChange={(e) => setListDetails({ ...listDetails, city: normalizeCity(e.target.value) })}
-          placeholder="z. B. Gilching oder München"
+          placeholder={listDetails.list_mode === 'product' ? 'z. B. München (für Karte)' : 'z. B. Gilching oder München'}
           minLength={2}
           maxLength={100}
           className={`w-full px-4 py-3 rounded-xl border ${isDark ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400' : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400'} outline-none focus:ring-2 focus:ring-[#FF7E42]/20`}
@@ -761,7 +807,9 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
                   {listDetails.list_name}
                 </h4>
                 <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {listDetails.city} {listDetails.category && `• ${listDetails.category}`}
+                  {listDetails.list_mode === 'product' && !listDetails.city
+                    ? `🍺 Produkt-Liste${listDetails.category ? ` • ${listDetails.category}` : ''}`
+                    : `${listDetails.city}${listDetails.category ? ` • ${listDetails.category}` : ''}`}
                 </p>
                 {listDetails.description && (
                   <p className={`text-sm mt-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>

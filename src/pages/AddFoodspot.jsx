@@ -6,6 +6,7 @@ import { supabase } from '../services/supabase'
 import { scrollFieldIntoView } from '../utils/keyboard'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 import { getCategoryTerms } from '../utils/categoryTerms'
+import { calculateTier } from '../lib/categories'
 
 // Category definitions with their specific criteria
 const DEFAULT_SCALE = 5
@@ -224,6 +225,13 @@ function AddFoodspot() {
   const [errors, setErrors] = useState({})
   const handleFieldFocus = (event) => scrollFieldIntoView(event.currentTarget)
 
+  // Track the active cover-image Object-URL so we can revoke the previous one
+  // before allocating a new preview, and revoke on unmount.
+  const previewUrlRef = useRef(null)
+  useEffect(() => () => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+  }, [])
+
   // Shared list detection – redirect to shared component
   useEffect(() => {
     if (!user || !id || sharedRedirectChecked) return
@@ -388,15 +396,6 @@ function AddFoodspot() {
     // Convert average to 0-10 scale
     const normalized = (average / scale) * 10
     return Math.round(normalized * 10) / 10
-  }
-
-  // Auto-tier based on score
-  const calculateTier = (overallRating) => {
-    if (overallRating >= 9.0) return 'S'
-    if (overallRating >= 8.0) return 'A'
-    if (overallRating >= 6.5) return 'B'
-    if (overallRating >= 5.0) return 'C'
-    return 'D'
   }
 
   const overallRating = calculateOverallRating()
@@ -635,8 +634,10 @@ function AddFoodspot() {
 
     // Compress the image
     const compressedFile = await compressImage(file)
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
     const previewUrl = URL.createObjectURL(compressedFile)
-    
+    previewUrlRef.current = previewUrl
+
     setFormData(prev => ({
       ...prev,
       cover_photo_url: previewUrl,
@@ -691,7 +692,7 @@ function AddFoodspot() {
         : {}
 
       // Optimistic update: Create temporary foodspot for immediate display
-      const tempSpotId = `temp-${Date.now()}`
+      const tempSpotId = `temp-${crypto.randomUUID()}`
       const optimisticFoodspot = {
         id: tempSpotId,
         list_id: id,
@@ -1112,16 +1113,22 @@ function AddFoodspot() {
               isDark ? 'text-gray-200' : 'text-gray-700'
             }`}>
               <span className="text-lg">📍</span>
-              Adresse / Stadtteil <span className={`font-normal ${
+              {list?.list_mode === 'product' ? 'Ort' : 'Adresse / Stadtteil'}
+              <span className={`font-normal ${
                 isDark ? 'text-gray-400' : 'text-gray-500'
               }`}>(Optional)</span>
             </label>
-            
+            {list?.list_mode === 'product' && (
+              <p className={`text-xs mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                Bei Produkten optional — wird gespeichert, falls du den Ort für eine spätere Kartenansicht behalten möchtest.
+              </p>
+            )}
+
             <input
               type="text"
               value={formData.address || ''}
               onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value.replace(/[<>]/g, '') }))}
-              placeholder="z. B. Hauptstr. 5, Gilching oder nur Gilching"
+              placeholder={list?.list_mode === 'product' ? 'z. B. München (optional)' : 'z. B. Hauptstr. 5, Gilching oder nur Gilching'}
               maxLength={200}
               className={`w-full px-4 py-3 text-base rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
                 isDark

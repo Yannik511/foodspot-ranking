@@ -596,7 +596,7 @@ function TierList() {
             }`} 
             style={{ fontFamily: "'Poppins', sans-serif" }}
           >
-            {getCategoryTerms(list?.category).headerPrefix} in {list.city}
+            {getCategoryTerms(list?.category).headerPrefix}{list?.city ? ` in ${list.city}` : ''}
           </h1>
 
           <div className="relative" ref={menuRef}>

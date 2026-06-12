@@ -230,7 +230,7 @@ function SharedTierList() {
       ] = await Promise.all([
         supabase
           .from('lists')
-          .select('id, list_name, user_id, city, category, cover_image_url, updated_at, members_can_add_spots, members_can_edit_spots, members_can_edit_list')
+          .select('id, list_name, user_id, city, list_mode, category, cover_image_url, updated_at, members_can_add_spots, members_can_edit_spots, members_can_edit_list')
           .eq('id', id)
           .maybeSingle(),
         supabase
