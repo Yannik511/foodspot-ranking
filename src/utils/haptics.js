@@ -1,61 +1,68 @@
-/**
- * Haptic Feedback Utility
- * Provides cross-platform haptic feedback using Vibration API
- */
+import { Capacitor } from '@capacitor/core'
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
+
+const isNative = Capacitor.isNativePlatform()
+
+const safeNative = (fn) => {
+  try {
+    fn()
+  } catch {
+    // silently ignore: plugin may be unavailable
+  }
+}
+
+const webVibrate = (pattern) => {
+  if (typeof navigator !== 'undefined' && navigator.vibrate) {
+    navigator.vibrate(pattern)
+  }
+}
 
 export const hapticFeedback = {
-  /**
-   * Light haptic feedback - for subtle interactions
-   */
   light: () => {
-    if (navigator.vibrate) {
-      navigator.vibrate(10)
+    if (isNative) {
+      safeNative(() => Haptics.impact({ style: ImpactStyle.Light }))
+    } else {
+      webVibrate(10)
     }
   },
 
-  /**
-   * Medium haptic feedback - for standard interactions
-   */
   medium: () => {
-    if (navigator.vibrate) {
-      navigator.vibrate(20)
+    if (isNative) {
+      safeNative(() => Haptics.impact({ style: ImpactStyle.Medium }))
+    } else {
+      webVibrate(20)
     }
   },
 
-  /**
-   * Heavy haptic feedback - for important interactions
-   */
   heavy: () => {
-    if (navigator.vibrate) {
-      navigator.vibrate(50)
+    if (isNative) {
+      safeNative(() => Haptics.impact({ style: ImpactStyle.Heavy }))
+    } else {
+      webVibrate(50)
     }
   },
 
-  /**
-   * Success haptic feedback pattern
-   */
   success: () => {
-    if (navigator.vibrate) {
-      navigator.vibrate([10, 50, 10])
+    if (isNative) {
+      safeNative(() => Haptics.notification({ type: NotificationType.Success }))
+    } else {
+      webVibrate([10, 50, 10])
     }
   },
 
-  /**
-   * Error haptic feedback pattern
-   */
   error: () => {
-    if (navigator.vibrate) {
-      navigator.vibrate([20, 50, 20, 50, 20])
+    if (isNative) {
+      safeNative(() => Haptics.notification({ type: NotificationType.Error }))
+    } else {
+      webVibrate([20, 50, 20, 50, 20])
     }
   },
 
-  /**
-   * Custom haptic pattern
-   * @param {number|number[]} pattern - Vibration pattern
-   */
   custom: (pattern) => {
-    if (navigator.vibrate) {
-      navigator.vibrate(pattern)
+    if (isNative) {
+      safeNative(() => Haptics.impact({ style: ImpactStyle.Light }))
+    } else {
+      webVibrate(pattern)
     }
   },
 }

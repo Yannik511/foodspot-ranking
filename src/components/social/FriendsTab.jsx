@@ -7,6 +7,7 @@ import { supabase } from '../../services/supabase'
 import { hapticFeedback } from '../../utils/haptics'
 import { useProfilesStore } from '../../contexts/ProfileContext'
 import { usePresence } from '../../contexts/PresenceContext'
+import { devLog } from '../../utils/devLog'
 
 const SectionSkeleton = ({ isDark, rows = 3 }) => (
   <div className="p-4 space-y-3">
@@ -81,7 +82,7 @@ function FriendsTab() {
   useEffect(() => {
     if (!user) return
     
-    console.log('[FriendsTab] Initial load - fetching data')
+    devLog('[FriendsTab] Initial load - fetching data')
     fetchFriends()
     fetchListInvitations()
     fetchSharedLists()
@@ -99,7 +100,7 @@ function FriendsTab() {
         table: 'friendships',
         filter: `requester_id=eq.${user.id}`
       }, () => {
-        console.log('[FriendsTab] Realtime: Friendship changed (as requester)')
+        devLog('[FriendsTab] Realtime: Friendship changed (as requester)')
         fetchFriends()
         refreshSearchResults()
       })
@@ -109,7 +110,7 @@ function FriendsTab() {
         table: 'friendships',
         filter: `addressee_id=eq.${user.id}`
       }, () => {
-        console.log('[FriendsTab] Realtime: Friendship changed (as addressee)')
+        devLog('[FriendsTab] Realtime: Friendship changed (as addressee)')
         fetchFriends()
         refreshSearchResults()
       })
@@ -124,12 +125,12 @@ function FriendsTab() {
         table: 'list_invitations',
         filter: `invitee_id=eq.${user.id}`
       }, (payload) => {
-        console.log('[FriendsTab] Realtime: Invitation changed', payload.eventType)
+        devLog('[FriendsTab] Realtime: Invitation changed', payload.eventType)
         fetchListInvitations()
         
         // Bei Annahme auch shared lists aktualisieren
         if (payload.eventType === 'UPDATE' && payload.new?.status === 'accepted') {
-          console.log('[FriendsTab] Realtime: Invitation accepted - refreshing shared lists')
+          devLog('[FriendsTab] Realtime: Invitation accepted - refreshing shared lists')
           fetchSharedLists()
         }
       })
@@ -144,14 +145,14 @@ function FriendsTab() {
         table: 'list_members',
         filter: `user_id=eq.${user.id}`
       }, () => {
-        console.log('[FriendsTab] Realtime: Membership changed')
+        devLog('[FriendsTab] Realtime: Membership changed')
         fetchSharedLists()
       })
       .subscribe()
 
     // Cleanup
     return () => {
-      console.log('[FriendsTab] Cleaning up: Removing realtime channels')
+      devLog('[FriendsTab] Cleaning up: Removing realtime channels')
       supabase.removeChannel(friendshipsChannel)
       supabase.removeChannel(invitationsChannel)
       supabase.removeChannel(membersChannel)
@@ -656,20 +657,20 @@ function FriendsTab() {
   // Fetch list invitations
   const fetchListInvitations = async () => {
     if (!user) {
-      console.log('[FriendsTab] fetchListInvitations: No user, skipping')
+      devLog('[FriendsTab] fetchListInvitations: No user, skipping')
       return
     }
     
-    console.log('[FriendsTab] ==========================================')
-    console.log('[FriendsTab] fetchListInvitations: Starting fetch')
-    console.log('[FriendsTab] Current user ID (invitee_id):', user.id)
-    console.log('[FriendsTab] Filter: invitee_id =', user.id, 'AND status = pending')
-    console.log('[FriendsTab] ==========================================')
+    devLog('[FriendsTab] ==========================================')
+    devLog('[FriendsTab] fetchListInvitations: Starting fetch')
+    devLog('[FriendsTab] Current user ID (invitee_id):', user.id)
+    devLog('[FriendsTab] Filter: invitee_id =', user.id, 'AND status = pending')
+    devLog('[FriendsTab] ==========================================')
     
     setListInvitationsLoading(true)
     try {
       // STEP 1: Simple test query to verify RLS access
-      console.log('[FriendsTab] STEP 1: Testing RLS access with simple query')
+      devLog('[FriendsTab] STEP 1: Testing RLS access with simple query')
       const { data: testData, error: testError } = await supabase
         .from('list_invitations')
         .select('id, list_id, invitee_id, status')
@@ -688,7 +689,7 @@ function FriendsTab() {
         
         // Tabelle existiert möglicherweise noch nicht - das ist okay
         if (testError.code === 'PGRST200' || testError.code === '42P01' || testError.message?.includes('does not exist')) {
-          console.log('[FriendsTab] Table does not exist, returning empty array')
+          devLog('[FriendsTab] Table does not exist, returning empty array')
           setListInvitations([])
           setListInvitationsLoading(false)
           return
@@ -704,15 +705,15 @@ function FriendsTab() {
         throw testError
       }
       
-      console.log('[FriendsTab] STEP 1 SUCCESS: Test query returned', testData?.length || 0, 'invitations')
+      devLog('[FriendsTab] STEP 1 SUCCESS: Test query returned', testData?.length || 0, 'invitations')
       if (testData && testData.length > 0) {
-        console.log('[FriendsTab] Test query invitation IDs:', testData.map(inv => inv.id))
-        console.log('[FriendsTab] Test query list IDs:', testData.map(inv => inv.list_id))
-        console.log('[FriendsTab] Test query invitee IDs (should all be', user.id, '):', testData.map(inv => inv.invitee_id))
+        devLog('[FriendsTab] Test query invitation IDs:', testData.map(inv => inv.id))
+        devLog('[FriendsTab] Test query list IDs:', testData.map(inv => inv.list_id))
+        devLog('[FriendsTab] Test query invitee IDs (should all be', user.id, '):', testData.map(inv => inv.invitee_id))
       }
       
       // STEP 2: Fetch full data with relations
-      console.log('[FriendsTab] STEP 2: Fetching full invitation data with relations')
+      devLog('[FriendsTab] STEP 2: Fetching full invitation data with relations')
       // WICHTIG: inviter_id verweist auf auth.users, nicht auf eine Tabelle, die über PostgREST abgefragt werden kann
       // Daher verwenden wir nur den Join mit lists, nicht mit inviter
       const { data: invitationsData, error: invitationsError } = await supabase
@@ -752,16 +753,16 @@ function FriendsTab() {
         throw invitationsError
       }
 
-      console.log('[FriendsTab] STEP 2 SUCCESS: Full query returned', invitationsData?.length || 0, 'invitations')
-      console.log('[FriendsTab] ==========================================')
+      devLog('[FriendsTab] STEP 2 SUCCESS: Full query returned', invitationsData?.length || 0, 'invitations')
+      devLog('[FriendsTab] ==========================================')
       
       if (invitationsData && invitationsData.length > 0) {
-        console.log('[FriendsTab] Found pending invitations:', invitationsData.length)
-        console.log('[FriendsTab] Invitation IDs:', invitationsData.map(inv => inv.id))
-        console.log('[FriendsTab] List IDs:', invitationsData.map(inv => inv.list_id))
-        console.log('[FriendsTab] Inviter IDs:', invitationsData.map(inv => inv.inviter_id))
-        console.log('[FriendsTab] Invitee IDs (should all be', user.id, '):', invitationsData.map(inv => inv.invitee_id))
-        console.log('[FriendsTab] Roles:', invitationsData.map(inv => inv.role))
+        devLog('[FriendsTab] Found pending invitations:', invitationsData.length)
+        devLog('[FriendsTab] Invitation IDs:', invitationsData.map(inv => inv.id))
+        devLog('[FriendsTab] List IDs:', invitationsData.map(inv => inv.list_id))
+        devLog('[FriendsTab] Inviter IDs:', invitationsData.map(inv => inv.inviter_id))
+        devLog('[FriendsTab] Invitee IDs (should all be', user.id, '):', invitationsData.map(inv => inv.invitee_id))
+        devLog('[FriendsTab] Roles:', invitationsData.map(inv => inv.role))
         
         // Check if lists are null (RLS issue?)
         const nullLists = invitationsData.filter(inv => !inv.lists)
@@ -771,16 +772,16 @@ function FriendsTab() {
           console.warn('[FriendsTab] List IDs that could not be loaded:', nullLists.map(inv => inv.list_id))
           console.warn('[FriendsTab] This suggests the RLS policy "Invitees can view lists they are invited to" might not be working')
         } else {
-          console.log('[FriendsTab] All invitations have valid list data - RLS is working correctly')
+          devLog('[FriendsTab] All invitations have valid list data - RLS is working correctly')
         }
       } else {
-        console.log('[FriendsTab] No pending invitations found for user:', user.id)
-        console.log('[FriendsTab] This could mean:')
-        console.log('[FriendsTab]   1. No invitations have been sent to this user')
-        console.log('[FriendsTab]   2. All invitations have been accepted/rejected')
-        console.log('[FriendsTab]   3. RLS policy is blocking access (check Migration 021)')
+        devLog('[FriendsTab] No pending invitations found for user:', user.id)
+        devLog('[FriendsTab] This could mean:')
+        devLog('[FriendsTab]   1. No invitations have been sent to this user')
+        devLog('[FriendsTab]   2. All invitations have been accepted/rejected')
+        devLog('[FriendsTab]   3. RLS policy is blocking access (check Migration 021)')
       }
-      console.log('[FriendsTab] ==========================================')
+      devLog('[FriendsTab] ==========================================')
 
       // Fetch inviter profiles
       const inviterIds = [...new Set((invitationsData || []).map(inv => inv.inviter_id))]
@@ -842,14 +843,14 @@ function FriendsTab() {
         }
       })
 
-      console.log('[FriendsTab] STEP 3: Processing invitations with profiles')
-      console.log('[FriendsTab] Processed invitations:', invitationsWithProfiles.length)
-      console.log('[FriendsTab] Invitations with valid lists:', invitationsWithProfiles.filter(inv => inv.list && inv.list.list_name !== 'Unbekannte Liste').length)
-      console.log('[FriendsTab] Invitations with fallback lists:', invitationsWithProfiles.filter(inv => inv.list && inv.list.list_name === 'Unbekannte Liste').length)
+      devLog('[FriendsTab] STEP 3: Processing invitations with profiles')
+      devLog('[FriendsTab] Processed invitations:', invitationsWithProfiles.length)
+      devLog('[FriendsTab] Invitations with valid lists:', invitationsWithProfiles.filter(inv => inv.list && inv.list.list_name !== 'Unbekannte Liste').length)
+      devLog('[FriendsTab] Invitations with fallback lists:', invitationsWithProfiles.filter(inv => inv.list && inv.list.list_name === 'Unbekannte Liste').length)
       
       setListInvitations(invitationsWithProfiles)
-      console.log('[FriendsTab] State updated: listInvitations.length =', invitationsWithProfiles.length)
-      console.log('[FriendsTab] ==========================================')
+      devLog('[FriendsTab] State updated: listInvitations.length =', invitationsWithProfiles.length)
+      devLog('[FriendsTab] ==========================================')
     } catch (error) {
       console.error('[FriendsTab] ==========================================')
       console.error('[FriendsTab] ERROR: fetchListInvitations failed')
@@ -862,22 +863,22 @@ function FriendsTab() {
       setListInvitations([])
     } finally {
       setListInvitationsLoading(false)
-      console.log('[FriendsTab] fetchListInvitations: Fetch completed, loading = false')
+      devLog('[FriendsTab] fetchListInvitations: Fetch completed, loading = false')
     }
   }
 
   // Accept list invitation
   const handleAcceptInvitation = async (invitationId) => {
     if (!user) {
-      console.log('[FriendsTab] handleAcceptInvitation: No user')
+      devLog('[FriendsTab] handleAcceptInvitation: No user')
       return
     }
     
-    console.log('[FriendsTab] handleAcceptInvitation: Starting for invitation:', invitationId, 'user:', user.id)
+    devLog('[FriendsTab] handleAcceptInvitation: Starting for invitation:', invitationId, 'user:', user.id)
     
     try {
       // First check if invitation still exists and is pending
-      console.log('[FriendsTab] handleAcceptInvitation: Checking invitation status')
+      devLog('[FriendsTab] handleAcceptInvitation: Checking invitation status')
       const { data: existingInvitation, error: checkError } = await supabase
         .from('list_invitations')
         .select('id, list_id, role, status, invitee_id')
@@ -892,10 +893,10 @@ function FriendsTab() {
         return
       }
 
-      console.log('[FriendsTab] handleAcceptInvitation: Invitation found:', existingInvitation)
+      devLog('[FriendsTab] handleAcceptInvitation: Invitation found:', existingInvitation)
 
       if (existingInvitation.status !== 'pending') {
-        console.log('[FriendsTab] handleAcceptInvitation: Invitation already processed, status:', existingInvitation.status)
+        devLog('[FriendsTab] handleAcceptInvitation: Invitation already processed, status:', existingInvitation.status)
         showToast('Einladung wurde bereits bearbeitet', 'info')
         fetchListInvitations()
         return
@@ -916,7 +917,7 @@ function FriendsTab() {
         return
       }
 
-      console.log('[FriendsTab] handleAcceptInvitation: Calling accept_invitation RPC')
+      devLog('[FriendsTab] handleAcceptInvitation: Calling accept_invitation RPC')
 
       const { data: rpcResult, error: rpcError } = await supabase.rpc('accept_invitation', {
         p_invitation_id: invitationId
@@ -955,7 +956,7 @@ function FriendsTab() {
         throw rpcError
       }
 
-      console.log('[FriendsTab] handleAcceptInvitation: RPC success, joined list:', rpcResult)
+      devLog('[FriendsTab] handleAcceptInvitation: RPC success, joined list:', rpcResult)
       
       // Refresh data immediately (wait for completion)
       await Promise.all([
@@ -1001,11 +1002,11 @@ function FriendsTab() {
   // Reject list invitation
   const handleRejectInvitation = async (invitationId) => {
     if (!user) {
-      console.log('[FriendsTab] handleRejectInvitation: No user')
+      devLog('[FriendsTab] handleRejectInvitation: No user')
       return
     }
     
-    console.log('[FriendsTab] handleRejectInvitation: Starting for invitation:', invitationId, 'user:', user.id)
+    devLog('[FriendsTab] handleRejectInvitation: Starting for invitation:', invitationId, 'user:', user.id)
     
     try {
       const { error } = await supabase
@@ -1023,7 +1024,7 @@ function FriendsTab() {
         throw error
       }
 
-      console.log('[FriendsTab] handleRejectInvitation: Successfully rejected invitation:', invitationId)
+      devLog('[FriendsTab] handleRejectInvitation: Successfully rejected invitation:', invitationId)
       
       // Refresh invitations immediately
       await fetchListInvitations()
@@ -1042,7 +1043,7 @@ function FriendsTab() {
   const fetchSharedLists = async () => {
     if (!user) return
     
-    console.log('[FriendsTab] fetchSharedLists: Starting fetch for user:', user.id)
+    devLog('[FriendsTab] fetchSharedLists: Starting fetch for user:', user.id)
     setSharedListsLoading(true)
     try {
       // Fetch lists where user is a member (already accepted)
@@ -1056,7 +1057,7 @@ function FriendsTab() {
       if (memberError) {
         console.error('[FriendsTab] fetchSharedLists: Error fetching memberships:', memberError)
         if (memberError.code === 'PGRST200' || memberError.code === '42P01' || memberError.message?.includes('does not exist')) {
-          console.log('[FriendsTab] fetchSharedLists: Table does not exist, returning empty array')
+          devLog('[FriendsTab] fetchSharedLists: Table does not exist, returning empty array')
           setSharedLists([])
           setSharedListsLoading(false)
           return
@@ -1099,7 +1100,7 @@ function FriendsTab() {
               console.error('[FriendsTab] fetchSharedLists: Recursion error when fetching members - this should be fixed by Migration 023')
               // Fallback: Zeige alle owned lists als shared (nicht ideal, aber funktioniert)
               sharedOwnedLists = ownedListsData
-              console.log('[FriendsTab] fetchSharedLists: Fallback: Showing all owned lists as shared')
+              devLog('[FriendsTab] fetchSharedLists: Fallback: Showing all owned lists as shared')
             } else {
               throw listMembersError
             }
@@ -1110,7 +1111,7 @@ function FriendsTab() {
             ])
 
             sharedOwnedLists = ownedListsData.filter(list => sharedListIds.has(list.id))
-            console.log('[FriendsTab] fetchSharedLists: Found', sharedOwnedLists.length, 'shared owned lists')
+            devLog('[FriendsTab] fetchSharedLists: Found', sharedOwnedLists.length, 'shared owned lists')
           }
         } catch (error) {
           console.error('[FriendsTab] fetchSharedLists: Error in owned lists logic:', error)
@@ -1285,7 +1286,7 @@ function FriendsTab() {
             }
           }
 
-          console.log(`[FriendsTab] List "${list.list_name}": ${memberProfiles.length} total members`)
+          devLog(`[FriendsTab] List "${list.list_name}": ${memberProfiles.length} total members`)
 
           const { count } = await supabase
             .from('foodspots')
