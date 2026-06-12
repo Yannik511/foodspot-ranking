@@ -7,7 +7,7 @@ import { supabase } from '../../services/supabase'
 import { hapticFeedback } from '../../utils/haptics'
 import { useProfilesStore } from '../../contexts/ProfileContext'
 import { usePresence } from '../../contexts/PresenceContext'
-import { devLog } from '../../utils/devLog'
+import { devLog, devWarn } from '../../utils/devLog'
 
 const SectionSkeleton = ({ isDark, rows = 3 }) => (
   <div className="p-4 space-y-3">
@@ -87,13 +87,10 @@ function FriendsTab() {
     fetchListInvitations()
     fetchSharedLists()
     
-    // ========================================
-    // REALTIME SUBSCRIPTIONS (ohne Polling!)
-    // ========================================
-    
-    // 1. Friendship changes - nur für diesen User
-    const friendshipsChannel = supabase
-      .channel('friendships_realtime')
+    // Ein einziger Realtime-Channel für alle relevanten Social-Tabellen.
+    // Spart Supabase-Connections gegenüber der vorigen 3-Channel-Variante.
+    const socialChannel = supabase
+      .channel(`social_realtime:${user.id}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -114,11 +111,6 @@ function FriendsTab() {
         fetchFriends()
         refreshSearchResults()
       })
-      .subscribe()
-
-    // 2. List invitations - NUR für diesen User
-    const invitationsChannel = supabase
-      .channel('invitations_realtime')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -127,18 +119,11 @@ function FriendsTab() {
       }, (payload) => {
         devLog('[FriendsTab] Realtime: Invitation changed', payload.eventType)
         fetchListInvitations()
-        
-        // Bei Annahme auch shared lists aktualisieren
         if (payload.eventType === 'UPDATE' && payload.new?.status === 'accepted') {
           devLog('[FriendsTab] Realtime: Invitation accepted - refreshing shared lists')
           fetchSharedLists()
         }
       })
-      .subscribe()
-
-    // 3. List members - NUR wenn dieser User betroffen ist
-    const membersChannel = supabase
-      .channel('members_realtime')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -150,12 +135,9 @@ function FriendsTab() {
       })
       .subscribe()
 
-    // Cleanup
     return () => {
-      devLog('[FriendsTab] Cleaning up: Removing realtime channels')
-      supabase.removeChannel(friendshipsChannel)
-      supabase.removeChannel(invitationsChannel)
-      supabase.removeChannel(membersChannel)
+      devLog('[FriendsTab] Cleaning up: Removing realtime channel')
+      supabase.removeChannel(socialChannel)
     }
   }, [user])
 
@@ -248,23 +230,34 @@ function FriendsTab() {
         outgoingData.forEach(f => allUserIds.add(f.addressee_id))
       }
 
-      // Fetch user profiles using the get_user_profile RPC function
-      // WICHTIG: profile_visibility kommt aus auth.users.user_metadata!
+      // Fetch user profiles in a single batch call.
+      // get_user_profiles_batch reads profile_visibility from
+      // auth.users.raw_user_meta_data (Workaround, see Migration 047).
+      // Fallback to per-user get_user_profile if the batch RPC is not yet deployed.
       const userIdsArray = Array.from(allUserIds)
       let userProfilesMap = new Map()
-      
+
       if (userIdsArray.length > 0) {
         try {
-          // Fetch profiles using RPC function (reads from auth.users.user_metadata)
-          const profilePromises = userIdsArray.map(async (userId) => {
-            const { data, error } = await supabase.rpc('get_user_profile', { user_id: userId })
-            if (!error && data && data.length > 0) {
-              return data[0]
-            }
-            return null
+          let profilesData = []
+
+          const batchResult = await supabase.rpc('get_user_profiles_batch', {
+            p_user_ids: userIdsArray
           })
-          
-          const profilesData = (await Promise.all(profilePromises)).filter(p => p !== null)
+
+          if (!batchResult.error && Array.isArray(batchResult.data)) {
+            profilesData = batchResult.data
+          } else {
+            // Fallback: alte N+1 Variante, solange Migration 047 noch nicht
+            // ausgeführt wurde.
+            devWarn('get_user_profiles_batch nicht verfügbar, fallback auf get_user_profile', batchResult.error)
+            const profilePromises = userIdsArray.map(async (userId) => {
+              const { data, error } = await supabase.rpc('get_user_profile', { user_id: userId })
+              if (!error && data && data.length > 0) return data[0]
+              return null
+            })
+            profilesData = (await Promise.all(profilePromises)).filter(p => p !== null)
+          }
 
           if (profilesData.length > 0) {
             upsertProfiles(profilesData)
@@ -283,7 +276,6 @@ function FriendsTab() {
             })
           }
         } catch (err) {
-          // RPC might not exist yet - that's ok
           console.warn('Could not fetch user profiles:', err)
         }
       }
