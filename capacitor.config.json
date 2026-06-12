@@ -2,6 +2,9 @@
   "appId": "com.rankify.app",
   "appName": "Rankify",
   "webDir": "dist",
+  "ios": {
+    "backgroundColor": "#1a1a1a"
+  },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 1500,
