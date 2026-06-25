@@ -233,7 +233,7 @@ function Social() {
         className={`page-content ${isDark ? 'bg-gray-900' : 'bg-white'}`}
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(100px + env(safe-area-inset-bottom, 0px))`
+          paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 110px)`
         }}
       >
         <FriendsTab />
@@ -263,7 +263,7 @@ function Social() {
               <div style={{ width: 36, height: 4, borderRadius: 2, background: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.15)' }} />
             </div>
 
-            <div style={{ padding: '8px 16px 20px' }}>
+            <div style={{ padding: '8px 16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button
                 onClick={() => { hapticFeedback.light(); setShowSheet(false); navigate('/create-shared-list') }}
                 style={{
@@ -288,6 +288,32 @@ function Social() {
                 <div style={{ textAlign: 'left' }}>
                   <p style={{ fontSize: 15, fontWeight: 600, color: isDark ? '#fff' : '#000', fontFamily: "'Poppins', sans-serif", margin: 0 }}>Geteilte Liste erstellen</p>
                   <p style={{ fontSize: 12, color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)', fontFamily: "'Poppins', sans-serif", margin: 0, marginTop: 2 }}>Mit Freunden gemeinsam ranken</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => { hapticFeedback.light(); setShowSheet(false); navigate('/share-list') }}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 16,
+                  padding: '14px 16px', borderRadius: 18, border: 'none', cursor: 'pointer',
+                  background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <span style={{
+                  width: 44, height: 44, borderRadius: 14, flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: isDark ? 'rgba(255,147,87,0.15)' : 'rgba(255,126,66,0.12)',
+                }}>
+                  <svg width="20" height="20" fill="none" stroke="#FF7E42" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                    <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M19 8v6M22 11h-6" />
+                  </svg>
+                </span>
+                <div style={{ textAlign: 'left' }}>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: isDark ? '#fff' : '#000', fontFamily: "'Poppins', sans-serif", margin: 0 }}>Zu geteilter Liste hinzufügen</p>
+                  <p style={{ fontSize: 12, color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)', fontFamily: "'Poppins', sans-serif", margin: 0, marginTop: 2 }}>Freunde zu bestehender Liste einladen</p>
                 </div>
               </button>
             </div>

@@ -211,11 +211,11 @@ function CreateList() {
         imageUrl = urlData.publicUrl
       }
 
-      // Optimistic update: Create temporary list object for immediate display
-      const tempListId = `temp-${crypto.randomUUID()}`
       const cityValue = formData.city.trim() || null
-      const optimisticList = {
-        id: tempListId,
+
+      // Insert list FIRST — wait for DB to confirm before navigating.
+      // This guarantees the Dashboard fetch sees the real list, no race condition.
+      const insertData = {
         user_id: user.id,
         list_name: formData.list_name.trim(),
         city: cityValue,
@@ -223,72 +223,36 @@ function CreateList() {
         description: formData.description.trim() || null,
         category: formData.category || null,
         cover_image_url: imageUrl,
-        entryCount: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        is_public: false,
-        accent_color: '#FF784F',
       }
 
-      // Store optimistic list in sessionStorage for Dashboard to pick up
-      sessionStorage.setItem('newList', JSON.stringify(optimisticList))
-      sessionStorage.setItem('scrollTargetListId', tempListId)
-
-      // Clear draft
-      localStorage.removeItem('createListDraft')
-
-      // Navigate immediately (optimistic) - no loading screen
-      setIsSubmitting(false)
-      navigate('/dashboard', { replace: true })
-
-      // Insert list in background (non-blocking)
-      try {
-        const insertData = {
-          user_id: user.id,
-          list_name: formData.list_name.trim(),
-          city: cityValue,
-          list_mode: formData.list_mode,
-          description: formData.description.trim() || null,
-          category: formData.category || null,
-          cover_image_url: imageUrl,
-        }
-
-        const { data: insertedList, error: insertError } = await supabase
+      const { data: insertedList, error: insertError } = await supabase
         .from('lists')
         .insert(insertData)
-          .select()
-          .single()
+        .select()
+        .single()
 
       if (insertError) {
         console.error('Insert error details:', insertError)
         if (insertError.code === '23505') {
-          // Remove optimistic list auf Duplikat
-          sessionStorage.removeItem('newList')
-          sessionStorage.removeItem('scrollTargetListId')
-          // Real-time subscription wird syncen
-          return
+          showToast('Diese Liste existiert bereits.', 'error')
+        } else {
+          showToast('Fehler beim Erstellen der Liste. Bitte versuche es erneut.', 'error')
         }
-        throw insertError
+        setIsSubmitting(false)
+        return
       }
 
-        // Replace optimistic list with real one via sessionStorage
-        if (insertedList) {
-          const realList = {
-            ...insertedList,
-            entryCount: 0,
-          }
-          sessionStorage.setItem('newList', JSON.stringify(realList))
-          sessionStorage.setItem('scrollTargetListId', realList.id)
-        }
-        
-        // Real-time subscription will sync automatically
-      } catch (error) {
-        console.error('Error creating list in background:', error)
-        // Remove optimistic list on error
-        sessionStorage.removeItem('newList')
-        sessionStorage.removeItem('scrollTargetListId')
-        // Real-time subscription will handle sync
+      // Persist real list for Dashboard to pick up (optimistic display + scroll target)
+      if (insertedList) {
+        const realList = { ...insertedList, entryCount: 0 }
+        sessionStorage.setItem('newList', JSON.stringify(realList))
+        sessionStorage.setItem('scrollTargetListId', realList.id)
       }
+
+      // Clear draft, then navigate
+      localStorage.removeItem('createListDraft')
+      setIsSubmitting(false)
+      navigate('/dashboard', { replace: true })
     } catch (error) {
       console.error('Error creating list:', error)
       showToast('Fehler beim Erstellen der Liste. Bitte versuche es erneut.', 'error')

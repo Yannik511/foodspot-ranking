@@ -42,6 +42,7 @@ export default function ListSettings() {
   const [canAddSpots, setCanAddSpots] = useState(false)
   const [canEditSpots, setCanEditSpots] = useState(false)
   const [canEditList, setCanEditList] = useState(false)
+  const [canInvite, setCanInvite] = useState(false)
   const [toast, setToast] = useState(null)
 
   useEffect(() => {
@@ -49,7 +50,7 @@ export default function ListSettings() {
     const load = async () => {
       const { data, error } = await supabase
         .from('lists')
-        .select('list_name, user_id, members_can_add_spots, members_can_edit_spots, members_can_edit_list')
+        .select('list_name, user_id, members_can_add_spots, members_can_edit_spots, members_can_edit_list, members_can_invite')
         .eq('id', id)
         .single()
 
@@ -62,6 +63,7 @@ export default function ListSettings() {
       setCanAddSpots(data.members_can_add_spots ?? false)
       setCanEditSpots(data.members_can_edit_spots ?? false)
       setCanEditList(data.members_can_edit_list ?? false)
+      setCanInvite(data.members_can_invite ?? false)
       setLoading(false)
     }
     load()
@@ -81,6 +83,7 @@ export default function ListSettings() {
           members_can_add_spots: canAddSpots,
           members_can_edit_spots: canEditSpots,
           members_can_edit_list: canEditList,
+          members_can_invite: canInvite,
         })
         .eq('id', id)
         .eq('user_id', user.id)
@@ -116,6 +119,13 @@ export default function ListSettings() {
       description: 'Mitglieder dürfen Name, Cover und Beschreibung der Liste ändern.',
       value: canEditList,
       onChange: setCanEditList,
+    },
+    {
+      key: 'invite',
+      label: 'Mitglieder einladen',
+      description: 'Editoren dürfen weitere Freunde zur Liste einladen.',
+      value: canInvite,
+      onChange: setCanInvite,
     },
   ]
 

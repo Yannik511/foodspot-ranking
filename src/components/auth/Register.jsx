@@ -58,7 +58,7 @@ function Register() {
         setSuccess(true)
         hapticFeedback.success()
         setTimeout(() => {
-          navigate('/dashboard')
+          navigate('/dashboard', { replace: true })
         }, 1000)
       }
     } catch (err) {

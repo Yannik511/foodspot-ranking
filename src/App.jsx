@@ -25,6 +25,9 @@ import CreateSharedListPage from './pages/CreateSharedListPage'
 import RateSpot from './pages/shared/RateSpot'
 import EditSpot from './pages/shared/EditSpot'
 import ListSettings from './pages/shared/ListSettings'
+import ShareListPicker from './pages/shared/ShareListPicker'
+import ShareListInvite from './pages/shared/ShareListInvite'
+import Onboarding from './pages/Onboarding'
 import ProtectedRoute from './components/ProtectedRoute'
 import ErrorBoundary from './components/ErrorBoundary'
 import { PresenceProvider } from './contexts/PresenceContext'
@@ -51,6 +54,7 @@ function App() {
           <TabBarContainer />
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route
@@ -194,6 +198,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <ListSettings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/share-list"
+            element={
+              <ProtectedRoute>
+                <ShareListPicker />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/share-list/:id"
+            element={
+              <ProtectedRoute>
+                <ShareListInvite />
               </ProtectedRoute>
             }
           />

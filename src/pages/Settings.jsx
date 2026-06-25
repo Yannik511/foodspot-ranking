@@ -934,48 +934,31 @@ function Settings() {
             {/* Accent Color */}
             <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
               <div>
-                <p 
+                <p
                   className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
                   style={{ fontFamily: "'Poppins', sans-serif" }}
                 >
                   Akzentfarbe
                 </p>
-                <p 
+                <p
                   className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
                   style={{ fontFamily: "'Inter', sans-serif" }}
                 >
-                  {accentColor === 'orange' && 'Orange/Coral'}
-                  {accentColor === 'neutral' && 'Neutral'}
+                  Bald verfügbar
                 </p>
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => {
-                    hapticFeedback.light()
-                    setAccentColor('orange')
-                  }}
-                  className={`px-4 py-2 rounded-xl font-medium transition-all ${
-                    accentColor === 'orange'
-                      ? 'bg-[#FF7E42] text-white'
-                      : isDark
-                      ? 'bg-gray-700 text-gray-300'
-                      : 'bg-gray-100 text-gray-700'
-                  }`}
+                  disabled
+                  className="px-4 py-2 rounded-xl font-medium bg-[#FF7E42] text-white opacity-50 cursor-not-allowed"
                   style={{ fontFamily: "'Poppins', sans-serif" }}
                 >
                   Orange
                 </button>
                 <button
-                  onClick={() => {
-                    hapticFeedback.light()
-                    setAccentColor('neutral')
-                  }}
-                  className={`px-4 py-2 rounded-xl font-medium transition-all ${
-                    accentColor === 'neutral'
-                      ? 'bg-[#FF7E42] text-white'
-                      : isDark
-                      ? 'bg-gray-700 text-gray-300'
-                      : 'bg-gray-100 text-gray-700'
+                  disabled
+                  className={`px-4 py-2 rounded-xl font-medium opacity-50 cursor-not-allowed ${
+                    isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
                   }`}
                   style={{ fontFamily: "'Poppins', sans-serif" }}
                 >
@@ -1048,101 +1031,80 @@ function Settings() {
           
           <div className="px-4 py-4 space-y-4">
             {/* New Ratings */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between opacity-50">
               <div className="flex-1">
-                <p 
+                <p
                   className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
                   style={{ fontFamily: "'Poppins', sans-serif" }}
                 >
                   Neue Bewertungen
                 </p>
-                <p 
+                <p
                   className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
                   style={{ fontFamily: "'Inter', sans-serif" }}
                 >
-                  Benachrichtigungen zu eigenen Listen
+                  Bald verfügbar
                 </p>
               </div>
               <button
-                onClick={() => {
-                  hapticFeedback.light()
-                  setNotificationsNewRatings(!notificationsNewRatings)
-                }}
-                className={`relative w-12 h-6 rounded-full transition-colors ${
-                  notificationsNewRatings ? 'bg-[#FF7E42]' : isDark ? 'bg-gray-600' : 'bg-gray-300'
+                disabled
+                className={`relative w-12 h-6 rounded-full cursor-not-allowed ${
+                  isDark ? 'bg-gray-600' : 'bg-gray-300'
                 }`}
               >
-                <div
-                  className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                    notificationsNewRatings ? 'translate-x-6' : 'translate-x-0'
-                  }`}
-                />
+                <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full translate-x-0" />
               </button>
             </div>
 
             {/* Shared Lists */}
-            <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700 opacity-50">
               <div className="flex-1">
-                <p 
+                <p
                   className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
                   style={{ fontFamily: "'Poppins', sans-serif" }}
                 >
                   Geteilte Listen
                 </p>
-                <p 
+                <p
                   className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
                   style={{ fontFamily: "'Inter', sans-serif" }}
                 >
-                  Benachrichtigungen wenn jemand eine Liste teilt
+                  Bald verfügbar
                 </p>
               </div>
               <button
-                onClick={() => {
-                  hapticFeedback.light()
-                  setNotificationsSharedLists(!notificationsSharedLists)
-                }}
-                className={`relative w-12 h-6 rounded-full transition-colors ${
-                  notificationsSharedLists ? 'bg-[#FF7E42]' : isDark ? 'bg-gray-600' : 'bg-gray-300'
+                disabled
+                className={`relative w-12 h-6 rounded-full cursor-not-allowed ${
+                  isDark ? 'bg-gray-600' : 'bg-gray-300'
                 }`}
               >
-                <div
-                  className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                    notificationsSharedLists ? 'translate-x-6' : 'translate-x-0'
-                  }`}
-                />
+                <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full translate-x-0" />
               </button>
             </div>
 
             {/* Friend Requests */}
-            <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700 opacity-50">
               <div className="flex-1">
-                <p 
+                <p
                   className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
                   style={{ fontFamily: "'Poppins', sans-serif" }}
                 >
                   Freundschaftsanfragen
                 </p>
-                <p 
+                <p
                   className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
                   style={{ fontFamily: "'Inter', sans-serif" }}
                 >
-                  Benachrichtigungen für neue Anfragen
+                  Bald verfügbar
                 </p>
               </div>
               <button
-                onClick={() => {
-                  hapticFeedback.light()
-                  setNotificationsFriendRequests(!notificationsFriendRequests)
-                }}
-                className={`relative w-12 h-6 rounded-full transition-colors ${
-                  notificationsFriendRequests ? 'bg-[#FF7E42]' : isDark ? 'bg-gray-600' : 'bg-gray-300'
+                disabled
+                className={`relative w-12 h-6 rounded-full cursor-not-allowed ${
+                  isDark ? 'bg-gray-600' : 'bg-gray-300'
                 }`}
               >
-                <div
-                  className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                    notificationsFriendRequests ? 'translate-x-6' : 'translate-x-0'
-                  }`}
-                />
+                <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full translate-x-0" />
               </button>
             </div>
           </div>
@@ -1161,68 +1123,54 @@ function Settings() {
           
           <div className="px-4 py-4 space-y-4">
             {/* Pull to Refresh */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between opacity-50">
               <div className="flex-1">
-                <p 
+                <p
                   className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
                   style={{ fontFamily: "'Poppins', sans-serif" }}
                 >
                   Pull-to-Refresh
                 </p>
-                <p 
+                <p
                   className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
                   style={{ fontFamily: "'Inter', sans-serif" }}
                 >
-                  Aktiviere Pull-to-Refresh für manuelles Aktualisieren
+                  Bald verfügbar
                 </p>
               </div>
               <button
-                onClick={() => {
-                  hapticFeedback.light()
-                  setPullToRefresh(!pullToRefresh)
-                }}
-                className={`relative w-12 h-6 rounded-full transition-colors ${
-                  pullToRefresh ? 'bg-[#FF7E42]' : isDark ? 'bg-gray-600' : 'bg-gray-300'
+                disabled
+                className={`relative w-12 h-6 rounded-full cursor-not-allowed ${
+                  isDark ? 'bg-gray-600' : 'bg-gray-300'
                 }`}
               >
-                <div
-                  className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                    pullToRefresh ? 'translate-x-6' : 'translate-x-0'
-                  }`}
-                />
+                <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full translate-x-0" />
               </button>
             </div>
 
             {/* Auto Sync */}
-            <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700 opacity-50">
               <div className="flex-1">
-                <p 
+                <p
                   className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
                   style={{ fontFamily: "'Poppins', sans-serif" }}
                 >
                   Bei Start automatisch syncen
                 </p>
-                <p 
+                <p
                   className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
                   style={{ fontFamily: "'Inter', sans-serif" }}
                 >
-                  Daten beim App-Start automatisch synchronisieren
+                  Bald verfügbar
                 </p>
               </div>
               <button
-                onClick={() => {
-                  hapticFeedback.light()
-                  setAutoSync(!autoSync)
-                }}
-                className={`relative w-12 h-6 rounded-full transition-colors ${
-                  autoSync ? 'bg-[#FF7E42]' : isDark ? 'bg-gray-600' : 'bg-gray-300'
+                disabled
+                className={`relative w-12 h-6 rounded-full cursor-not-allowed ${
+                  isDark ? 'bg-gray-600' : 'bg-gray-300'
                 }`}
               >
-                <div
-                  className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                    autoSync ? 'translate-x-6' : 'translate-x-0'
-                  }`}
-                />
+                <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full translate-x-0" />
               </button>
             </div>
 

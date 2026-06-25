@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
-import WelcomeCard from '../components/WelcomeCard'
 import FeaturesSection from '../components/FeaturesSection'
+import FirstTimeWelcomeOverlay from '../components/FirstTimeWelcomeOverlay'
 import Avatar from '../components/Avatar'
 import { supabase } from '../services/supabase'
 import { hapticFeedback } from '../utils/haptics'
@@ -1891,9 +1891,9 @@ function Dashboard() {
         style={{
           paddingTop: 0,
           top: 0,
-          paddingBottom: isEmpty 
+          paddingBottom: isEmpty
             ? `calc(40px + max(env(safe-area-inset-bottom, 0px), 20px))`
-            : `calc(120px + max(env(safe-area-inset-bottom, 0px), 34px))`, // Bottom Nav (~80px) + FAB Button (~88px) + Safe-Area + extra padding
+            : `calc(env(safe-area-inset-bottom, 0px) + 110px)`, // 36px Puffer über der Liquid-Glass-TabBar
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'
         }}
@@ -1910,17 +1910,43 @@ function Dashboard() {
         
         {/* Content-Bereich - kein zusätzliches Padding, da bereits im Spacer enthalten */}
         <div>
-          {/* Zero-State: Welcome Screen (keine Tabs, keine Bottom Navigation) */}
+          {/* Empty State: schlichter CTA, kein WelcomeCard */}
           {isEmpty ? (
-            <div style={{
-              margin: '0 -16px',
-              height: headerHeight ? `calc(100dvh - ${headerHeight + 24}px)` : 'calc(100dvh - 84px)',
+            <div className="flex flex-col items-center justify-center text-center px-6" style={{
+              minHeight: 'calc(100dvh - 200px)',
             }}>
-              <WelcomeCard
-                username={getUsername()}
-                onCreateList={() => navigate('/select-category')}
-                foodEmoji={userFoodEmoji}
-              />
+              <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-5 ${
+                isDark ? 'bg-gray-800' : 'bg-gray-100'
+              }`}>
+                <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h2 className={`text-xl font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                Noch keine Listen
+              </h2>
+              <p className={`text-sm mb-6 max-w-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                Erstelle deine erste Tier-Liste und beginne deine Spots zu ranken.
+              </p>
+              <button
+                onClick={() => {
+                  hapticFeedback.medium()
+                  navigate('/select-category')
+                }}
+                className="px-6 py-3 rounded-2xl font-semibold text-base text-white flex items-center gap-2"
+                style={{
+                  fontFamily: "'Poppins', sans-serif",
+                  background: isDark
+                    ? 'linear-gradient(135deg, #FF9357, #B85C2C)'
+                    : 'linear-gradient(135deg, #FF7E42, #FFB25A)',
+                  boxShadow: '0 8px 24px rgba(255,126,66,0.35)',
+                }}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24">
+                  <path d="M12 4v16m8-8H4" />
+                </svg>
+                Liste erstellen
+              </button>
             </div>
         ) : (
           <>
@@ -2922,6 +2948,10 @@ function Dashboard() {
           to { opacity: 1; transform: translate(-50%, 0); }
         }
       `}</style>
+
+      {/* First-time welcome overlay — appears whenever the user has no lists yet.
+          Vanishes the moment the user creates their first list. */}
+      {isEmpty && <FirstTimeWelcomeOverlay />}
     </div>
   )
 }

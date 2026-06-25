@@ -58,6 +58,8 @@ function FriendsTab() {
   const FRIENDS_PREVIEW_LIMIT = 10
   const [showAllSharedLists, setShowAllSharedLists] = useState(false)
   const [showAllFriends, setShowAllFriends] = useState(false)
+  const [invitationsExpanded, setInvitationsExpanded] = useState(false)
+  const [requestsExpanded, setRequestsExpanded] = useState(false)
   const selectedInvitation = useMemo(() => {
     if (!showInvitationDetails) return null
     return listInvitations.find(inv => inv.id === showInvitationDetails) || null
@@ -1392,6 +1394,77 @@ function FriendsTab() {
 
   return (
     <div className={`flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'}`}>
+      {/* Friends Avatar Row */}
+      {friends.length > 0 && (
+        <div className={`px-4 pt-4 pb-3 border-b ${isDark ? 'border-gray-800' : 'border-gray-100'}`}>
+          <div
+            className="flex gap-3 overflow-x-auto"
+            style={{
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            }}
+          >
+            <style>{`
+              .friends-avatar-row::-webkit-scrollbar { display: none; }
+            `}</style>
+            <div className="friends-avatar-row flex gap-3" style={{ scrollSnapType: 'x mandatory' }}>
+              {friends.map((friendship) => {
+                const friend = friendship.friend
+                if (!friend) return null
+                return (
+                  <button
+                    key={friendship.id}
+                    onClick={() => {
+                      hapticFeedback.light()
+                      sessionStorage.setItem('social_previous_path', window.location.pathname)
+                      const socialMain = document.querySelector('main[class*="overflow-y-auto"]')
+                      if (socialMain) {
+                        sessionStorage.setItem('social_scroll_position', socialMain.scrollTop.toString())
+                      }
+                      navigate(`/friend/${friend.id}`)
+                    }}
+                    className="flex flex-col items-center gap-1.5 flex-shrink-0 active:scale-95 transition-transform"
+                    style={{ width: 64, scrollSnapAlign: 'start', WebkitTapHighlightColor: 'transparent' }}
+                    aria-label={`Profil von ${getUsername(friend)}`}
+                  >
+                    <div className="relative">
+                      <div
+                        className="rounded-full p-[2px]"
+                        style={{
+                          background: isOnline(friend.id)
+                            ? 'linear-gradient(135deg, #FF7E42, #FFB25A)'
+                            : (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'),
+                        }}
+                      >
+                        <div
+                          className={`rounded-full p-[2px] ${isDark ? 'bg-gray-900' : 'bg-white'}`}
+                        >
+                          <UserAvatar user={friend} size={52} />
+                        </div>
+                      </div>
+                      {isOnline(friend.id) && (
+                        <div className={`absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 ${
+                          isDark ? 'border-gray-900' : 'border-white'
+                        }`} />
+                      )}
+                    </div>
+                    <p
+                      className={`text-[11px] font-medium truncate w-full text-center ${
+                        isDark ? 'text-gray-300' : 'text-gray-700'
+                      }`}
+                      style={{ fontFamily: "'Poppins', sans-serif" }}
+                    >
+                      {getUsername(friend)}
+                    </p>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Search and Invite */}
       <div className={`p-4 border-b ${
         isDark ? 'border-gray-700' : 'border-gray-200'
@@ -1415,6 +1488,21 @@ function FriendsTab() {
           </svg>
         </div>
       </div>
+
+      {/* Empty hint when no friends yet */}
+      {friends.length === 0 && (
+        <div className={`px-4 py-6 border-b text-center ${
+          isDark ? 'border-gray-800 text-gray-400' : 'border-gray-100 text-gray-500'
+        }`}>
+          <div className="text-3xl mb-2">👥</div>
+          <p className="text-sm" style={{ fontFamily: "'Poppins', sans-serif" }}>
+            Noch keine Freunde
+          </p>
+          <p className="text-xs mt-1">
+            Suche oben nach einem Username, um jemanden hinzuzufügen.
+          </p>
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex-1">
@@ -1492,27 +1580,41 @@ function FriendsTab() {
           </div>
         )}
 
-        {/* List Invitations - Show FIRST, before friend requests */}
-        {/* WICHTIG: Sektion immer anzeigen, damit Einladungen sofort sichtbar sind */}
+        {/* List Invitations — collapsible, only when > 0 (loading skeleton still visible) */}
+        {(listInvitationsLoading || listInvitations.length > 0) && (
         <div className="p-4 border-b" style={{ borderColor: isDark ? '#374151' : '#E5E7EB' }}>
-          <div className="flex items-center gap-2 mb-3">
-            <h3 className={`text-sm font-semibold ${
-              isDark ? 'text-gray-300' : 'text-gray-700'
-            }`}>
-              Einladungen {listInvitations.length > 0 && `(${listInvitations.length})`}
-            </h3>
-            {listInvitations.length > 0 && (
-              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-            )}
-          </div>
+          <button
+            onClick={() => {
+              hapticFeedback.light()
+              setInvitationsExpanded(prev => !prev)
+            }}
+            className="w-full flex items-center justify-between gap-2"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+          >
+            <div className="flex items-center gap-2">
+              <h3 className={`text-sm font-semibold ${
+                isDark ? 'text-gray-300' : 'text-gray-700'
+              }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                Einladungen{listInvitations.length > 0 ? ` (${listInvitations.length})` : ''}
+              </h3>
+              {listInvitations.length > 0 && (
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              )}
+            </div>
+            <svg
+              className={`w-5 h-5 transition-transform ${invitationsExpanded ? 'rotate-180' : ''} ${
+                isDark ? 'text-gray-400' : 'text-gray-500'
+              }`}
+              fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+
+          {invitationsExpanded && (
+          <div className="mt-3">
           {listInvitationsLoading ? (
             <SectionSkeleton isDark={isDark} rows={2} />
-          ) : listInvitations.length === 0 ? (
-            <div className={`text-center py-4 ${
-              isDark ? 'text-gray-400' : 'text-gray-500'
-            }`}>
-              <p className="text-xs">Keine ausstehenden Einladungen</p>
-            </div>
           ) : (
               <div className="space-y-3">
                 {listInvitations.map((invitation) => {
@@ -1662,17 +1764,42 @@ function FriendsTab() {
                 })}
               </div>
           )}
+          </div>
+          )}
         </div>
+        )}
 
-        {/* Incoming Requests */}
+        {/* Incoming Requests — collapsible, only when > 0 */}
         {incomingRequests.length > 0 && (
-          <div className="p-4">
-            <h3 className={`text-sm font-semibold mb-3 ${
-              isDark ? 'text-gray-300' : 'text-gray-700'
-            }`}>
-              Anfragen ({incomingRequests.length})
-            </h3>
-            <div className="space-y-3">
+          <div className="p-4 border-b" style={{ borderColor: isDark ? '#374151' : '#E5E7EB' }}>
+            <button
+              onClick={() => {
+                hapticFeedback.light()
+                setRequestsExpanded(prev => !prev)
+              }}
+              className="w-full flex items-center justify-between gap-2"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+            >
+              <div className="flex items-center gap-2">
+                <h3 className={`text-sm font-semibold ${
+                  isDark ? 'text-gray-300' : 'text-gray-700'
+                }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  Anfragen ({incomingRequests.length})
+                </h3>
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              </div>
+              <svg
+                className={`w-5 h-5 transition-transform ${requestsExpanded ? 'rotate-180' : ''} ${
+                  isDark ? 'text-gray-400' : 'text-gray-500'
+                }`}
+                fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+
+            {requestsExpanded && (
+            <div className="space-y-3 mt-3">
               {incomingRequests.map((request) => {
                 const requester = request.requester
                 return (
@@ -1721,6 +1848,7 @@ function FriendsTab() {
                 )
               })}
             </div>
+            )}
           </div>
         )}
 
@@ -1928,118 +2056,6 @@ function FriendsTab() {
           )}
         </div>
 
-        {/* Friends List */}
-        <div className="p-4">
-          <h3 className={`text-sm font-semibold mb-3 ${
-            isDark ? 'text-gray-300' : 'text-gray-700'
-          }`}>
-            Freunde ({friends.length})
-          </h3>
-          {friends.length === 0 ? (
-            <div className={`text-center py-12 ${
-              isDark ? 'text-gray-400' : 'text-gray-500'
-            }`}>
-              <div className="text-4xl mb-4">👥</div>
-              <p className="text-sm mb-2">Noch keine Freunde</p>
-              <p className="text-xs">Finde Freunde über die Suche oder teile deinen Einladungslink</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {friendsToDisplay.map((friendship) => {
-                const friend = friendship.friend
-                if (!friend) return null
-
-                return (
-                  <button
-                    key={friendship.id}
-                    onClick={() => {
-                      // Speichere aktuelle Route und Scrollposition, bevor wir navigieren
-                      sessionStorage.setItem('social_previous_path', window.location.pathname)
-                      
-                      // Finde den Scroll-Container im Social-Component
-                      // Der Container ist im Parent-Component (Social.jsx), daher müssen wir ihn über das DOM finden
-                      const socialMain = document.querySelector('main[class*="overflow-y-auto"]')
-                      if (socialMain) {
-                        const scrollPosition = socialMain.scrollTop
-                        sessionStorage.setItem('social_scroll_position', scrollPosition.toString())
-                      }
-                      
-                      navigate(`/friend/${friend.id}`)
-                    }}
-                    className={`w-full p-4 rounded-xl text-left transition-all active:scale-[0.98] ${
-                      isDark ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="relative flex-shrink-0">
-                        <UserAvatar user={friend} size={48} />
-                        {isOnline(friend.id) && (
-                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-800" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`font-semibold text-sm truncate ${
-                          isDark ? 'text-white' : 'text-gray-900'
-                        }`}>
-                          {getUsername(friend)}
-                        </p>
-                        <div className="flex items-center gap-3 mt-1">
-                          {friendship.stats?.isVisible ? (
-                            <>
-                              <span className={`text-xs ${
-                                isDark ? 'text-gray-400' : 'text-gray-500'
-                              }`}>
-                                {friendship.stats.totalSpots || 0} Spots
-                              </span>
-                              <span className={`text-xs ${
-                                isDark ? 'text-gray-400' : 'text-gray-500'
-                              }`}>
-                                ⭐ {(friendship.stats.averageScore || 0).toFixed(1)}/10
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <span className={`text-xs ${
-                                isDark ? 'text-gray-400' : 'text-gray-500'
-                              }`}>
-                                0 Spots
-                              </span>
-                              <span className={`text-xs ${
-                                isDark ? 'text-gray-400' : 'text-gray-500'
-                              }`}>
-                                ⭐ 0.0/10
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <svg className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </button>
-                )
-              })}
-              {(!showAllFriends && friends.length > FRIENDS_PREVIEW_LIMIT) && (
-                <button
-                  onClick={() => {
-                    hapticFeedback.light()
-                    setShowAllFriends(true)
-                  }}
-                  className={`w-full mt-3 py-3 px-4 rounded-xl font-semibold text-sm transition-all active:scale-[0.98] border-2 ${
-                    isDark 
-                      ? 'bg-gray-800 hover:bg-gray-700 text-gray-200 border-gray-700' 
-                      : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200'
-                  }`}
-                  aria-label="Alle Freunde anzeigen"
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
-                  + {friends.length - FRIENDS_PREVIEW_LIMIT} weitere Freunde anzeigen
-                </button>
-              )}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Toast Notification */}

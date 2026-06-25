@@ -10,7 +10,7 @@ export default function Discover() {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      paddingBottom: 'calc(100px + env(safe-area-inset-bottom, 0px))',
+      paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 110px)',
       background: isDark ? '#0f0f13' : '#f5f5f7',
     }}>
       <div style={{

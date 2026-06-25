@@ -199,9 +199,9 @@ function Landing() {
               transition: `opacity 0.4s ${springEasing.default} 0.3s, transform 0.4s ${springEasing.gentle} 0.3s`,
           }}
         >
-          {/* Sign Up Button - Modernisiert mit verbesserten Farbverläufen und Schatten */}
+          {/* Registrieren Button — führt in den swipebaren Onboarding-Flow */}
           <Link
-            to="/register"
+            to="/onboarding"
             onClick={() => hapticFeedback.medium()}
             onMouseDown={(e) => {
               hapticFeedback.light()
@@ -232,10 +232,10 @@ function Landing() {
               width: '100%',
             }}
           >
-            Sign Up
+            Registrieren
           </Link>
 
-          {/* Login Button - Modernisiert mit verbessertem Glassmorphism und Dark Mode Support */}
+          {/* Anmelden Button — Glassmorphism mit Dark-Mode Support */}
           <Link
             to="/login"
             onClick={() => hapticFeedback.medium()}
@@ -272,7 +272,7 @@ function Landing() {
               width: '100%',
             }}
           >
-            Login
+            Anmelden
           </Link>
         </div>
       </div>

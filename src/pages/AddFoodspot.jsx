@@ -7,6 +7,7 @@ import { scrollFieldIntoView } from '../utils/keyboard'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 import { getCategoryTerms } from '../utils/categoryTerms'
 import { calculateTier } from '../lib/categories'
+import { hapticFeedback } from '../utils/haptics'
 
 // Category definitions with their specific criteria
 const DEFAULT_SCALE = 5
@@ -199,6 +200,7 @@ function AddFoodspot() {
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [toast, setToast] = useState(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [listCategory, setListCategory] = useState(null) // Category from list
@@ -592,9 +594,8 @@ function AddFoodspot() {
   // Handle delete
   const handleDelete = async () => {
     const terms = getCategoryTerms(list?.category || listCategory)
-    if (!window.confirm(`Möchtest du dieses ${terms.singular} wirklich löschen?`)) {
-      return
-    }
+    setShowDeleteConfirm(false)
+    hapticFeedback.success()
 
     // Optimistic update: Navigate immediately
     showToast(`${terms.singular} wird gelöscht...`, 'success')
@@ -1035,7 +1036,7 @@ function AddFoodspot() {
       )}
 
       {/* Header */}
-      <header 
+      <header
         ref={formHeaderRef}
         className={`header-safe border-b fixed top-0 left-0 right-0 z-20 shadow-sm backdrop-blur-xl ${
           isDark
@@ -1043,27 +1044,66 @@ function AddFoodspot() {
             : 'bg-white/80 border-gray-200/50'
         }`}
       >
-        <div className="flex items-center justify-between px-4 py-2">
+        <div className="flex items-center justify-between px-4 py-2 gap-2">
+          {/* Close (X) — left */}
           <button
-            onClick={() => navigate(`/tierlist/${id}`)}
-            className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
+            onClick={() => { hapticFeedback.light(); navigate(`/tierlist/${id}`) }}
+            className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all flex-shrink-0 ${
               isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
             }`}
+            aria-label="Abbrechen"
           >
-            <svg className={`w-6 h-6 ${isDark ? 'text-gray-200' : 'text-gray-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+            <svg className={`w-6 h-6 ${isDark ? 'text-gray-200' : 'text-gray-700'}`} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <path d="M6 6l12 12M6 18L18 6" />
             </svg>
           </button>
 
-          <h1 className={`text-lg font-bold ${
+          {/* Title — center */}
+          <h1 className={`text-lg font-bold flex-1 text-center px-2 truncate ${
             isDark ? 'text-white' : 'text-gray-900'
           }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-            {isEditMode 
-              ? getCategoryTerms(list?.category || listCategory).editAction 
+            {isEditMode
+              ? getCategoryTerms(list?.category || listCategory).editAction
               : getCategoryTerms(list?.category || listCategory).createAction}
           </h1>
 
-          <div className="w-10" />
+          {/* Trash + Check — right */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {isEditMode && (
+              <button
+                onClick={() => { hapticFeedback.light(); setShowDeleteConfirm(true) }}
+                disabled={isSubmitting}
+                className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all disabled:opacity-40 ${
+                  isDark ? 'hover:bg-red-900/30' : 'hover:bg-red-50'
+                }`}
+                aria-label="Löschen"
+              >
+                <svg className={`w-[22px] h-[22px] ${
+                  isDark ? 'text-red-400' : 'text-red-500'
+                }`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z" />
+                  <path d="M10 11v6M14 11v6" />
+                </svg>
+              </button>
+            )}
+
+            <button
+              onClick={() => { hapticFeedback.medium(); handleSubmit() }}
+              disabled={isSubmitting}
+              className="w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all disabled:opacity-40"
+              style={{
+                background: isDark
+                  ? 'linear-gradient(135deg, #FF9357, #B85C2C)'
+                  : 'linear-gradient(135deg, #FF7E42, #FFB25A)',
+                boxShadow: '0 2px 10px rgba(255,126,66,0.35)',
+              }}
+              aria-label={isEditMode ? 'Speichern' : 'Erstellen'}
+            >
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <path d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -1323,53 +1363,52 @@ function AddFoodspot() {
             }`}>{formData.notes.length}/500</p>
           </div>
 
-          {/* Submit/Edit Buttons */}
-          {isEditMode ? (
+        </div>
+      </main>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className={`rounded-3xl shadow-2xl max-w-md w-full p-6 ${
+            isDark ? 'bg-gray-800' : 'bg-white'
+          }`}>
+            <h2 className={`text-2xl font-bold mb-3 ${
+              isDark ? 'text-white' : 'text-gray-900'
+            }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+              Spot löschen?
+            </h2>
+            <p className={`mb-6 ${
+              isDark ? 'text-gray-300' : 'text-gray-600'
+            }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+              Möchtest du diesen Spot wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+            </p>
             <div className="flex gap-3">
-              {/* Delete Button - Left */}
+              <button
+                onClick={() => { hapticFeedback.light(); setShowDeleteConfirm(false) }}
+                className={`flex-1 py-3 rounded-[14px] border font-semibold transition-all ${
+                  isDark
+                    ? 'border-gray-600 text-gray-200 hover:bg-gray-700'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+                style={{ fontFamily: "'Poppins', sans-serif" }}
+              >
+                Abbrechen
+              </button>
               <button
                 onClick={handleDelete}
-                disabled={isSubmitting}
-                className={`flex-1 py-4 rounded-[20px] font-semibold text-lg text-white shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 ${
+                className={`flex-1 py-3 rounded-[14px] text-white font-semibold shadow-lg transition-all ${
                   isDark
                     ? 'bg-red-600 hover:bg-red-700'
                     : 'bg-red-500 hover:bg-red-600'
                 }`}
                 style={{ fontFamily: "'Poppins', sans-serif" }}
               >
-                🗑️ Löschen
-              </button>
-
-              {/* Save Button - Right */}
-              <button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className={`flex-1 py-4 rounded-[20px] font-semibold text-lg text-white shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 ${
-                  isDark
-                    ? 'bg-gradient-to-r from-[#FF9357] to-[#B85C2C]'
-                    : 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]'
-                }`}
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-              >
-                💾 Speichern
+                Löschen
               </button>
             </div>
-          ) : (
-            <button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className={`w-full py-4 rounded-[20px] font-semibold text-lg text-white shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 ${
-                isDark
-                  ? 'bg-gradient-to-r from-[#FF9357] to-[#B85C2C]'
-                  : 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]'
-              }`}
-              style={{ fontFamily: "'Poppins', sans-serif" }}
-            >
-              💾 {getCategoryTerms(list?.category || listCategory).singular} speichern
-            </button>
-          )}
+          </div>
         </div>
-      </main>
+      )}
 
       {/* Toast */}
       {toast && (

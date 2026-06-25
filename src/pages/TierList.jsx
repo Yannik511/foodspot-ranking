@@ -682,7 +682,7 @@ function TierList() {
           left: 0,
           right: 0,
           paddingTop: 24,
-          paddingBottom: `calc(100px + env(safe-area-inset-bottom, 0px))`,
+          paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 110px)`,
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch',
           background: isDark ? '#111827' : '#F9FAFB'
