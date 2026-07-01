@@ -1,6 +1,13 @@
 -- Migration: update_shared_foodspot
 -- Ersetzt die fehlerhafte Name-Matching-Logik von merge_foodspot im Edit-Mode.
 -- merge_foodspot bleibt unverändert und wird weiterhin für neue Spots verwendet.
+--
+-- Berechtigungsmodell (rein rechtebasiert, Urheberschaft irrelevant):
+--   Spot-Felder (Name, Beschreibung, Adresse, Standort, ...) darf bearbeiten:
+--     - Listen-Owner: immer
+--     - Editor-Mitglied: nur wenn Owner das Recht `members_can_edit_spots` aktiviert hat
+--   Wer den Spot ursprünglich erstellt hat, spielt KEINE Rolle.
+--   Bewertung (Score/Criteria/Comment): jeder Editor/Owner für die eigene Bewertung.
 
 CREATE OR REPLACE FUNCTION "public"."update_shared_foodspot"(
   "p_foodspot_id"  uuid,
@@ -21,11 +28,12 @@ CREATE OR REPLACE FUNCTION "public"."update_shared_foodspot"(
 LANGUAGE "plpgsql" SECURITY DEFINER
 AS $$
 DECLARE
-  v_user_id         UUID := auth.uid();
-  v_foodspot        foodspots;
-  v_is_list_owner   BOOLEAN;
-  v_is_member       BOOLEAN;
-  v_is_spot_owner   BOOLEAN;
+  v_user_id          UUID := auth.uid();
+  v_foodspot         foodspots;
+  v_is_list_owner    BOOLEAN;
+  v_is_editor        BOOLEAN := FALSE;
+  v_members_can_edit BOOLEAN := FALSE;
+  v_can_edit         BOOLEAN;
   v_normalized_score NUMERIC(4,2);
 BEGIN
   IF v_user_id IS NULL THEN
@@ -39,28 +47,33 @@ BEGIN
     RAISE EXCEPTION 'Spot not found in this list' USING ERRCODE = 'P0002';
   END IF;
 
-  -- Listen-Owner prüfen
-  SELECT EXISTS (
-    SELECT 1 FROM lists WHERE id = p_list_id AND user_id = v_user_id
-  ) INTO v_is_list_owner;
+  -- Owner der Liste + Edit-Toggle in einem Zug ermitteln
+  SELECT (l.user_id = v_user_id), COALESCE(l.members_can_edit_spots, FALSE)
+  INTO v_is_list_owner, v_members_can_edit
+  FROM lists l
+  WHERE l.id = p_list_id;
 
+  IF v_is_list_owner IS NULL THEN
+    RAISE EXCEPTION 'List not found' USING ERRCODE = 'P0002';
+  END IF;
+
+  -- Editor-Mitglied?
   IF NOT v_is_list_owner THEN
     SELECT EXISTS (
       SELECT 1 FROM list_members
       WHERE list_id = p_list_id AND user_id = v_user_id AND role = 'editor'
-    ) INTO v_is_member;
-  ELSE
-    v_is_member := TRUE;
+    ) INTO v_is_editor;
   END IF;
 
-  IF NOT v_is_list_owner AND NOT v_is_member THEN
+  -- Zugang zur Funktion (u. a. für Bewertungen): Owner oder Editor
+  IF NOT v_is_list_owner AND NOT v_is_editor THEN
     RAISE EXCEPTION 'Not authorized to edit this list' USING ERRCODE = '42501';
   END IF;
 
-  -- Spot-Owner prüfen (darf Name, Beschreibung, Adresse etc. ändern)
-  SELECT EXISTS (
-    SELECT 1 FROM foodspots WHERE id = p_foodspot_id AND user_id = v_user_id
-  ) INTO v_is_spot_owner;
+  -- RECHT zum Bearbeiten der Spot-Felder (Name/Beschreibung/Standort/...):
+  -- Owner immer, Editor nur wenn Owner "Spots bearbeiten" aktiviert hat.
+  -- Urheberschaft des Spots spielt bewusst KEINE Rolle.
+  v_can_edit := v_is_list_owner OR (v_is_editor AND v_members_can_edit);
 
   -- Score normalisieren
   IF p_score IS NOT NULL THEN
@@ -73,33 +86,33 @@ BEGIN
   END IF;
 
   -- UPDATE per ID — niemals INSERT
-  -- Spot-Felder (Name, Beschreibung, Adresse, ...) nur wenn Spot-Owner
-  -- Bewertung immer (jeder Teilnehmer kann seine Bewertung ändern)
+  -- Spot-Felder nur wenn Bearbeitungsrecht (v_can_edit), unabhängig von der Urheberschaft.
+  -- Bewertung immer (jeder Teilnehmer kann seine eigene Bewertung ändern)
   UPDATE foodspots SET
-    name            = CASE WHEN v_is_spot_owner AND p_name IS NOT NULL
+    name            = CASE WHEN v_can_edit AND p_name IS NOT NULL
                         THEN TRIM(p_name) ELSE name END,
-    normalized_name = CASE WHEN v_is_spot_owner AND p_name IS NOT NULL
+    normalized_name = CASE WHEN v_can_edit AND p_name IS NOT NULL
                         THEN LOWER(TRIM(p_name)) ELSE normalized_name END,
-    description     = CASE WHEN v_is_spot_owner
+    description     = CASE WHEN v_can_edit
                         THEN COALESCE(NULLIF(TRIM(p_description), ''), description)
                         ELSE description END,
-    category        = CASE WHEN v_is_spot_owner
+    category        = CASE WHEN v_can_edit
                         THEN COALESCE(p_category, category)
                         ELSE category END,
-    address         = CASE WHEN v_is_spot_owner
+    address         = CASE WHEN v_can_edit
                         THEN COALESCE(NULLIF(TRIM(p_address), ''), address)
                         ELSE address END,
-    latitude        = CASE WHEN v_is_spot_owner
+    latitude        = CASE WHEN v_can_edit
                         THEN COALESCE(p_latitude, latitude) ELSE latitude END,
-    longitude       = CASE WHEN v_is_spot_owner
+    longitude       = CASE WHEN v_can_edit
                         THEN COALESCE(p_longitude, longitude) ELSE longitude END,
-    cover_photo_url = CASE WHEN v_is_spot_owner
+    cover_photo_url = CASE WHEN v_can_edit
                         THEN COALESCE(p_cover_photo, cover_photo_url)
                         ELSE cover_photo_url END,
-    phone           = CASE WHEN v_is_spot_owner
+    phone           = CASE WHEN v_can_edit
                         THEN COALESCE(NULLIF(TRIM(p_phone), ''), phone)
                         ELSE phone END,
-    website         = CASE WHEN v_is_spot_owner
+    website         = CASE WHEN v_can_edit
                         THEN COALESCE(NULLIF(TRIM(p_website), ''), website)
                         ELSE website END,
     updated_at      = TIMEZONE('utc'::text, NOW())

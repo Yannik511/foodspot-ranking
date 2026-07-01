@@ -8,6 +8,7 @@ import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 import { getCategoryTerms } from '../utils/categoryTerms'
 import { calculateTier } from '../lib/categories'
 import { hapticFeedback } from '../utils/haptics'
+import LocationPickerSheet from '../components/LocationPickerSheet'
 
 // Category definitions with their specific criteria
 const DEFAULT_SCALE = 5
@@ -201,6 +202,7 @@ function AddFoodspot() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [toast, setToast] = useState(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showLocationPicker, setShowLocationPicker] = useState(false)
 
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [listCategory, setListCategory] = useState(null) // Category from list
@@ -1145,38 +1147,80 @@ function AddFoodspot() {
 
           {/* Location */}
           <div className={`rounded-[20px] shadow-lg border p-6 ${
-            isDark
-              ? 'bg-gray-800 border-gray-700'
-              : 'bg-white border-gray-100'
+            isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
           }`}>
-            <label className={`block text-sm font-semibold mb-2 flex items-center gap-2 ${
+            <label className={`block text-sm font-semibold mb-3 flex items-center gap-2 ${
               isDark ? 'text-gray-200' : 'text-gray-700'
             }`}>
               <span className="text-lg">📍</span>
-              {list?.list_mode === 'product' ? 'Ort' : 'Adresse / Stadtteil'}
-              <span className={`font-normal ${
-                isDark ? 'text-gray-400' : 'text-gray-500'
-              }`}>(Optional)</span>
+              {list?.list_mode === 'product' ? 'Ort' : 'Standort'}
+              <span className={`font-normal ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>(Optional)</span>
             </label>
-            {list?.list_mode === 'product' && (
-              <p className={`text-xs mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                Bei Produkten optional — wird gespeichert, falls du den Ort für eine spätere Kartenansicht behalten möchtest.
-              </p>
-            )}
 
-            <input
-              type="text"
-              value={formData.address || ''}
-              onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value.replace(/[<>]/g, '') }))}
-              placeholder={list?.list_mode === 'product' ? 'z. B. München (optional)' : 'z. B. Hauptstr. 5, Gilching oder nur Gilching'}
-              maxLength={200}
-              className={`w-full px-4 py-3 text-base rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
-                isDark
-                  ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
-                  : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
+            <button
+              type="button"
+              onClick={() => { hapticFeedback.light(); setShowLocationPicker(true) }}
+              className={`w-full rounded-[14px] border-2 border-dashed transition-all active:scale-[0.98] overflow-hidden ${
+                formData.latitude
+                  ? isDark ? 'border-[#FF9357]/40 bg-[#FF9357]/10' : 'border-[#FF7E42]/40 bg-[#FF7E42]/05'
+                  : isDark ? 'border-gray-600 hover:border-[#FF9357]/60' : 'border-gray-300 hover:border-[#FF7E42]/60'
               }`}
-              onFocus={handleFieldFocus}
-            />
+            >
+              {formData.latitude ? (
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'linear-gradient(135deg, #FF9357, #B85C2C)' }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                      stroke="white" strokeWidth="2.5" strokeLinecap="round">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                      <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <div className="text-xs mb-0.5" style={{
+                      color: isDark ? '#FF9357' : '#FF7E42',
+                      fontFamily: "'Poppins', sans-serif",
+                    }}>
+                      Standort gesetzt
+                    </div>
+                    <div className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}
+                      style={{ fontFamily: "'Poppins', sans-serif" }}>
+                      {formData.address || `${formData.latitude.toFixed(4)}, ${formData.longitude.toFixed(4)}`}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setFormData(prev => ({ ...prev, address: '', latitude: null, longitude: null }))
+                    }}
+                    className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                      stroke={isDark ? '#aaa' : '#666'} strokeWidth="2.5" strokeLinecap="round">
+                      <path d="M6 6l12 12M6 18L18 6"/>
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 px-4 py-3.5">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    isDark ? 'bg-gray-700' : 'bg-gray-100'
+                  }`}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                      stroke={isDark ? '#888' : '#999'} strokeWidth="2.5" strokeLinecap="round">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                      <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                  </div>
+                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
+                    style={{ fontFamily: "'Poppins', sans-serif" }}>
+                    Auf Karte suchen...
+                  </span>
+                </div>
+              )}
+            </button>
 
             {errors.location && <p className="mt-2 text-sm text-red-500">{errors.location}</p>}
           </div>
@@ -1442,6 +1486,15 @@ function AddFoodspot() {
           to { opacity: 1; transform: translate(-50%, 0); }
         }
       `}</style>
+
+      {/* Location Picker */}
+      <LocationPickerSheet
+        isOpen={showLocationPicker}
+        onClose={() => setShowLocationPicker(false)}
+        onConfirm={({ address, latitude, longitude }) => {
+          setFormData(prev => ({ ...prev, address, latitude, longitude }))
+        }}
+      />
     </div>
   )
 }

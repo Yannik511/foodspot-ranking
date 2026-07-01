@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useTheme } from '../../contexts/ThemeContext'
 import { supabase } from '../../services/supabase'
 import { useScrollHeader } from '../../hooks/useScrollHeader'
+import LocationPickerSheet from '../../components/LocationPickerSheet'
 
 export default function EditSpot() {
   const { id } = useParams()
@@ -23,6 +24,10 @@ export default function EditSpot() {
   const [listOwnerUserId, setListOwnerUserId] = useState(null)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [address, setAddress] = useState('')
+  const [latitude, setLatitude] = useState(null)
+  const [longitude, setLongitude] = useState(null)
+  const [showLocationPicker, setShowLocationPicker] = useState(false)
   const [errors, setErrors] = useState({})
   const [toast, setToast] = useState(null)
 
@@ -51,6 +56,9 @@ export default function EditSpot() {
         setListOwnerUserId(listData?.user_id ?? null)
         setName(spotData.name || '')
         setDescription(spotData.description || '')
+        setAddress(spotData.address || '')
+        setLatitude(spotData.latitude ?? null)
+        setLongitude(spotData.longitude ?? null)
       } catch {
         navigate(-1)
       } finally {
@@ -63,6 +71,9 @@ export default function EditSpot() {
   const isListOwner = listOwnerUserId === user?.id
   const isSpotOwner = spot?.user_id === user?.id
   const canDelete = isListOwner || isSpotOwner
+  // Standort gilt als gesetzt, sobald eine Adresse ODER Koordinaten vorhanden sind.
+  // Die Listenübersicht zeigt `address` an — ältere Spots haben teils Adresse ohne Koordinaten.
+  const hasLocation = latitude != null || !!address.trim()
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
@@ -84,6 +95,9 @@ export default function EditSpot() {
         p_list_id: id,
         p_name: name.trim(),
         p_description: description.trim() || null,
+        p_address: address.trim() || null,
+        p_latitude: latitude ?? null,
+        p_longitude: longitude ?? null,
       })
       if (error) throw error
       showToast('Spot aktualisiert')
@@ -231,6 +245,70 @@ export default function EditSpot() {
           />
         </div>
 
+        {/* Location */}
+        <div style={{
+          borderRadius: 20, padding: 20,
+          background: isDark ? 'rgba(255,255,255,0.04)' : '#fff',
+          border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+        }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 600, marginBottom: 4, color: isDark ? '#fff' : '#000', fontFamily: "'Poppins', sans-serif" }}>
+            <span style={{ fontSize: 16 }}>📍</span>
+            Standort <span style={{ fontWeight: 400, opacity: 0.5 }}>(optional)</span>
+          </label>
+          <p style={{ margin: '0 0 10px', fontSize: 12, color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)', fontFamily: "'Poppins', sans-serif" }}>
+            Für alle Teilnehmer sichtbar — auf der Karte suchen und übernehmen.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowLocationPicker(true)}
+            style={{
+              width: '100%', borderRadius: 14, padding: '12px 14px', cursor: 'pointer',
+              border: `1.5px dashed ${hasLocation
+                ? (isDark ? 'rgba(255,147,87,0.4)' : 'rgba(255,126,66,0.4)')
+                : (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)')}`,
+              background: hasLocation
+                ? (isDark ? 'rgba(255,147,87,0.08)' : 'rgba(255,126,66,0.05)')
+                : (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'),
+              display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
+              WebkitTapHighlightColor: 'transparent', boxSizing: 'border-box',
+            }}
+          >
+            <div style={{
+              width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: hasLocation
+                ? 'linear-gradient(135deg, #FF9357, #B85C2C)'
+                : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke={hasLocation ? '#fff' : (isDark ? '#888' : '#999')} strokeWidth="2.5" strokeLinecap="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {hasLocation ? (
+                <>
+                  <div style={{ fontSize: 11, marginBottom: 2, color: isDark ? '#FF9357' : '#FF7E42', fontFamily: "'Poppins', sans-serif" }}>
+                    Standort gesetzt · tippen zum Ändern
+                  </div>
+                  <div style={{
+                    fontSize: 14, fontWeight: 600, color: isDark ? '#fff' : '#000',
+                    fontFamily: "'Poppins', sans-serif",
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>
+                    {address || (latitude != null ? `${latitude.toFixed(4)}, ${longitude?.toFixed(4)}` : '')}
+                  </div>
+                </>
+              ) : (
+                <span style={{ fontSize: 14, color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)', fontFamily: "'Poppins', sans-serif" }}>
+                  Auf Karte suchen…
+                </span>
+              )}
+            </div>
+          </button>
+        </div>
+
         {/* Delete Section */}
         {canDelete && (
           <div style={{
@@ -353,6 +431,16 @@ export default function EditSpot() {
           {toast.message}
         </div>
       )}
+
+      <LocationPickerSheet
+        isOpen={showLocationPicker}
+        onClose={() => setShowLocationPicker(false)}
+        onConfirm={({ address: addr, latitude: lat, longitude: lng }) => {
+          setAddress(addr || '')
+          setLatitude(lat)
+          setLongitude(lng)
+        }}
+      />
     </div>
   )
 }
