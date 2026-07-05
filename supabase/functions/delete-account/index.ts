@@ -55,7 +55,9 @@ Deno.serve(async (req: Request) => {
       headers: { ...cors, 'Content-Type': 'application/json' },
     })
   } catch (e) {
-    return new Response(JSON.stringify({ error: (e as Error).message }), {
+    // Details nur serverseitig loggen, nicht an den Client durchreichen
+    console.error('delete-account error:', e)
+    return new Response(JSON.stringify({ error: 'Account konnte nicht gelöscht werden.' }), {
       status: 500,
       headers: { ...cors, 'Content-Type': 'application/json' },
     })
