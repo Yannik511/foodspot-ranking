@@ -3516,7 +3516,7 @@ function EditSharedListModal({ list, onClose, onSave }) {
       setShowSuggestions(false)
     } catch (error) {
       console.error('Error inviting friends:', error)
-      alert('Fehler beim Einladen: ' + error.message)
+      alert('Einladung fehlgeschlagen. Bitte versuche es erneut.')
     } finally {
       setInviting(false)
     }
@@ -3549,7 +3549,7 @@ function EditSharedListModal({ list, onClose, onSave }) {
       ))
     } catch (error) {
       console.error('Error changing role:', error)
-      alert('Fehler beim Ändern der Rolle: ' + error.message)
+      alert('Rolle konnte nicht geändert werden. Bitte versuche es erneut.')
     }
   }
 

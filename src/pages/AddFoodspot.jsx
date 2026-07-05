@@ -517,13 +517,8 @@ function AddFoodspot() {
       // User-friendly Error Message
       const errorInfo = getLocationErrorMessage(error)
       
-      // Zeige ausführliche Fehlermeldung
-      if (error.code === 1) { // PERMISSION_DENIED
-        alert(errorInfo.title + '\n\n' + errorInfo.message)
-      } else {
-        showToast(errorInfo.icon + ' ' + errorInfo.title, 'error')
-      }
-      
+      showToast(errorInfo.icon + ' ' + errorInfo.title, 'error')
+
     } finally {
       setLoadingLocation(false)
     }
@@ -532,7 +527,7 @@ function AddFoodspot() {
   // Get current position
   const handleCurrentPosition = () => {
     if (!navigator.geolocation) {
-      alert('Geolocation wird von deinem Browser nicht unterstützt')
+      showToast('Standort wird von deinem Gerät nicht unterstützt', 'error')
       return
     }
 
@@ -559,7 +554,8 @@ function AddFoodspot() {
         }
       },
       (error) => {
-        alert('Fehler beim Abrufen des Standorts: ' + error.message)
+        console.error('Standort-Fehler:', error)
+        showToast('Standort konnte nicht abgerufen werden', 'error')
       }
     )
   }
