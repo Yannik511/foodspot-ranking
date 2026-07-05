@@ -111,7 +111,7 @@ function SharedTierList() {
   const isMember = userRole !== 'viewer' && !!userRole
   const canAddSpots    = isOwner || (isMember && (list?.members_can_add_spots  ?? false))
   const canEditSpots   = isOwner || (isMember && (list?.members_can_edit_spots ?? false))
-  const canEditList    = isOwner
+  const canEditList    = isOwner || (isMember && (list?.members_can_edit_list ?? false))
   const canUploadPhotos = isOwner || isMember
 
   usePlusAction(canAddSpots ? () => {
@@ -540,8 +540,10 @@ function SharedTierList() {
     if (ratingEntries.length === 0) return null
 
     // Spot-Ersteller immer zuerst (auch ohne eigene Bewertung),
-    // dann restliche Bewerter in Reihenfolge ihrer Erstbewertung (aufsteigend)
-    const spotCreatorId = spot.user_id
+    // dann restliche Bewerter in Reihenfolge ihrer Erstbewertung (aufsteigend).
+    // Ersteller = first_uploader_id (unveränderlicher Original-Ersteller, wird auch
+    // so vorgeladen); Fallback user_id für Altbestände ohne first_uploader_id.
+    const spotCreatorId = spot.first_uploader_id || spot.user_id
     const sortedByDate = [...ratingEntries].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
     const seen = new Set()
     const orderedIds = []
@@ -1063,13 +1065,6 @@ function SharedTierList() {
                                       isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
                                     }`}>
                                       {spot.category}
-                                    </span>
-                                  )}
-                                  {spot.ratings_count > 0 && (
-                                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                                      isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'
-                                    }`}>
-                                      {spot.ratings_count}
                                     </span>
                                   )}
                                 </div>

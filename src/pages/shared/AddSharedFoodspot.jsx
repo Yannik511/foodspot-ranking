@@ -14,6 +14,8 @@ import {
 import { getCategoryTerms } from '../../utils/categoryTerms'
 import { CATEGORIES, CRITERIA_ICONS, getCategoryScale, calculateTier } from '../../lib/categories'
 import LocationPickerSheet from '../../components/LocationPickerSheet'
+import SaveButton from '../../components/SaveButton'
+import { hapticFeedback } from '../../utils/haptics'
 
 function AddSharedFoodspot() {
   const { id } = useParams()
@@ -225,9 +227,13 @@ function AddSharedFoodspot() {
   }
 
 
-  // Spot-Owner: darf Name, Beschreibung und Adresse ändern
-  // Im Create-Mode ist der aktuelle User immer der Owner des neuen Spots
-  const isSpotOwner = !isEditMode || !existingSpot || existingSpot.user_id === user?.id
+  // Rechtebasiert (identisch zu SharedTierList / Backend update_shared_foodspot):
+  // Spot-Felder (Name, Beschreibung, Adresse, Standort) darf ändern, wer Bearbeitungsrecht hat —
+  // Owner immer, Mitglied nur wenn members_can_edit_spots aktiv. Urheberschaft ist egal.
+  // Im Create-Mode ist Bearbeiten immer erlaubt (neuer Spot).
+  const canEditSpotFields = !isEditMode
+    || userRole === 'owner'
+    || (userRole === 'editor' && (list?.members_can_edit_spots ?? false))
 
   const handleDelete = async () => {
     if (!spotId || !existingSpot) {
@@ -630,7 +636,17 @@ function AddSharedFoodspot() {
               {list.list_name}
             </h1>
           </div>
-          <div className="w-11" />
+          {showCategorySelection ? (
+            <div className="w-11" />
+          ) : (
+            <SaveButton
+              onClick={() => { hapticFeedback.medium(); handleSubmit() }}
+              saving={isSubmitting}
+              isDark={isDark}
+              size={44}
+              label={isEditMode ? 'Änderungen speichern' : 'Spot hinzufügen'}
+            />
+          )}
         </div>
       </header>
 
@@ -771,19 +787,19 @@ function AddSharedFoodspot() {
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => isSpotOwner && setFormData(prev => ({ ...prev, name: e.target.value }))}
-                readOnly={!isSpotOwner}
+                onChange={(e) => canEditSpotFields && setFormData(prev => ({ ...prev, name: e.target.value }))}
+                readOnly={!canEditSpotFields}
                 placeholder="z. B. BLN Döner"
                 className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
                   isDark
                     ? 'bg-gray-800 border-gray-700 text-white focus:ring-[#FF9357]/20'
                     : 'bg-white border-gray-200 text-gray-900 focus:ring-[#FF7E42]/30'
-                } ${!isSpotOwner ? 'opacity-60 cursor-not-allowed' : ''}`}
+                } ${!canEditSpotFields ? 'opacity-60 cursor-not-allowed' : ''}`}
                 onFocus={handleFieldFocus}
               />
-              {!isSpotOwner && (
+              {!canEditSpotFields && (
                 <p className={`mt-2 text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Nur der Ersteller kann den Namen ändern.
+                  Zum Bearbeiten von Spots benötigst du die Freigabe „Spots bearbeiten" durch den Listen-Owner.
                 </p>
               )}
               {errors.name && <p className="mt-2 text-sm text-red-500">{errors.name}</p>}
@@ -1172,17 +1188,6 @@ function AddSharedFoodspot() {
                   </button>
                 ) : null
               })()}
-              <button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className={`flex-1 py-4 rounded-[22px] font-semibold text-lg text-white shadow-xl hover:shadow-2xl active:scale-[0.98] transition-all disabled:opacity-60 ${
-                  isDark
-                    ? 'bg-gradient-to-r from-[#FF9357] to-[#B85C2C]'
-                    : 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]'
-                }`}
-              >
-                {isEditMode ? 'Änderungen speichern' : 'Spot hinzufügen'}
-              </button>
             </div>
           </div>
         )}
@@ -1206,6 +1211,11 @@ function AddSharedFoodspot() {
       <LocationPickerSheet
         isOpen={showLocationPicker}
         onClose={() => setShowLocationPicker(false)}
+        initialCenter={
+          formData.latitude != null
+            ? { lat: formData.latitude, lng: formData.longitude }
+            : (list?.latitude != null ? { lat: list.latitude, lng: list.longitude } : undefined)
+        }
         onConfirm={({ address, latitude, longitude }) => {
           setFormData(prev => ({ ...prev, address, latitude, longitude }))
         }}

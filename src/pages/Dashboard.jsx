@@ -5,6 +5,8 @@ import { useTheme } from '../contexts/ThemeContext'
 import FeaturesSection from '../components/FeaturesSection'
 import FirstTimeWelcomeOverlay from '../components/FirstTimeWelcomeOverlay'
 import Avatar from '../components/Avatar'
+import LocationPickerSheet from '../components/LocationPickerSheet'
+import { cityLabelFromAddress } from '../utils/locationLabel'
 import { supabase } from '../services/supabase'
 import { hapticFeedback } from '../utils/haptics'
 import { springEasing, staggerDelay } from '../utils/animations'
@@ -813,6 +815,7 @@ function Dashboard() {
             description,
             category,
             cover_image_url,
+            list_mode,
             created_at,
             updated_at,
             members_can_add_spots,
@@ -2614,8 +2617,8 @@ function Dashboard() {
                           <div className={`absolute top-12 right-0 rounded-xl shadow-xl overflow-hidden min-w-fit sm:min-w-[160px] z-50 ${
                             isDark ? 'bg-gray-800' : 'bg-white'
                           }`}>
-                            {/* Bearbeiten - nur für Owner */}
-                            {list.isOwner && (
+                            {/* Bearbeiten - Owner immer, Mitglied mit "Liste bearbeiten"-Recht */}
+                            {(list.isOwner || (list.role === 'editor' && (list.members_can_edit_list ?? false))) && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -2964,6 +2967,9 @@ function EditSharedListModal({ list, onClose, onSave }) {
   const [formData, setFormData] = useState({
     list_name: list.list_name,
     city: list.city || '',
+    address: list.address || '',
+    latitude: list.latitude ?? null,
+    longitude: list.longitude ?? null,
     list_mode: list.list_mode || 'location',
     description: list.description || '',
     coverImageUrl: list.cover_image_url,
@@ -2972,7 +2978,8 @@ function EditSharedListModal({ list, onClose, onSave }) {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [imageRemoved, setImageRemoved] = useState(false)
-  
+  const [showLocationPicker, setShowLocationPicker] = useState(false)
+
   // Teilnehmerverwaltung
   const [members, setMembers] = useState([]) // Enthält alle Teilnehmer (Owner + Members) wie im Dashboard
   const [pendingInvitations, setPendingInvitations] = useState([])
@@ -3046,6 +3053,9 @@ function EditSharedListModal({ list, onClose, onSave }) {
       ...list,
       list_name: formData.list_name.trim(),
       city: cityValue,
+      address: formData.address?.trim() || null,
+      latitude: formData.latitude ?? null,
+      longitude: formData.longitude ?? null,
       list_mode: formData.list_mode,
       description: formData.description.trim() || null,
       cover_image_url: formData.coverImageUrl || list.cover_image_url,
@@ -3093,6 +3103,9 @@ function EditSharedListModal({ list, onClose, onSave }) {
         .update({
           list_name: formData.list_name.trim(),
           city: cityValue,
+          address: formData.address?.trim() || null,
+          latitude: formData.latitude ?? null,
+          longitude: formData.longitude ?? null,
           list_mode: formData.list_mode,
           description: formData.description.trim() || null,
           cover_image_url: imageUrl,
@@ -3483,34 +3496,20 @@ function EditSharedListModal({ list, onClose, onSave }) {
     
     setInviting(true)
     try {
-      // Build invitations
-      const invitations = selectedFriends.map(friendId => ({
-        list_id: list.id,
-        inviter_id: user.id,
-        invitee_id: friendId,
-        role: selectedRole[friendId] || 'editor',
-        status: 'pending'
-      }))
-      
-      const { data, error } = await supabase
-        .from('list_invitations')
-        .insert(invitations)
-        .select()
+      // Serverseitige RPC: prüft Rechte (Owner oder Mitglied mit members_can_invite)
+      // und dedupliziert (verhindert 23505 bei bereits bestehenden Einladungen, die
+      // ein einladendes Mitglied wegen RLS nicht sehen kann).
+      // Rolle ist bewusst immer 'editor' — accept_invitation fügt ohnehin jeden als
+      // editor hinzu, die viewer/editor-Auswahl war faktisch wirkungslos.
+      const { error } = await supabase.rpc('send_list_invitations', {
+        p_list_id: list.id,
+        p_invitee_ids: selectedFriends,
+      })
 
       if (error) throw error
 
-      // Add to pending invitations locally
-      const newInvitations = data.map(inv => {
-        const friend = availableFriends.find(f => f.id === inv.invitee_id)
-        return {
-          ...inv,
-          users: friend
-        }
-      })
-      
-      setPendingInvitations(prev => [...prev, ...newInvitations])
-      
-      // Clear selection
+      // Auswahl zurücksetzen — die pending-Anzeige aktualisiert der Realtime-Channel
+      // (fetchParticipants); Mitglieder sehen pending-Einladungen per RLS ohnehin nicht.
       setSelectedFriends([])
       setSelectedRole({})
       setSearchQuery('')
@@ -3654,19 +3653,35 @@ function EditSharedListModal({ list, onClose, onSave }) {
                 <span className={`text-xs font-normal ml-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>(optional)</span>
               )}
             </label>
-            <input
-              type="text"
-              value={formData.city}
-              onChange={(e) => handleInputChange('city', e.target.value)}
-              placeholder={formData.list_mode === 'product' ? 'z. B. München (für Karte)' : ''}
-              className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
+            <button
+              type="button"
+              onClick={() => setShowLocationPicker(true)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-[14px] border text-left transition-all ${
                 errors.city
                   ? 'border-red-400'
-                  : isDark
-                    ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
-                    : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
+                  : formData.city
+                    ? (isDark ? 'border-[#FF9357]/40 bg-[#FF9357]/10' : 'border-[#FF7E42]/40 bg-[#FF7E42]/5')
+                    : (isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200')
               }`}
-            />
+            >
+              <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                style={formData.city ? { background: 'linear-gradient(135deg, #FF9357, #B85C2C)' } : undefined}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={formData.city ? '#fff' : '#9ca3af'} strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+              </span>
+              <span className="flex-1 min-w-0">
+                {formData.city ? (
+                  <>
+                    <span className={`block text-[11px] ${isDark ? 'text-[#FF9357]' : 'text-[#FF7E42]'}`}>Standort gesetzt · tippen zum Ändern</span>
+                    <span className={`block text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{formData.address || formData.city}</span>
+                  </>
+                ) : (
+                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-400'}`}>Auf Karte suchen…</span>
+                )}
+              </span>
+            </button>
             {errors.city && <p className="mt-1 text-sm text-red-500">{errors.city}</p>}
           </div>
 
@@ -4073,6 +4088,16 @@ function EditSharedListModal({ list, onClose, onSave }) {
           </button>
         </div>
       </div>
+
+      <LocationPickerSheet
+        isOpen={showLocationPicker}
+        onClose={() => setShowLocationPicker(false)}
+        initialCenter={formData.latitude != null ? { lat: formData.latitude, lng: formData.longitude } : undefined}
+        onConfirm={({ address, latitude, longitude }) => {
+          setFormData(prev => ({ ...prev, address: address || '', city: cityLabelFromAddress(address), latitude, longitude }))
+          setErrors(prev => ({ ...prev, city: undefined }))
+        }}
+      />
     </div>
   )
 }
@@ -4085,6 +4110,9 @@ function EditListModal({ list, onClose, onSave }) {
   const [formData, setFormData] = useState({
     list_name: list.list_name,
     city: list.city || '',
+    address: list.address || '',
+    latitude: list.latitude ?? null,
+    longitude: list.longitude ?? null,
     list_mode: list.list_mode || 'location',
     description: list.description || '',
     coverImageUrl: list.cover_image_url,
@@ -4093,6 +4121,7 @@ function EditListModal({ list, onClose, onSave }) {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [imageRemoved, setImageRemoved] = useState(false)
+  const [showLocationPicker, setShowLocationPicker] = useState(false)
   const previewUrlRef = useRef(null)
 
   useEffect(() => () => {
@@ -4151,6 +4180,9 @@ function EditListModal({ list, onClose, onSave }) {
       ...list,
       list_name: formData.list_name.trim(),
       city: cityValue,
+      address: formData.address?.trim() || null,
+      latitude: formData.latitude ?? null,
+      longitude: formData.longitude ?? null,
       list_mode: formData.list_mode,
       description: formData.description.trim() || null,
       cover_image_url: formData.coverImageUrl || list.cover_image_url,
@@ -4203,6 +4235,9 @@ function EditListModal({ list, onClose, onSave }) {
         .update({
           list_name: formData.list_name.trim(),
           city: cityValue,
+          address: formData.address?.trim() || null,
+          latitude: formData.latitude ?? null,
+          longitude: formData.longitude ?? null,
           list_mode: formData.list_mode,
           description: formData.description.trim() || null,
           cover_image_url: imageUrl,
@@ -4329,19 +4364,35 @@ function EditListModal({ list, onClose, onSave }) {
                 <span className={`text-xs font-normal ml-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>(optional)</span>
               )}
             </label>
-            <input
-              type="text"
-              value={formData.city}
-              onChange={(e) => handleInputChange('city', e.target.value)}
-              placeholder={formData.list_mode === 'product' ? 'z. B. München (für Karte)' : ''}
-              className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
+            <button
+              type="button"
+              onClick={() => setShowLocationPicker(true)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-[14px] border text-left transition-all ${
                 errors.city
                   ? 'border-red-400'
-                  : isDark
-                    ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
-                    : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
+                  : formData.city
+                    ? (isDark ? 'border-[#FF9357]/40 bg-[#FF9357]/10' : 'border-[#FF7E42]/40 bg-[#FF7E42]/5')
+                    : (isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200')
               }`}
-            />
+            >
+              <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                style={formData.city ? { background: 'linear-gradient(135deg, #FF9357, #B85C2C)' } : undefined}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={formData.city ? '#fff' : '#9ca3af'} strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+              </span>
+              <span className="flex-1 min-w-0">
+                {formData.city ? (
+                  <>
+                    <span className={`block text-[11px] ${isDark ? 'text-[#FF9357]' : 'text-[#FF7E42]'}`}>Standort gesetzt · tippen zum Ändern</span>
+                    <span className={`block text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{formData.address || formData.city}</span>
+                  </>
+                ) : (
+                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-400'}`}>Auf Karte suchen…</span>
+                )}
+              </span>
+            </button>
             {errors.city && <p className="mt-1 text-sm text-red-500">{errors.city}</p>}
           </div>
 
@@ -4438,6 +4489,16 @@ function EditListModal({ list, onClose, onSave }) {
           </button>
         </div>
       </div>
+
+      <LocationPickerSheet
+        isOpen={showLocationPicker}
+        onClose={() => setShowLocationPicker(false)}
+        initialCenter={formData.latitude != null ? { lat: formData.latitude, lng: formData.longitude } : undefined}
+        onConfirm={({ address, latitude, longitude }) => {
+          setFormData(prev => ({ ...prev, address: address || '', city: cityLabelFromAddress(address), latitude, longitude }))
+          setErrors(prev => ({ ...prev, city: undefined }))
+        }}
+      />
     </div>
   )
 }

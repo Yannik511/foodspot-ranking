@@ -36,8 +36,19 @@ function loadScript() {
   return scriptPromise
 }
 
-export default function LocationPickerSheet({ isOpen, onClose, onConfirm }) {
+export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initialCenter }) {
   const { isDark } = useTheme()
+
+  // Startpunkt der Karte: optionaler initialCenter (z. B. bestehender Listen-/Spot-Standort
+  // oder Listen-Anker beim Spot-Anlegen), sonst der bisherige Default (München).
+  const startCenter =
+    initialCenter &&
+    Number.isFinite(initialCenter.lat) &&
+    Number.isFinite(initialCenter.lng)
+      ? { lat: initialCenter.lat, lng: initialCenter.lng }
+      : MUNICH
+  const startRef = useRef(startCenter)
+  startRef.current = startCenter
 
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
@@ -135,7 +146,8 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm }) {
           ),
         })
 
-        const center = new window.mapkit.Coordinate(MUNICH.lat, MUNICH.lng)
+        const start = startRef.current
+        const center = new window.mapkit.Coordinate(start.lat, start.lng)
         map.region = new window.mapkit.CoordinateRegion(
           center,
           new window.mapkit.CoordinateSpan(0.04, 0.04)
@@ -149,8 +161,8 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm }) {
         })
 
         setMapReady(true)
-        setCoords(MUNICH)
-        reverseGeocode(MUNICH.lat, MUNICH.lng)
+        setCoords(start)
+        reverseGeocode(start.lat, start.lng)
 
       } catch (e) {
         console.error('LocationPickerSheet init error:', e)
@@ -346,7 +358,8 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm }) {
             new window.mapkit.CoordinateSpan(GERMANY.latSpan, GERMANY.lngSpan)
           ),
         })
-        const center = new window.mapkit.Coordinate(MUNICH.lat, MUNICH.lng)
+        const start = startRef.current
+        const center = new window.mapkit.Coordinate(start.lat, start.lng)
         map.region = new window.mapkit.CoordinateRegion(center, new window.mapkit.CoordinateSpan(0.04, 0.04))
         map.addEventListener('region-change-end', () => {
           if (suppressRegion.current || !mapRef.current) return
@@ -355,8 +368,8 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm }) {
           reverseGeocode(c.latitude, c.longitude)
         })
         setMapReady(true)
-        setCoords(MUNICH)
-        reverseGeocode(MUNICH.lat, MUNICH.lng)
+        setCoords(start)
+        reverseGeocode(start.lat, start.lng)
       } catch (e) { setInitError(e.message) }
     })()
   }

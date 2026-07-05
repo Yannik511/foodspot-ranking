@@ -153,23 +153,31 @@ export default function ShareListInvite() {
     if (selected.size === 0 || submitting) return
     setSubmitting(true)
     try {
-      const invitations = Array.from(selected).map(invitee_id => ({
-        list_id: id,
-        inviter_id: user.id,
-        invitee_id,
-        role: 'editor',
-        status: 'pending',
-      }))
+      const inviteeIds = Array.from(selected)
 
-      const { error } = await supabase
-        .from('list_invitations')
-        .insert(invitations)
+      // Serverseitige RPC dedupliziert und prüft Rechte — verhindert doppelte
+      // pending-Einladungen (Unique-Constraint), die ein einladendes Mitglied
+      // clientseitig nicht erkennen kann (RLS versteckt fremde Einladungen).
+      const { data: newCount, error } = await supabase.rpc('send_list_invitations', {
+        p_list_id: id,
+        p_invitee_ids: inviteeIds,
+      })
 
       if (error) throw error
 
+      const created = newCount ?? 0
+      const already = inviteeIds.length - created
+
       hapticFeedback.success()
-      const count = selected.size
-      showToast(`${count} ${count === 1 ? 'Einladung' : 'Einladungen'} gesendet`)
+      let message
+      if (created === inviteeIds.length) {
+        message = `${created} ${created === 1 ? 'Einladung' : 'Einladungen'} gesendet`
+      } else if (created > 0) {
+        message = `${created} gesendet · ${already} bereits eingeladen`
+      } else {
+        message = 'Bereits eingeladen oder schon Mitglied'
+      }
+      showToast(message)
       setTimeout(() => navigate('/social'), 800)
     } catch (error) {
       console.error('[ShareListInvite] Error sending invitations:', error)

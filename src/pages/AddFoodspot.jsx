@@ -1491,6 +1491,11 @@ function AddFoodspot() {
       <LocationPickerSheet
         isOpen={showLocationPicker}
         onClose={() => setShowLocationPicker(false)}
+        initialCenter={
+          formData.latitude != null
+            ? { lat: formData.latitude, lng: formData.longitude }
+            : (list?.latitude != null ? { lat: list.latitude, lng: list.longitude } : undefined)
+        }
         onConfirm={({ address, latitude, longitude }) => {
           setFormData(prev => ({ ...prev, address, latitude, longitude }))
         }}

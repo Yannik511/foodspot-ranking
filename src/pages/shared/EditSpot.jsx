@@ -5,6 +5,8 @@ import { useTheme } from '../../contexts/ThemeContext'
 import { supabase } from '../../services/supabase'
 import { useScrollHeader } from '../../hooks/useScrollHeader'
 import LocationPickerSheet from '../../components/LocationPickerSheet'
+import SaveButton from '../../components/SaveButton'
+import { hapticFeedback } from '../../utils/haptics'
 
 export default function EditSpot() {
   const { id } = useParams()
@@ -100,8 +102,10 @@ export default function EditSpot() {
         p_longitude: longitude ?? null,
       })
       if (error) throw error
+      hapticFeedback.success()
       showToast('Spot aktualisiert')
-      setTimeout(() => navigate(-1), 1000)
+      // Direkt zurück — SharedTierList aktualisiert den Spot per Realtime automatisch
+      setTimeout(() => navigate(-1), 450)
     } catch (e) {
       showToast(e?.message || 'Fehler beim Speichern', 'error')
     } finally {
@@ -164,14 +168,20 @@ export default function EditSpot() {
               <path d="M19 12H5M12 5l-7 7 7 7" />
             </svg>
           </button>
-          <div>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <p style={{ fontSize: 11, fontWeight: 600, color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)', letterSpacing: '0.05em', textTransform: 'uppercase', fontFamily: "'Poppins', sans-serif" }}>
               Spot bearbeiten
             </p>
-            <h1 style={{ fontSize: 16, fontWeight: 700, color: isDark ? '#fff' : '#000', fontFamily: "'Poppins', sans-serif", margin: 0, lineHeight: 1.2 }}>
+            <h1 style={{ fontSize: 16, fontWeight: 700, color: isDark ? '#fff' : '#000', fontFamily: "'Poppins', sans-serif", margin: 0, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {spot?.name}
             </h1>
           </div>
+          <SaveButton
+            onClick={() => { hapticFeedback.medium(); handleSave() }}
+            saving={submitting}
+            isDark={isDark}
+            label="Änderungen speichern"
+          />
         </div>
       </header>
 
@@ -181,7 +191,7 @@ export default function EditSpot() {
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
         paddingTop: 'calc(env(safe-area-inset-top, 0px) + 72px)',
-        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 120px)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 32px)',
         paddingLeft: 16,
         paddingRight: 16,
         maxWidth: 600,
@@ -377,46 +387,6 @@ export default function EditSpot() {
           </div>
         )}
       </main>
-
-      {/* Sticky Buttons */}
-      <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
-        background: isDark ? 'rgba(15,15,19,0.95)' : 'rgba(245,245,247,0.95)',
-        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-        borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-        padding: `16px 16px env(safe-area-inset-bottom, 16px)`,
-        display: 'flex', gap: 12,
-      }}>
-        <button
-          onClick={() => navigate(-1)}
-          style={{
-            flex: 1, padding: '14px', borderRadius: 18,
-            border: `1.5px solid ${isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'}`,
-            background: 'transparent', cursor: 'pointer',
-            fontSize: 15, fontWeight: 600, fontFamily: "'Poppins', sans-serif",
-            color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
-            WebkitTapHighlightColor: 'transparent',
-          }}
-        >
-          Zurück
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={submitting}
-          style={{
-            flex: 2, padding: '14px', borderRadius: 18, border: 'none', cursor: 'pointer',
-            background: isDark
-              ? 'linear-gradient(135deg, #FF9357, #B85C2C)'
-              : 'linear-gradient(135deg, #FF7E42, #FFB25A)',
-            fontSize: 15, fontWeight: 700, fontFamily: "'Poppins', sans-serif",
-            color: '#fff', opacity: submitting ? 0.6 : 1,
-            WebkitTapHighlightColor: 'transparent',
-            boxShadow: '0 4px 16px rgba(255,126,66,0.35)',
-          }}
-        >
-          {submitting ? 'Speichern...' : 'Änderungen speichern'}
-        </button>
-      </div>
 
       {toast && (
         <div style={{

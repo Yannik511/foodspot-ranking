@@ -5,6 +5,8 @@ import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
 import { scrollFieldIntoView } from '../utils/keyboard'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
+import LocationPickerSheet from '../components/LocationPickerSheet'
+import { cityLabelFromAddress } from '../utils/locationLabel'
 
 function CreateList() {
   const { user } = useAuth()
@@ -20,12 +22,16 @@ function CreateList() {
   const [formData, setFormData] = useState({
     list_name: '',
     city: '',
+    address: '',
+    latitude: null,
+    longitude: null,
     description: '',
     category: selectedCategory,
     list_mode: 'location', // 'location' = ortsbasiert, 'product' = produktbasiert
     coverImageUrl: null,
     coverImageFile: null,
   })
+  const [showLocationPicker, setShowLocationPicker] = useState(false)
   
   // If no category parameter, redirect to category selection
   useEffect(() => {
@@ -219,6 +225,9 @@ function CreateList() {
         user_id: user.id,
         list_name: formData.list_name.trim(),
         city: cityValue,
+        address: formData.address?.trim() || null,
+        latitude: formData.latitude ?? null,
+        longitude: formData.longitude ?? null,
         list_mode: formData.list_mode,
         description: formData.description.trim() || null,
         category: formData.category || null,
@@ -438,23 +447,42 @@ function CreateList() {
                 <span className={`text-xs font-normal ml-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>(optional)</span>
               )}
             </label>
-            <input
-              type="text"
-              value={formData.city}
-              onChange={(e) => handleInputChange('city', e.target.value)}
-              placeholder={formData.list_mode === 'product' ? 'z. B. München (für Karte)' : 'z. B. München oder Gilching'}
-              maxLength={100}
-              className={`w-full px-4 py-3 rounded-[14px] border transition-all focus:outline-none focus:ring-2 ${
-                errors.city 
-                  ? 'border-red-400 focus:ring-red-200' 
-                  : validationState.city === 'valid'
-                  ? 'border-green-400 focus:ring-green-200'
-                  : isDark
-                    ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:ring-[#FF9357]/20'
-                    : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-[#FF7E42]/20'
+            <button
+              type="button"
+              onClick={() => setShowLocationPicker(true)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-[14px] border text-left transition-all ${
+                errors.city
+                  ? 'border-red-400'
+                  : formData.city
+                    ? (isDark ? 'border-[#FF9357]/40 bg-[#FF9357]/10' : 'border-[#FF7E42]/40 bg-[#FF7E42]/5')
+                    : (isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200')
               }`}
-              onFocus={handleFieldFocus}
-            />
+            >
+              <span className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                formData.city ? 'text-white' : (isDark ? 'bg-gray-600 text-gray-300' : 'bg-gray-100 text-gray-400')
+              }`} style={formData.city ? { background: 'linear-gradient(135deg, #FF9357, #B85C2C)' } : undefined}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+              </span>
+              <span className="flex-1 min-w-0">
+                {formData.city ? (
+                  <>
+                    <span className={`block text-[11px] ${isDark ? 'text-[#FF9357]' : 'text-[#FF7E42]'}`}>
+                      Standort gesetzt · tippen zum Ändern
+                    </span>
+                    <span className={`block text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {formData.address || formData.city}
+                    </span>
+                  </>
+                ) : (
+                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-400'}`}>
+                    Auf Karte suchen…
+                  </span>
+                )}
+              </span>
+            </button>
             {errors.city && <p className="mt-2 text-sm text-red-500">{errors.city}</p>}
           </div>
 
@@ -631,6 +659,22 @@ function CreateList() {
           to { opacity: 1; transform: translate(-50%, 0); }
         }
       `}</style>
+
+      <LocationPickerSheet
+        isOpen={showLocationPicker}
+        onClose={() => setShowLocationPicker(false)}
+        initialCenter={formData.latitude != null ? { lat: formData.latitude, lng: formData.longitude } : undefined}
+        onConfirm={({ address, latitude, longitude }) => {
+          setFormData(prev => ({
+            ...prev,
+            address: address || '',
+            city: cityLabelFromAddress(address),
+            latitude,
+            longitude,
+          }))
+          setErrors(prev => ({ ...prev, city: undefined }))
+        }}
+      />
     </div>
   )
 }
