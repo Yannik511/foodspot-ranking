@@ -33,6 +33,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { PresenceProvider } from './contexts/PresenceContext'
 import { TabBarActionsProvider } from './contexts/TabBarActionsContext'
 import Discover from './pages/Discover'
+import Legal from './pages/Legal'
 
 function TabBarContainer() {
   const location = useLocation()
@@ -217,6 +218,10 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* Öffentliche Rechtstexte (auch ohne Login erreichbar) */}
+          <Route path="/privacy" element={<Legal docKey="privacy" />} />
+          <Route path="/impressum" element={<Legal docKey="impressum" />} />
+          <Route path="/terms" element={<Legal docKey="terms" />} />
         </Routes>
           </BrowserRouter>
           </TabBarActionsProvider>

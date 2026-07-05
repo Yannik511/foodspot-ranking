@@ -332,7 +332,33 @@ function Settings() {
       navigate('/', { replace: true })
     }
   }
-  
+
+  const handleDeleteAccount = async () => {
+    hapticFeedback.medium()
+    if (!window.confirm(
+      'Möchtest du deinen Account wirklich unwiderruflich löschen?\n\n' +
+      'Alle deine Listen, Bewertungen, Fotos und Daten werden dauerhaft entfernt. ' +
+      'Von dir geteilte Listen verschwinden auch für alle Mitglieder.\n\n' +
+      'Dies kann nicht rückgängig gemacht werden.'
+    )) {
+      return
+    }
+    setLoading(true)
+    setError('')
+    try {
+      const { error } = await supabase.functions.invoke('delete-account')
+      if (error) throw error
+      hapticFeedback.success()
+      await signOut()
+      navigate('/', { replace: true })
+    } catch (e) {
+      console.error('Account deletion error:', e)
+      hapticFeedback.error()
+      setError('Account konnte nicht gelöscht werden. Bitte versuche es später erneut.')
+      setLoading(false)
+    }
+  }
+
   const handleDarkModeChange = (mode) => {
     hapticFeedback.light()
     setDarkMode(mode)
@@ -746,12 +772,25 @@ function Settings() {
             <button
               onClick={handleSignOut}
               className="w-full py-3 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-600 active:scale-[0.98] transition-all"
-              style={{ 
+              style={{
                 fontFamily: "'Poppins', sans-serif",
                 transition: `all 0.2s ${springEasing.default}`
               }}
             >
               Abmelden
+            </button>
+
+            {/* Delete Account */}
+            <button
+              onClick={handleDeleteAccount}
+              disabled={loading}
+              className={`w-full py-3 rounded-xl font-semibold border-2 border-red-500 text-red-500 hover:bg-red-500 hover:text-white active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed ${isDark ? 'bg-transparent' : 'bg-transparent'}`}
+              style={{
+                fontFamily: "'Poppins', sans-serif",
+                transition: `all 0.2s ${springEasing.default}`
+              }}
+            >
+              Account löschen
             </button>
           </div>
         </section>
@@ -1015,6 +1054,43 @@ function Settings() {
                 />
               </button>
             </div>
+          </div>
+        </section>
+
+        {/* Legal Section */}
+        <section className={`${isDark ? 'bg-gray-800' : 'bg-white'} mt-4 mx-4 rounded-2xl overflow-hidden shadow-sm`}>
+          <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+            <h2
+              className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-semibold`}
+              style={{ fontFamily: "'Poppins', sans-serif", fontSize: '14px' }}
+            >
+              Rechtliches
+            </h2>
+          </div>
+          <div className="px-4 py-2">
+            {[
+              { label: 'Datenschutzerklärung', path: '/privacy' },
+              { label: 'Nutzungsbedingungen', path: '/terms' },
+              { label: 'Impressum', path: '/impressum' },
+            ].map((item, i, arr) => (
+              <button
+                key={item.path}
+                onClick={() => { hapticFeedback.light(); navigate(item.path) }}
+                className={`w-full flex items-center justify-between py-3 ${
+                  i < arr.length - 1 ? `border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}` : ''
+                }`}
+              >
+                <span
+                  className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
+                  style={{ fontFamily: "'Poppins', sans-serif" }}
+                >
+                  {item.label}
+                </span>
+                <svg className={`w-5 h-5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            ))}
           </div>
         </section>
 

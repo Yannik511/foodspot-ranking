@@ -123,7 +123,36 @@ function About() {
             </div>
             
             <div className={`pt-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-              <p 
+              <h3
+                className={`${isDark ? 'text-white' : 'text-gray-900'} font-semibold mb-2`}
+                style={{ fontFamily: "'Poppins', sans-serif" }}
+              >
+                Rechtliches
+              </h3>
+              <div className="flex flex-col gap-2" style={{ fontFamily: "'Inter', sans-serif" }}>
+                <button
+                  onClick={() => { hapticFeedback.light(); navigate('/privacy') }}
+                  className="text-left text-[#FF7E42] font-medium"
+                >
+                  Datenschutzerklärung
+                </button>
+                <button
+                  onClick={() => { hapticFeedback.light(); navigate('/terms') }}
+                  className="text-left text-[#FF7E42] font-medium"
+                >
+                  Nutzungsbedingungen
+                </button>
+                <button
+                  onClick={() => { hapticFeedback.light(); navigate('/impressum') }}
+                  className="text-left text-[#FF7E42] font-medium"
+                >
+                  Impressum
+                </button>
+              </div>
+            </div>
+
+            <div className={`pt-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+              <p
                 className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
                 style={{ fontFamily: "'Inter', sans-serif" }}
               >

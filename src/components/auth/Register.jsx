@@ -16,6 +16,7 @@ function Register() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const { signUp } = useAuth()
   const navigate = useNavigate()
 
@@ -40,6 +41,11 @@ function Register() {
 
     if (password.length < 6) {
       setError('Passwort muss mindestens 6 Zeichen lang sein')
+      return
+    }
+
+    if (!acceptedTerms) {
+      setError('Bitte akzeptiere Datenschutzerklärung und Nutzungsbedingungen')
       return
     }
 
@@ -310,6 +316,48 @@ function Register() {
               {error}
             </div>
           )}
+
+          {/* Consent */}
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              marginTop: 18,
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              style={{
+                width: 20,
+                height: 20,
+                marginTop: 1,
+                accentColor: '#FF7E42',
+                flexShrink: 0,
+              }}
+            />
+            <span
+              style={{
+                fontSize: 13,
+                lineHeight: 1.5,
+                color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)',
+                fontFamily: "'Poppins', sans-serif",
+              }}
+            >
+              Ich akzeptiere die{' '}
+              <Link to="/privacy" style={{ color: '#FF7E42', fontWeight: 600, textDecoration: 'none' }}>
+                Datenschutzerklärung
+              </Link>{' '}
+              und die{' '}
+              <Link to="/terms" style={{ color: '#FF7E42', fontWeight: 600, textDecoration: 'none' }}>
+                Nutzungsbedingungen
+              </Link>
+              .
+            </span>
+          </label>
 
           {/* CTA Button */}
           <button
