@@ -189,7 +189,7 @@ const compressImage = (file) => {
 function AddFoodspot() {
   const { id } = useParams() // list_id
   const [searchParams] = useSearchParams()
-  const preselectedTier = searchParams.get('tier') || null
+  const _preselectedTier = searchParams.get('tier') || null
   const spotId = searchParams.get('spotId') || null // For edit mode
   const isEditMode = !!spotId
   const { user } = useAuth()
@@ -197,7 +197,7 @@ function AddFoodspot() {
   const navigate = useNavigate()
 
   const [list, setList] = useState(null)
-  const [existingSpot, setExistingSpot] = useState(null)
+  const [_existingSpot, setExistingSpot] = useState(null)
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [toast, setToast] = useState(null)
@@ -214,7 +214,7 @@ function AddFoodspot() {
   const { headerRef: formHeaderRef, headerHeight: formHeaderHeight } = useHeaderHeight()
   
   // Aktive Header-Höhe basierend auf angezeigtem Header
-  const activeHeaderHeight = showCategorySelection ? categoryHeaderHeight : formHeaderHeight
+  const _activeHeaderHeight = showCategorySelection ? categoryHeaderHeight : formHeaderHeight
 
   const [formData, setFormData] = useState({
     name: '',
@@ -404,161 +404,6 @@ function AddFoodspot() {
 
   const overallRating = calculateOverallRating()
   const autoTier = calculateTier(overallRating)
-
-  // Google Maps location search
-  const handleLocationSearch = (query) => {
-    setLocationQuery(query)
-    
-    if (!query || query.length < 3 || !autocompleteService.current) {
-      setLocationSuggestions([])
-      return
-    }
-
-    autocompleteService.current.getPlacePredictions(
-      {
-        input: query,
-        types: ['establishment', 'geocode']
-      },
-      (predictions, status) => {
-        if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
-          setLocationSuggestions(predictions)
-        } else {
-          setLocationSuggestions([])
-        }
-      }
-    )
-  }
-
-  // Select location from suggestions
-  const handleLocationSelect = (place) => {
-    if (!geocoder.current) return
-
-    geocoder.current.geocode({ placeId: place.place_id }, (results, status) => {
-      if (status === 'OK' && results[0]) {
-        const location = results[0].geometry.location
-        setFormData(prev => ({
-          ...prev,
-          address: place.description,
-          latitude: location.lat(),
-          longitude: location.lng()
-        }))
-        setLocationQuery(place.description)
-        setLocationSuggestions([])
-        
-        // Clear location error
-        setErrors(prev => {
-          const newErrors = { ...prev }
-          delete newErrors.location
-          return newErrors
-        })
-      }
-    })
-  }
-
-  // Handle GPS location (OpenStreetMap)
-  const handleUseCurrentLocation = async () => {
-    if (!isGeolocationSupported()) {
-      showToast('🚫 GPS wird von deinem Browser nicht unterstützt', 'error')
-      return
-    }
-
-    // Prüfe Permission-Status
-    const permissionStatus = await checkLocationPermission()
-    
-    if (permissionStatus === 'denied') {
-      showToast('🚫 Standort-Zugriff blockiert - Bitte in den Browser-Einstellungen aktivieren (🔒 Schloss-Symbol in der Adressleiste)', 'error')
-      return
-    }
-
-    setLoadingLocation(true)
-    
-    try {
-      // 1. GPS-Koordinaten holen (keine Cache-Version, da wir höchste Genauigkeit brauchen)
-      const position = await getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0
-      })
-      
-      const { latitude, longitude, accuracy } = position.coords
-      
-      // 2. Reverse Geocoding (Koordinaten → Adresse)
-      const locationData = await reverseGeocodeThrottled(latitude, longitude)
-      
-      // 3. Formular befüllen
-      setFormData(prev => ({
-        ...prev,
-        address: locationData.address,
-        latitude: latitude,
-        longitude: longitude
-      }))
-      
-      // 4. Location Query für Anzeige
-      setLocationQuery(locationData.address)
-      setLocationSuggestions([])
-      
-      // 5. Clear errors
-      setErrors(prev => {
-        const newErrors = { ...prev }
-        delete newErrors.location
-        return newErrors
-      })
-      
-      // 6. Success-Toast mit Genauigkeit
-      if (accuracy > 100) {
-        showToast(`⚠️ Standort gespeichert (±${Math.round(accuracy)}m) - evtl. ungenau`, 'warning')
-      } else {
-        showToast(`✓ Standort gespeichert (±${Math.round(accuracy)}m)`, 'success')
-      }
-      
-    } catch (error) {
-      console.error('Location error:', error)
-      
-      // User-friendly Error Message
-      const errorInfo = getLocationErrorMessage(error)
-      
-      showToast(errorInfo.icon + ' ' + errorInfo.title, 'error')
-
-    } finally {
-      setLoadingLocation(false)
-    }
-  }
-
-  // Get current position
-  const handleCurrentPosition = () => {
-    if (!navigator.geolocation) {
-      showToast('Standort wird von deinem Gerät nicht unterstützt', 'error')
-      return
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords
-        
-        if (geocoder.current) {
-          geocoder.current.geocode(
-            { location: { lat: latitude, lng: longitude } },
-            (results, status) => {
-              if (status === 'OK' && results[0]) {
-                const address = results[0].formatted_address
-                setFormData(prev => ({
-                  ...prev,
-                  address: address,
-                  latitude: latitude,
-                  longitude: longitude
-                }))
-                setLocationQuery(address)
-              }
-            }
-          )
-        }
-      },
-      (error) => {
-        console.error('Standort-Fehler:', error)
-        showToast('Standort konnte nicht abgerufen werden', 'error')
-      }
-    )
-  }
 
   // Validation
   const validateForm = () => {
@@ -1487,13 +1332,20 @@ function AddFoodspot() {
       <LocationPickerSheet
         isOpen={showLocationPicker}
         onClose={() => setShowLocationPicker(false)}
+        returnsName
         initialCenter={
           formData.latitude != null
             ? { lat: formData.latitude, lng: formData.longitude }
             : (list?.latitude != null ? { lat: list.latitude, lng: list.longitude } : undefined)
         }
-        onConfirm={({ address, latitude, longitude }) => {
-          setFormData(prev => ({ ...prev, address, latitude, longitude }))
+        onConfirm={({ address, latitude, longitude, name }) => {
+          setFormData(prev => ({
+            ...prev,
+            address,
+            latitude,
+            longitude,
+            ...(name && !prev.name ? { name } : {}),
+          }))
         }}
       />
     </div>

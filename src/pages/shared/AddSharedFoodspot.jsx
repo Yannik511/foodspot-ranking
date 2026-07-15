@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useTheme } from '../../contexts/ThemeContext'
 import { supabase } from '../../services/supabase'
 import { scrollFieldIntoView } from '../../utils/keyboard'
-import { useHeaderHeight, getContentPaddingTop } from '../../hooks/useHeaderHeight'
+import { useHeaderHeight } from '../../hooks/useHeaderHeight'
 import {
   uploadSharedSpotPhoto,
   deleteSharedSpotPhoto,
@@ -1211,13 +1211,20 @@ function AddSharedFoodspot() {
       <LocationPickerSheet
         isOpen={showLocationPicker}
         onClose={() => setShowLocationPicker(false)}
+        returnsName
         initialCenter={
           formData.latitude != null
             ? { lat: formData.latitude, lng: formData.longitude }
             : (list?.latitude != null ? { lat: list.latitude, lng: list.longitude } : undefined)
         }
-        onConfirm={({ address, latitude, longitude }) => {
-          setFormData(prev => ({ ...prev, address, latitude, longitude }))
+        onConfirm={({ address, latitude, longitude, name }) => {
+          setFormData(prev => ({
+            ...prev,
+            address,
+            latitude,
+            longitude,
+            ...(name && !prev.name ? { name } : {}),
+          }))
         }}
       />
     </div>

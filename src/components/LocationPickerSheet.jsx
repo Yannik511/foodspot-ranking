@@ -4,8 +4,6 @@ import { supabase } from '../services/supabase'
 
 const MAPKIT_CDN = 'https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js'
 const MUNICH = { lat: 48.1351, lng: 11.5820 }
-// Default search area — all of Germany. Decouples search from device location
-// so it works in the simulator where no real GPS is available.
 const GERMANY = { lat: 51.1657, lng: 10.4515, latSpan: 7.5, lngSpan: 9.0 }
 
 let scriptPromise = null
@@ -36,11 +34,13 @@ function loadScript() {
   return scriptPromise
 }
 
-export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initialCenter }) {
+// props:
+//   isOpen, onClose, onConfirm, initialCenter
+//   returnsName – wenn true, zeigt der Sheet Hinweise zur POI-/Namensauswahl
+//   onConfirm({ address, latitude, longitude, name }) – name ist null wenn kein POI/Suche gewählt
+export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initialCenter, returnsName = false }) {
   const { isDark } = useTheme()
 
-  // Startpunkt der Karte: optionaler initialCenter (z. B. bestehender Listen-/Spot-Standort
-  // oder Listen-Anker beim Spot-Anlegen), sonst der bisherige Default (München).
   const startCenter =
     initialCenter &&
     Number.isFinite(initialCenter.lat) &&
@@ -70,6 +70,10 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
   const [addressUpdating, setAddressUpdating] = useState(false)
   const [coords, setCoords] = useState(null)
   const [locating, setLocating] = useState(false)
+  // Kartentyp: true = Hybrid (Standard), false = Standard-Karte
+  const [isSatellite, setIsSatellite] = useState(true)
+  // Name des gewählten POI / Suchergebnisses — null = Crosshair-Modus
+  const [pickedName, setPickedName] = useState(null)
 
   const reverseGeocode = useCallback((lat, lng) => {
     if (!geocoderRef.current) return
@@ -85,6 +89,11 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
       })
     }, 600)
   }, [])
+
+  // Placeholder — POI-Tap über MapKit JS tile events ist in Capacitor/WKWebView
+  // nicht verfügbar (nativer Layer fängt den Touch ab bevor JS ihn sieht).
+  // Name-Befüllung läuft ausschließlich über die Suche (handlePickResult).
+  const attachSelectListener = useCallback((_map) => {}, [])
 
   useEffect(() => {
     if (!isOpen) return
@@ -120,7 +129,7 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
           colorScheme: isDarkRef.current
             ? window.mapkit.Map.ColorSchemes.Dark
             : window.mapkit.Map.ColorSchemes.Light,
-          mapType: window.mapkit.Map.MapTypes.Standard,
+          mapType: window.mapkit.Map.MapTypes.Hybrid,
           showsCompass: window.mapkit.FeatureVisibility.Hidden,
           showsScale: window.mapkit.FeatureVisibility.Hidden,
           showsMapTypeControl: false,
@@ -136,7 +145,7 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
         geocoderRef.current = new window.mapkit.Geocoder({ language: 'de' })
         searchRef.current = new window.mapkit.Search({
           language: 'de',
-          getsUserLocation: false, // CRITICAL: don't wait for GPS — unavailable in simulator
+          getsUserLocation: false,
           includeAddresses: true,
           includePointsOfInterest: true,
           includeQueries: true,
@@ -157,8 +166,11 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
           if (suppressRegion.current || !mapRef.current) return
           const c = mapRef.current.center
           setCoords({ lat: c.latitude, lng: c.longitude })
+          setPickedName(null) // Nutzer hat gescrollt → kein POI-Name mehr
           reverseGeocode(c.latitude, c.longitude)
         })
+
+        attachSelectListener(map)
 
         setMapReady(true)
         setCoords(start)
@@ -191,8 +203,10 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
       setSearching(false)
       setAddress('')
       setCoords(null)
+      setIsSatellite(true)
+      setPickedName(null)
     }
-  }, [isOpen, reverseGeocode])
+  }, [isOpen, reverseGeocode, attachSelectListener])
 
   const jumpToCoords = useCallback((lat, lng, label) => {
     if (!mapRef.current) return
@@ -206,8 +220,6 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
     setAddress(label)
   }, [])
 
-  // Live suggestions via mapkit.Search.autocomplete — works independent of
-  // device location (getsUserLocation:false, region defaults to Germany).
   const doSearch = useCallback((val) => {
     const q = (val || '').trim()
     if (q.length < 2 || !searchRef.current) {
@@ -218,12 +230,10 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
     }
 
     setSearching(true)
-    console.log('[LocationPicker] autocomplete →', q)
 
     searchRef.current.autocomplete(q, (err, data) => {
       setSearching(false)
       if (err) {
-        console.error('[LocationPicker] autocomplete error:', err)
         setResults([])
         setShowResults(false)
         return
@@ -238,7 +248,6 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
           coordinate: r.coordinate || null,
         }
       }).filter(it => it.name)
-      console.log('[LocationPicker] autocomplete →', raw.length, 'roh /', items.length, 'anzeigbar')
       setResults(items)
       setShowResults(items.length > 0)
     })
@@ -267,32 +276,24 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
     setSearching(false)
     setQuery(item.name)
 
-    // Some autocomplete results (addresses) already carry a coordinate → use directly
     if (item.coordinate) {
-      console.log('[LocationPicker] pick (direkt):', item.name, item.coordinate)
       jumpToCoords(item.coordinate.latitude, item.coordinate.longitude, item.display_name)
+      setPickedName(item.name)
       return
     }
 
-    // POI / query completions → resolve exact coordinate via search()
     if (!searchRef.current) return
-    console.log('[LocationPicker] pick → search auflösen:', item.name)
     searchRef.current.search(item.raw, (err, data) => {
-      if (err) {
-        console.error('[LocationPicker] search error:', err)
-        return
-      }
+      if (err) return
       const place = data?.places?.[0]
-      if (!place?.coordinate) {
-        console.warn('[LocationPicker] kein Ort für', item.name)
-        return
-      }
-      console.log('[LocationPicker] aufgelöst:', place.name, place.coordinate)
+      if (!place?.coordinate) return
       jumpToCoords(
         place.coordinate.latitude,
         place.coordinate.longitude,
         place.formattedAddress || place.name || item.display_name
       )
+      // Aufgelöster Name bevorzugen (z. B. vollständiger Ortsname)
+      setPickedName(place.name || item.name)
     })
   }
 
@@ -309,6 +310,7 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
         )
         setTimeout(() => { suppressRegion.current = false }, 1000)
         setCoords({ lat: latitude, lng: longitude })
+        setPickedName(null)
         reverseGeocode(latitude, longitude)
         setLocating(false)
       },
@@ -317,11 +319,21 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
     )
   }
 
+  const toggleMapType = () => {
+    if (!mapRef.current) return
+    const next = !isSatellite
+    setIsSatellite(next)
+    mapRef.current.mapType = next
+      ? window.mapkit.Map.MapTypes.Hybrid
+      : window.mapkit.Map.MapTypes.Standard
+  }
+
   const handleRetry = () => {
     mkInitialized = false
     tokenCache = null
     setInitError(null)
     setMapReady(false)
+    setPickedName(null)
     if (mapRef.current) { mapRef.current.destroy(); mapRef.current = null }
     ;(async () => {
       try {
@@ -339,13 +351,14 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
         }
         const map = new window.mapkit.Map(mapContainerRef.current, {
           colorScheme: isDark ? window.mapkit.Map.ColorSchemes.Dark : window.mapkit.Map.ColorSchemes.Light,
-          mapType: window.mapkit.Map.MapTypes.Standard,
+          mapType: window.mapkit.Map.MapTypes.Hybrid,
           showsCompass: window.mapkit.FeatureVisibility.Hidden,
           showsScale: window.mapkit.FeatureVisibility.Hidden,
           showsMapTypeControl: false, showsUserLocationControl: false,
           isRotationEnabled: false, isZoomEnabled: true, isScrollEnabled: true,
         })
         mapRef.current = map
+        setIsSatellite(true)
         geocoderRef.current = new window.mapkit.Geocoder({ language: 'de' })
         searchRef.current = new window.mapkit.Search({
           language: 'de',
@@ -365,8 +378,10 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
           if (suppressRegion.current || !mapRef.current) return
           const c = mapRef.current.center
           setCoords({ lat: c.latitude, lng: c.longitude })
+          setPickedName(null)
           reverseGeocode(c.latitude, c.longitude)
         })
+        attachSelectListener(map)
         setMapReady(true)
         setCoords(start)
         reverseGeocode(start.lat, start.lng)
@@ -376,7 +391,7 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
 
   const handleConfirm = () => {
     if (!coords) return
-    onConfirm({ address, latitude: coords.lat, longitude: coords.lng })
+    onConfirm({ address, latitude: coords.lat, longitude: coords.lng, name: pickedName || null })
     onClose()
   }
 
@@ -396,7 +411,7 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
       <div style={{
         flexShrink: 0,
         position: 'relative',
-        zIndex: 50, // lift entire header (incl. overflowing dropdown) above the map canvas
+        zIndex: 50,
         paddingTop: 'calc(env(safe-area-inset-top, 0px) + 10px)',
         background: panelBg,
         backdropFilter: 'blur(24px)',
@@ -428,7 +443,6 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
         {/* Search bar */}
         <div className="px-4 pb-3 relative">
           <div className="relative">
-            {/* Magnifier / spinner */}
             <button
               onClick={handleSearch}
               disabled={!mapReady || !!initError || query.trim().length < 2}
@@ -447,7 +461,7 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
               onChange={(e) => handleQueryChange(e.target.value)}
               onFocus={() => results.length > 0 && setShowResults(true)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearch() } }}
-              placeholder="Restaurant oder Adresse suchen..."
+              placeholder="Restaurant oder Adresse suchen…"
               disabled={!mapReady || !!initError}
               className="w-full pl-9 pr-8 py-2.5 rounded-[12px] text-sm outline-none disabled:opacity-40"
               style={{ background: inputBg, color: textPrimary, fontFamily: "'Poppins', sans-serif" }}
@@ -506,7 +520,7 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
             style={{ background: isDark ? '#1c1c1e' : '#e5e5ea' }}>
             <div className="w-8 h-8 border-2 border-[#FF9357] border-t-transparent rounded-full animate-spin mb-3"/>
             <span style={{ color: textSecondary, fontFamily: "'Poppins', sans-serif", fontSize: '14px' }}>
-              Karte lädt...
+              Karte lädt…
             </span>
           </div>
         )}
@@ -533,7 +547,8 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
 
         <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}/>
 
-        {mapReady && !initError && (
+        {/* Crosshair-Pin — nur sichtbar wenn kein POI aktiv */}
+        {mapReady && !initError && !pickedName && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none"
             style={{ paddingBottom: '24px' }}>
             <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -549,24 +564,55 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
           </div>
         )}
 
+        {/* Karten-Controls — rechts unten, vertikal gestapelt */}
         {mapReady && !initError && (
-          <button onClick={handleGPS} disabled={locating}
-            className="absolute right-4 bottom-4 w-11 h-11 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform disabled:opacity-60"
-            style={{ background: isDark ? '#2c2c2e' : '#fff', border: `1px solid ${divider}` }}>
-            {locating
-              ? <div className="w-4 h-4 border-2 border-[#FF9357] border-t-transparent rounded-full animate-spin"/>
-              : <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                  stroke="#FF9357" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="3"/>
-                  <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
-                  <circle cx="12" cy="12" r="9" strokeDasharray="2 3"/>
+          <div className="absolute right-4 bottom-4 flex flex-col items-end gap-2"
+            style={{ zIndex: 10 }}>
+            {/* Satellit-Toggle */}
+            <button onClick={toggleMapType}
+              className="h-9 rounded-full flex items-center gap-1.5 px-3 shadow-lg active:scale-90 transition-transform"
+              style={{ background: isDark ? '#2c2c2e' : '#fff', border: `1px solid ${divider}` }}>
+              {isSatellite ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke={textPrimary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 6l7-3 7 3 7-3v15l-7 3-7-3-7 3V6z"/>
+                  <path d="M8 3v15"/>
+                  <path d="M15 6v15"/>
                 </svg>
-            }
-          </button>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill={textPrimary}>
+                  <rect x="2" y="2" width="9" height="9" rx="1.5"/>
+                  <rect x="13" y="2" width="9" height="9" rx="1.5"/>
+                  <rect x="2" y="13" width="9" height="9" rx="1.5"/>
+                  <rect x="13" y="13" width="9" height="9" rx="1.5"/>
+                </svg>
+              )}
+              <span style={{
+                fontSize: '12px', fontWeight: 600,
+                color: textPrimary, fontFamily: "'Poppins', sans-serif",
+              }}>
+                {isSatellite ? 'Standard' : 'Satellit'}
+              </span>
+            </button>
+            {/* GPS-Button */}
+            <button onClick={handleGPS} disabled={locating}
+              className="w-11 h-11 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform disabled:opacity-60"
+              style={{ background: isDark ? '#2c2c2e' : '#fff', border: `1px solid ${divider}` }}>
+              {locating
+                ? <div className="w-4 h-4 border-2 border-[#FF9357] border-t-transparent rounded-full animate-spin"/>
+                : <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="#FF9357" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+                    <circle cx="12" cy="12" r="9" strokeDasharray="2 3"/>
+                  </svg>
+              }
+            </button>
+          </div>
         )}
       </div>
 
-      {/* Address bar */}
+      {/* Address / POI-Bar */}
       <div style={{
         flexShrink: 0,
         padding: '14px 16px',
@@ -575,29 +621,73 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
         backdropFilter: 'blur(24px)',
         borderTop: `1px solid ${divider}`,
       }}>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #FF9357, #B85C2C)' }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-              stroke="white" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-              <circle cx="12" cy="10" r="3"/>
-            </svg>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div style={{ fontSize: '11px', color: textSecondary, fontFamily: "'Poppins', sans-serif", marginBottom: '2px' }}>
-              Ausgewählter Standort
+        {pickedName ? (
+          /* POI / Suchergebnis ausgewählt */
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #FF9357, #B85C2C)' }}>
+              {/* Gebäude-Icon für POI */}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
             </div>
-            <div className="truncate" style={{
-              fontSize: '13px', fontWeight: 600,
-              color: textPrimary, fontFamily: "'Poppins', sans-serif",
-              opacity: addressUpdating ? 0.4 : 1,
-              transition: 'opacity 0.15s',
-            }}>
-              {initError ? '–' : (address || 'Karte bewegen zum Auswählen')}
+            <div className="flex-1 min-w-0">
+              <div className="truncate" style={{
+                fontSize: '15px', fontWeight: 700,
+                color: '#FF9357', fontFamily: "'Poppins', sans-serif",
+              }}>
+                {pickedName}
+              </div>
+              <div className="truncate" style={{
+                fontSize: '12px', color: textSecondary,
+                fontFamily: "'Poppins', sans-serif",
+                opacity: addressUpdating ? 0.4 : 1,
+                transition: 'opacity 0.15s',
+              }}>
+                {address || '…'}
+              </div>
+            </div>
+            {/* Auswahl aufheben → zurück zu Crosshair */}
+            <button
+              onClick={() => setPickedName(null)}
+              className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform"
+              style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                stroke={textSecondary} strokeWidth="2.5" strokeLinecap="round">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        ) : (
+          /* Crosshair-Modus */
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #FF9357, #B85C2C)' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                stroke="white" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="truncate" style={{
+                fontSize: '13px', fontWeight: 600,
+                color: textPrimary, fontFamily: "'Poppins', sans-serif",
+                opacity: addressUpdating ? 0.4 : 1,
+                transition: 'opacity 0.15s',
+              }}>
+                {initError ? '–' : (address || 'Karte bewegen zum Auswählen')}
+              </div>
+              {returnsName && !initError && (
+                <div style={{ fontSize: '11px', color: textSecondary, fontFamily: "'Poppins', sans-serif", marginTop: '1px' }}>
+                  Kein Name — Ort antippen oder suchen
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )
