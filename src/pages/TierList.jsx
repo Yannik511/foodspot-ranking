@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
-import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
+import { useHeaderHeight } from '../hooks/useHeaderHeight'
 import { useScrollHeader } from '../hooks/useScrollHeader'
 import { usePlusAction } from '../contexts/TabBarActionsContext'
 import { getCategoryTerms } from '../utils/categoryTerms'
@@ -51,7 +51,7 @@ function TierList() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showTierModal, setShowTierModal] = useState(null) // Which tier to show in modal
-  const [refreshing, setRefreshing] = useState(false)
+  const [_refreshing] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editFormData, setEditFormData] = useState({ list_name: '', city: '', cover_image_url: null })
   const [windowHeight, setWindowHeight] = useState(0)
@@ -511,21 +511,6 @@ function TierList() {
     }
   }
 
-  const handlePullToRefresh = async () => {
-    setRefreshing(true)
-    // Reload data
-    const { data: spotsData, error: spotsError } = await supabase
-      .from('foodspots')
-      .select('*')
-      .eq('list_id', id)
-      .order('rating', { ascending: false, nullsLast: true })
-
-    if (!spotsError) {
-      setFoodspots(spotsData || [])
-    }
-    setRefreshing(false)
-  }
-
   // Don't show loading screen if we have optimistic foodspots (seamless transition)
   if (loading && !list && foodspots.length === 0) {
     return (
@@ -561,9 +546,6 @@ function TierList() {
       </div>
     )
   }
-
-  const totalSpots = foodspots.length
-  const hasSpots = totalSpots > 0
 
   return (
     <div className={`h-full flex flex-col ${

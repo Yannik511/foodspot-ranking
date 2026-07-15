@@ -588,7 +588,7 @@ export default function Onboarding() {
         {currentIndex === 2 && (
           <Link
             to="/register"
-            onClick={(e) => {
+            onClick={(_e) => {
               hapticFeedback.medium()
               setPressed(false)
             }}

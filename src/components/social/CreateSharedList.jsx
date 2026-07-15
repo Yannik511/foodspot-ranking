@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTheme } from '../../contexts/ThemeContext'
@@ -45,7 +45,7 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1)
   const [friendsCache, setFriendsCache] = useState(null)
   const [cacheTimestamp, setCacheTimestamp] = useState(0)
-  const [fetchError, setFetchError] = useState(null)
+  const [_fetchError, setFetchError] = useState(null)
   const inputRef = useRef(null)
   const suggestionsRef = useRef(null)
   const debounceTimerRef = useRef(null)

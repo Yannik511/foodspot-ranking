@@ -67,7 +67,7 @@ function Register() {
           navigate('/dashboard', { replace: true })
         }, 1000)
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Ein unerwarteter Fehler ist aufgetreten')
       setLoading(false)
     }

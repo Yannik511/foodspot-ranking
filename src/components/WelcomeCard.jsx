@@ -31,7 +31,7 @@ const FEATURES = [
   },
 ]
 
-function WelcomeCard({ username, onCreateList, isCompact = false, foodEmoji = null }) {
+function WelcomeCard({ onCreateList, foodEmoji = null }) {
   const { isDark } = useTheme()
   const [isMounted, setIsMounted] = useState(false)
 

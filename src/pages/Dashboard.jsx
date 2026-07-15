@@ -10,7 +10,7 @@ import { cityLabelFromAddress } from '../utils/locationLabel'
 import { supabase } from '../services/supabase'
 import { hapticFeedback } from '../utils/haptics'
 import { springEasing, staggerDelay } from '../utils/animations'
-import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
+import { useHeaderHeight } from '../hooks/useHeaderHeight'
 import { useScrollHeader } from '../hooks/useScrollHeader'
 import { useSocialNotifications } from '../hooks/useSocialNotifications'
 import { usePlusAction, useTabBarActions } from '../contexts/TabBarActionsContext'
@@ -88,7 +88,7 @@ function Dashboard() {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
-  const hasSocialNotifications = useSocialNotifications()
+  const _hasSocialNotifications = useSocialNotifications()
   const { headerRef, headerHeight } = useHeaderHeight()
   const scrollContainerRef = useRef(null)
   const scrolled = useScrollHeader(scrollContainerRef)
@@ -216,7 +216,7 @@ function Dashboard() {
     const newListData = sessionStorage.getItem('newList')
     return !newListData
   })
-  const [userFoodEmoji] = useState(null)
+  const [_userFoodEmoji] = useState(null)
   const [editingList, setEditingList] = useState(null)
   const [showEditModal, setShowEditModal] = useState(false)
   const [windowHeight, setWindowHeight] = useState(0)
@@ -418,7 +418,7 @@ function Dashboard() {
               }
             }
           }
-        } catch (error) {
+        } catch (_error) {
           // Tabellen existieren nicht oder Fehler - verwende ursprüngliche Logik (alle Listen)
           // Das ist OK, keine Aktion nötig - listsToShow bleibt auf listsData
         }
@@ -896,7 +896,7 @@ function Dashboard() {
 
       // Combine member lists and shared owned lists
       const allSharedLists = [
-        ...filteredMemberLists.map((list, idx) => {
+        ...filteredMemberLists.map((list, _idx) => {
           const memberData = memberListsData?.find(m => m.lists?.id === list.id)
           return {
             ...list,
@@ -980,15 +980,6 @@ function Dashboard() {
               members = ownerEntry ? [ownerEntry, ...otherEntries] : [...otherEntries]
               totalMembers = members.length
 
-              if (members.length > 0) {
-                upsertProfiles(
-                  members.map(m => ({
-                    id: m.user_id,
-                    username: m.username,
-                    profile_image_url: m.profile_image_url
-                  }))
-                )
-              }
             }
           } catch (rpcError) {
             console.error('[Dashboard] fetchSharedLists: RPC get_shared_list_members failed', rpcError)
@@ -1352,7 +1343,7 @@ function Dashboard() {
   }, [user])
 
   const getUsername = () => user?.user_metadata?.username || user?.email?.split('@')[0] || 'Du'
-  const getUserInitials = () => getUsername().charAt(0).toUpperCase()
+  const _getUserInitials = () => getUsername().charAt(0).toUpperCase()
   
   // Format entry count with correct singular/plural
   const formatEntryCount = (count) => {
@@ -1479,7 +1470,7 @@ function Dashboard() {
 
   const handleDeleteList = async (listId) => {
     // Store previous state for rollback
-    const listToDelete = lists.find(l => l.id === listId) || sharedLists.find(l => l.id === listId)
+    const _listToDelete = lists.find(l => l.id === listId) || sharedLists.find(l => l.id === listId)
     const previousLists = [...lists]
     const previousSharedLists = [...sharedLists]
     
@@ -1561,7 +1552,7 @@ function Dashboard() {
         throw deleteResult.error
       }
       
-      const { data, error } = deleteResult.result
+      const { data: _data, error } = deleteResult.result
       
       if (error) {
         console.error('Delete error:', error)
@@ -1604,7 +1595,7 @@ function Dashboard() {
           if (newList.id === listId) {
             sessionStorage.removeItem('newList')
           }
-        } catch (e) {
+        } catch (_e) {
           // Ignore parse errors
         }
       }
@@ -3531,7 +3522,7 @@ function EditSharedListModal({ list, onClose, onSave }) {
     )
   }
 
-  const handleRoleChange = async (userId, newRole) => {
+  const _handleRoleChange = async (userId, newRole) => {
     if (!isOwner) return // Only owner can change roles
     
     try {
@@ -4200,7 +4191,7 @@ function EditListModal({ list, onClose, onSave }) {
         const fileName = `${user.id}/${Date.now()}.${fileExt}`
 
         // Upload to storage (async, non-blocking)
-        const { error: uploadError, data: uploadData } = await supabase.storage
+        const { error: uploadError, data: _uploadData } = await supabase.storage
           .from('list-covers')
           .upload(fileName, formData.coverImageFile, {
             cacheControl: '3600',

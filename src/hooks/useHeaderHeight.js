@@ -41,7 +41,7 @@ export function useHeaderHeight() {
 
     // 2. Nach Layout-Phase (wichtig für initiales Rendering)
     let rafId1 = requestAnimationFrame(() => {
-      const rafId2 = requestAnimationFrame(() => {
+      const _rafId2 = requestAnimationFrame(() => {
         measureHeader()
       })
       // Speichere die zweite RAF-ID für Cleanup (falls nötig)
@@ -64,7 +64,7 @@ export function useHeaderHeight() {
 
     // ResizeObserver für automatische Updates bei Größenänderungen
     // (z.B. wenn Text umbricht, Schriftgröße ändert, etc.)
-    const resizeObserver = new ResizeObserver((entries) => {
+    const resizeObserver = new ResizeObserver((_entries) => {
       // Messung nach Layout-Update
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {

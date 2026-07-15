@@ -55,7 +55,7 @@ function FriendProfile() {
   })
   const [error, setError] = useState(null)
   const [isFriend, setIsFriend] = useState(false)
-  const [friendProfileVisibility, setFriendProfileVisibility] = useState('private')
+  const [_friendProfileVisibility, setFriendProfileVisibility] = useState('private')
   const [canViewStats, setCanViewStats] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -102,7 +102,7 @@ function FriendProfile() {
             created_at: profileData[0].created_at
           }
         }
-      } catch (err) {
+      } catch (_err) {
         console.warn('Could not fetch user profile via function, trying view')
         // Fallback: try to get from user_profiles view
         try {
@@ -125,7 +125,7 @@ function FriendProfile() {
               created_at: viewData.created_at
             }
           }
-        } catch (viewErr) {
+        } catch (_viewErr) {
           console.warn('Could not fetch user profile')
         }
       }
@@ -353,11 +353,6 @@ function FriendProfile() {
   const handleRetry = () => {
     setError(null)
     fetchFriendProfile()
-  }
-
-  const handlePullToRefresh = async () => {
-    setRefreshing(true)
-    await fetchFriendProfile()
   }
 
   const getUsername = (userData) => {
@@ -1062,7 +1057,7 @@ function FriendProfile() {
                 📋 Top 5 geteilte Listen
               </h3>
               <div className="space-y-3">
-                {stats.topSharedLists.map((list, index) => {
+                {stats.topSharedLists.map((list, _index) => {
                   // Get owner and other members
                   const owners = list.members.filter(m => m.role === 'owner')
                   const editors = list.members.filter(m => m.role === 'editor')

@@ -86,7 +86,7 @@ const compressImage = (file) => {
 }
 
 function Account() {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const { isDark } = useTheme()
   const navigate = useNavigate()
   const fileInputRef = useRef(null)
@@ -889,7 +889,7 @@ function Account() {
 
   const topSpotsTitle = '🏆 Top 10'
 
-  const renderParticipantAvatars = (userIds = [], ownerIds = [], maxVisible = 4) => {
+  const _renderParticipantAvatars = (userIds = [], ownerIds = [], maxVisible = 4) => {
     const filteredIds = (userIds || []).filter(Boolean)
     if (!filteredIds.length) return null
 

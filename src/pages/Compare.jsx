@@ -4,7 +4,6 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import UserAvatar from '../components/social/UserAvatar'
 import { supabase } from '../services/supabase'
-import { hapticFeedback } from '../utils/haptics'
 import { useProfilesStore } from '../contexts/ProfileContext'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 
@@ -20,7 +19,7 @@ function Compare() {
   const [myStats, setMyStats] = useState(null)
   const [friendStats, setFriendStats] = useState(null)
   const [friendUser, setFriendUser] = useState(null)
-  const [friendProfileVisibility, setFriendProfileVisibility] = useState('private')
+  const [_friendProfileVisibility, setFriendProfileVisibility] = useState('private')
   const [canCompare, setCanCompare] = useState(false)
   const cacheRef = useRef({})
   const cacheTimeoutRef = useRef({})
@@ -107,7 +106,7 @@ function Compare() {
             created_at: profileData[0].created_at
           }
         }
-      } catch (err) {
+      } catch (_err) {
         try {
           const { data: viewData } = await supabase
             .from('user_profiles')
@@ -128,7 +127,7 @@ function Compare() {
               created_at: viewData.created_at
             }
           }
-        } catch (viewErr) {
+        } catch (_viewErr) {
           console.warn('Could not fetch friend profile')
         }
       }
@@ -199,7 +198,7 @@ function Compare() {
     return userData?.user_metadata?.username || userData?.email?.split('@')[0] || 'Unbekannt'
   }
 
-  const getWinner = (myValue, friendValue, higherIsBetter = true) => {
+  const _getWinner = (myValue, friendValue, higherIsBetter = true) => {
     // Handle NaN and null values
     const myNum = (myValue == null || isNaN(myValue)) ? 0 : Number(myValue)
     const friendNum = (friendValue == null || isNaN(friendValue)) ? 0 : Number(friendValue)

@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
 import { scrollFieldIntoView } from '../utils/keyboard'
-import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
+import { useHeaderHeight } from '../hooks/useHeaderHeight'
 import LocationPickerSheet from '../components/LocationPickerSheet'
 import { cityLabelFromAddress } from '../utils/locationLabel'
 
@@ -114,7 +114,7 @@ function CreateList() {
   }
 
   // Normalisiere Stadt-Eingabe (nur beim Speichern, nicht während der Eingabe)
-  const normalizeCity = (value) => {
+  const _normalizeCity = (value) => {
     return value
       .trim()
       .replace(/\s+/g, ' ') // Mehrfache Leerzeichen → eins

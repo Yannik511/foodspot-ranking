@@ -82,13 +82,7 @@ function Settings() {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [accentColor, setAccentColor] = useState('orange') // 'orange' | 'neutral'
-  const [notificationsNewRatings, setNotificationsNewRatings] = useState(true)
-  const [notificationsSharedLists, setNotificationsSharedLists] = useState(true)
-  const [notificationsFriendRequests, setNotificationsFriendRequests] = useState(true)
   const [profileVisibility, setProfileVisibility] = useState('private') // 'private' | 'friends'
-  const [pullToRefresh, setPullToRefresh] = useState(true)
-  const [autoSync, setAutoSync] = useState(true)
   const [hasChanges, setHasChanges] = useState(false)
   const [loading, setLoading] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
@@ -205,15 +199,13 @@ function Settings() {
     
     try {
       const updates = {}
-      let hasUsernameUpdate = false
       let hasPasswordUpdate = false
-      
+
       // Update username and profile visibility if changed
       const metadataUpdates = { ...user?.user_metadata }
       let hasMetadataUpdate = false
-      
+
       if (username && username !== getUsername() && !usernameError) {
-        hasUsernameUpdate = true
         metadataUpdates.username = username.trim()
         hasMetadataUpdate = true
       }

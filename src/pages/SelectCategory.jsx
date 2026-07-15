@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
+
 import { useTheme } from '../contexts/ThemeContext'
-import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
+import { useHeaderHeight } from '../hooks/useHeaderHeight'
 
 // Kategorien-Definition (gleiche wie in AddFoodspot)
 const CATEGORIES = {
@@ -75,9 +75,8 @@ const CATEGORIES = {
 
 function SelectCategory() {
   const navigate = useNavigate()
-  const { user } = useAuth()
   const { isDark } = useTheme()
-  const [selectedCategory, setSelectedCategory] = useState(null)
+  const [selectedCategory, _setSelectedCategory] = useState(null)
   const { headerRef, headerHeight } = useHeaderHeight()
 
   const handleCategorySelect = (category) => {

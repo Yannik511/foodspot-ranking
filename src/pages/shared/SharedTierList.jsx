@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTheme } from '../../contexts/ThemeContext'
 import { supabase } from '../../services/supabase'
-import { useHeaderHeight, getContentPaddingTop } from '../../hooks/useHeaderHeight'
+import { useHeaderHeight } from '../../hooks/useHeaderHeight'
 import { useScrollHeader } from '../../hooks/useScrollHeader'
 import {
   uploadSharedSpotPhoto,
@@ -84,7 +84,7 @@ function SharedTierList() {
   const navigate = useNavigate()
 
   const [list, setList] = useState(null)
-  const [listMemberOrder, setListMemberOrder] = useState([])
+  const [_listMemberOrder, setListMemberOrder] = useState([])
   const [foodspots, setFoodspots] = useState([])
   const [spotRatings, setSpotRatings] = useState({})
   const [spotPhotos, setSpotPhotos] = useState({})
@@ -853,7 +853,7 @@ function SharedTierList() {
         dateStyle: 'short',
         timeStyle: 'short'
       }).format(new Date(timestamp))
-    } catch (error) {
+    } catch (_error) {
       return new Date(timestamp).toLocaleString()
     }
   }
@@ -899,10 +899,6 @@ function SharedTierList() {
     } finally {
       setDescriptionSaving(false)
     }
-  }
-
-  const handleAddFoodspot = () => {
-    navigate(`/shared/add-foodspot/${id}`)
   }
 
   if (loading) {

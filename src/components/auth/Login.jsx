@@ -70,7 +70,7 @@ function Login() {
         hapticFeedback.success()
         navigate('/dashboard')
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Ein unerwarteter Fehler ist aufgetreten')
       setLoading(false)
     }

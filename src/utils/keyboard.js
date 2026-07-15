@@ -8,7 +8,7 @@ export const scrollFieldIntoView = (element) => {
         behavior: 'smooth',
         block: 'center'
       })
-    } catch (error) {
+    } catch (_error) {
       // Fallback ohne smooth falls nicht unterstützt
       element.scrollIntoView()
     }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTheme } from '../../contexts/ThemeContext'
@@ -48,16 +48,12 @@ function FriendsTab() {
   const [sharedLists, setSharedLists] = useState([]) // Geteilte Listen für Social-Tab
   const [sharedListsLoading, setSharedListsLoading] = useState(false)
   const [showInvitationDetails, setShowInvitationDetails] = useState(null) // ID der Einladung für Details-Ansicht
-  const [showFABMenu, setShowFABMenu] = useState(false) // FAB-Menü anzeigen
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
+  const [_refreshing, setRefreshing] = useState(false)
   const [toast, setToast] = useState(null)
-  const menuOpenForFriend = useRef(null)
-
   const SHARED_LISTS_PREVIEW_LIMIT = 6
   const FRIENDS_PREVIEW_LIMIT = 10
   const [showAllSharedLists, setShowAllSharedLists] = useState(false)
-  const [showAllFriends, setShowAllFriends] = useState(false)
   const [invitationsExpanded, setInvitationsExpanded] = useState(false)
   const [requestsExpanded, setRequestsExpanded] = useState(false)
   const selectedInvitation = useMemo(() => {
@@ -73,12 +69,6 @@ function FriendsTab() {
       setShowAllSharedLists(false)
     }
   }, [sharedLists, SHARED_LISTS_PREVIEW_LIMIT])
-
-  useEffect(() => {
-    if (friends.length <= FRIENDS_PREVIEW_LIMIT) {
-      setShowAllFriends(false)
-    }
-  }, [friends, FRIENDS_PREVIEW_LIMIT])
 
   // Fetch friends and requests - NUR beim ersten Mount
   useEffect(() => {
@@ -585,25 +575,6 @@ function FriendsTab() {
     } catch (error) {
       console.error('Error rejecting request:', error)
       showToast('Fehler beim Ablehnen', 'error')
-    }
-  }
-
-  const handleRemoveFriend = async (friendshipId) => {
-    try {
-      const { error } = await supabase
-        .from('friendships')
-        .delete()
-        .eq('id', friendshipId)
-
-      if (error) throw error
-
-      hapticFeedback.light()
-      showToast('Freund entfernt', 'success')
-      fetchFriends()
-      menuOpenForFriend.current = null
-    } catch (error) {
-      console.error('Error removing friend:', error)
-      showToast('Fehler beim Entfernen', 'error')
     }
   }
 
@@ -1351,11 +1322,6 @@ function FriendsTab() {
     return friendshipStatus === 'accepted' || friendshipStatus === 'pending_outgoing' || friendshipStatus === 'pending_incoming'
   }
 
-  const handlePullToRefresh = async () => {
-    setRefreshing(true)
-    await fetchFriends()
-  }
-
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
     setTimeout(() => setToast(null), 3000)
@@ -1376,10 +1342,6 @@ function FriendsTab() {
   const sharedListsToDisplay = useMemo(() => (
     showAllSharedLists ? sharedLists : sharedLists.slice(0, SHARED_LISTS_PREVIEW_LIMIT)
   ), [sharedLists, showAllSharedLists, SHARED_LISTS_PREVIEW_LIMIT])
-
-  const friendsToDisplay = useMemo(() => (
-    showAllFriends ? friends : friends.slice(0, FRIENDS_PREVIEW_LIMIT)
-  ), [friends, showAllFriends, FRIENDS_PREVIEW_LIMIT])
 
   // Don't show loading screen if we're just loading invitations
   if (loading && friends.length === 0 && incomingRequests.length === 0 && outgoingRequests.length === 0) {

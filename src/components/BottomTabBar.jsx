@@ -115,7 +115,7 @@ export default function BottomTabBar() {
         ...glassStyle,
       }}
     >
-      {TABS.map((tab, i) => {
+      {TABS.map((tab, _i) => {
         if (tab === null) {
           // Center + button
           return (

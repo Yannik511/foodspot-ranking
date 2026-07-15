@@ -5,7 +5,7 @@ import { hapticFeedback } from '../utils/haptics'
 import { springEasing } from '../utils/animations'
 
 // Feature Card Component - Modern App-Onboarding Style with Float Effect
-function FeatureCard({ feature, index, isActive, cardWidth }) {
+function FeatureCard({ feature, cardWidth }) {
   const { isDark } = useTheme()
 
   return (
@@ -118,19 +118,12 @@ function FeaturesSection() {
   const [isMounted, setIsMounted] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showArrow, setShowArrow] = useState(false)
-  const [isDragging, setIsDragging] = useState(false)
-  const [startX, setStartX] = useState(0)
-  const [scrollLeft, setScrollLeft] = useState(0)
-  const [velocity, setVelocity] = useState(0)
+  const [isDragging, _setIsDragging] = useState(false)
   const [isTransitioning, setIsTransitioning] = useState(false)
-  
+
   const containerRef = useRef(null)
   const scrollContainerRef = useRef(null)
-  const lastTouchXRef = useRef(0)
-  const lastTouchTimeRef = useRef(0)
   const animationFrameRef = useRef(null)
-  const touchStartTimeRef = useRef(0)
-  const touchStartXRef = useRef(0)
 
   const features = [
     {
@@ -252,7 +245,6 @@ function FeaturesSection() {
     if (scrollContainerRef.current && cardWidth > 0 && !isDragging) {
       setIsTransitioning(true)
       const cardWithGap = cardWidth + 16 // 16px gap
-      const containerWidth = scrollContainerRef.current.clientWidth
       // Calculate scroll position to center the card
       const scrollPosition = (currentIndex * cardWithGap)
       scrollContainerRef.current.scrollTo({
@@ -369,21 +361,6 @@ function FeaturesSection() {
     }
   }, [cardWidth, features.length, currentIndex])
 
-  // Improved touch handlers - nur Wischen, kein Dragging
-  const handleTouchStart = useCallback((e) => {
-    if (isTransitioning) return
-    
-    const touch = e.touches[0]
-    touchStartXRef.current = touch.pageX
-    touchStartTimeRef.current = Date.now()
-    setShowArrow(false)
-  }, [isTransitioning])
-
-  const handleTouchMove = useCallback((e) => {
-    // Nur natürliches Scrollen erlauben, kein manuelles Dragging
-    // Das native Scroll-Verhalten übernimmt das Wischen
-  }, [])
-
   const handleTouchEnd = useCallback(() => {
     // Snap to nearest card nach natürlichem Scroll
     if (scrollContainerRef.current) {
@@ -483,7 +460,7 @@ function FeaturesSection() {
 
         {/* Desktop: Grid Layout */}
         <div className="hidden md:grid md:grid-cols-3 gap-4 lg:gap-6">
-          {features.slice(0, 3).map((feature, index) => (
+          {features.slice(0, 3).map((feature, _index) => (
             <div key={feature.id} className="opacity-1 transition-opacity duration-300">
               <div className="bg-white dark:bg-gray-800 rounded-[20px] p-6 shadow-lg dark:shadow-xl">
                 <div 
@@ -506,7 +483,7 @@ function FeaturesSection() {
           ))}
         </div>
         <div className="hidden md:flex md:justify-center gap-4 lg:gap-6 mt-4 lg:mt-6">
-          {features.slice(3).map((feature, index) => (
+          {features.slice(3).map((feature, _index) => (
             <div key={feature.id} className="opacity-1 transition-opacity duration-300">
               <div className="bg-white dark:bg-gray-800 rounded-[20px] p-6 shadow-lg dark:shadow-xl">
                 <div 
