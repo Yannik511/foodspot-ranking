@@ -4,9 +4,9 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useTheme } from '../../contexts/ThemeContext'
 import { supabase } from '../../services/supabase'
 import { useScrollHeader } from '../../hooks/useScrollHeader'
+import { useSaveStatus } from '../../contexts/SaveStatusContext'
 import LocationPickerSheet from '../../components/LocationPickerSheet'
 import SaveButton from '../../components/SaveButton'
-import { hapticFeedback } from '../../utils/haptics'
 
 export default function EditSpot() {
   const { id } = useParams()
@@ -14,12 +14,12 @@ export default function EditSpot() {
   const spotId = searchParams.get('spotId')
   const { user } = useAuth()
   const { isDark } = useTheme()
+  const { beginSave, resolveSave, failSave } = useSaveStatus()
   const navigate = useNavigate()
 
   const scrollContainerRef = useRef(null)
   const scrolled = useScrollHeader(scrollContainerRef)
   const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [spot, setSpot] = useState(null)
@@ -82,15 +82,18 @@ export default function EditSpot() {
     setTimeout(() => setToast(null), 3000)
   }
 
+  // onSave-Vertrag: wirft bei Validierungs-/Serverfehler → SaveButton zeigt Fehler-Zustand.
+  // Erfolg → Häkchen-Pop + Erfolgs-Haptik, danach zurück.
   const handleSave = async () => {
     const newErrors = {}
     if (!name.trim() || name.trim().length < 2) {
       newErrors.name = 'Name muss mindestens 2 Zeichen haben'
     }
     setErrors(newErrors)
-    if (Object.keys(newErrors).length > 0) return
+    if (Object.keys(newErrors).length > 0) throw new Error('validation') // kein Save gestartet
 
-    setSubmitting(true)
+    const saveId = `edit-${spotId}`
+    beginSave(saveId, 'Änderungen werden gespeichert…')
     try {
       const { error } = await supabase.rpc('update_shared_foodspot', {
         p_foodspot_id: spotId,
@@ -102,15 +105,13 @@ export default function EditSpot() {
         p_longitude: longitude ?? null,
       })
       if (error) throw error
-      hapticFeedback.success()
-      showToast('Spot aktualisiert')
-      // Direkt zurück — SharedTierList aktualisiert den Spot per Realtime automatisch
-      setTimeout(() => navigate(-1), 450)
     } catch (e) {
-      showToast(e?.message || 'Fehler beim Speichern', 'error')
-    } finally {
-      setSubmitting(false)
+      failSave(saveId, 'Änderungen konnten nicht gespeichert werden')
+      throw e
     }
+    // Erfolg — Pille quittiert; SharedTierList aktualisiert den Spot per Realtime.
+    resolveSave(saveId, 'Gespeichert')
+    setTimeout(() => navigate(-1), 600)
   }
 
   const handleDelete = async () => {
@@ -176,9 +177,25 @@ export default function EditSpot() {
               {spot?.name}
             </h1>
           </div>
+          {canDelete && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              style={{
+                width: 36, height: 36, borderRadius: '50%', border: 'none', cursor: 'pointer',
+                background: isDark ? 'rgba(239,68,68,0.14)' : 'rgba(239,68,68,0.08)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                WebkitTapHighlightColor: 'transparent', flexShrink: 0,
+                color: '#EF4444',
+              }}
+              aria-label="Spot löschen"
+            >
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+              </svg>
+            </button>
+          )}
           <SaveButton
-            onClick={() => { hapticFeedback.medium(); handleSave() }}
-            saving={submitting}
+            onSave={handleSave}
             isDark={isDark}
             label="Änderungen speichern"
           />
@@ -319,74 +336,77 @@ export default function EditSpot() {
           </button>
         </div>
 
-        {/* Delete Section */}
-        {canDelete && (
-          <div style={{
-            borderRadius: 20, padding: 20,
-            background: isDark ? 'rgba(239,68,68,0.06)' : 'rgba(239,68,68,0.04)',
-            border: `1px solid ${isDark ? 'rgba(239,68,68,0.18)' : 'rgba(239,68,68,0.14)'}`,
-          }}>
-            {!showDeleteConfirm ? (
+      </main>
+
+      {/* Lösch-Bestätigung — zentriertes Overlay, ausgelöst vom Mülleimer im Header */}
+      {canDelete && showDeleteConfirm && (
+        <div
+          onClick={() => !deleting && setShowDeleteConfirm(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 110,
+            background: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+          }}
+          className="animate-fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="animate-scale-in"
+            style={{
+              width: '100%', maxWidth: 360, borderRadius: 24, padding: 24,
+              background: isDark ? '#1c1c1e' : '#fff',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
+            }}
+          >
+            <div style={{
+              width: 52, height: 52, borderRadius: '50%', margin: '0 auto 16px',
+              background: isDark ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.1)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="24" height="24" fill="none" stroke="#EF4444" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+              </svg>
+            </div>
+            <p style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: isDark ? '#fff' : '#000', fontFamily: "'Poppins', sans-serif", textAlign: 'center' }}>
+              Spot wirklich löschen?
+            </p>
+            <p style={{ margin: '0 0 20px', fontSize: 13, color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)', fontFamily: "'Poppins', sans-serif", textAlign: 'center', lineHeight: 1.5 }}>
+              Der Spot wird für alle Mitglieder der Liste entfernt. Diese Aktion kann nicht rückgängig gemacht werden.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
               <button
-                onClick={() => setShowDeleteConfirm(true)}
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
                 style={{
-                  width: '100%', padding: '13px', borderRadius: 14,
-                  border: `1.5px solid ${isDark ? 'rgba(239,68,68,0.35)' : 'rgba(239,68,68,0.3)'}`,
+                  flex: 1, padding: '13px', borderRadius: 14,
+                  border: `1.5px solid ${isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'}`,
                   background: 'transparent', cursor: 'pointer',
-                  fontSize: 15, fontWeight: 600, fontFamily: "'Poppins', sans-serif",
-                  color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  WebkitTapHighlightColor: 'transparent',
+                  fontSize: 14, fontWeight: 600, fontFamily: "'Poppins', sans-serif",
+                  color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
+                  WebkitTapHighlightColor: 'transparent', opacity: deleting ? 0.5 : 1,
                 }}
               >
-                <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
-                </svg>
-                Spot löschen
+                Abbrechen
               </button>
-            ) : (
-              <div>
-                <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 600, color: '#EF4444', fontFamily: "'Poppins', sans-serif", textAlign: 'center' }}>
-                  Spot wirklich löschen?
-                </p>
-                <p style={{ margin: '0 0 16px', fontSize: 13, color: isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)', fontFamily: "'Poppins', sans-serif", textAlign: 'center', lineHeight: 1.5 }}>
-                  Der Spot wird für alle Mitglieder der Liste entfernt. Diese Aktion kann nicht rückgängig gemacht werden.
-                </p>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button
-                    onClick={() => setShowDeleteConfirm(false)}
-                    disabled={deleting}
-                    style={{
-                      flex: 1, padding: '13px', borderRadius: 14,
-                      border: `1.5px solid ${isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'}`,
-                      background: 'transparent', cursor: 'pointer',
-                      fontSize: 14, fontWeight: 600, fontFamily: "'Poppins', sans-serif",
-                      color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
-                      WebkitTapHighlightColor: 'transparent',
-                      opacity: deleting ? 0.5 : 1,
-                    }}
-                  >
-                    Abbrechen
-                  </button>
-                  <button
-                    onClick={handleDelete}
-                    disabled={deleting}
-                    style={{
-                      flex: 1, padding: '13px', borderRadius: 14, border: 'none', cursor: 'pointer',
-                      background: '#EF4444',
-                      fontSize: 14, fontWeight: 700, fontFamily: "'Poppins', sans-serif",
-                      color: '#fff', opacity: deleting ? 0.6 : 1,
-                      WebkitTapHighlightColor: 'transparent',
-                      boxShadow: '0 4px 14px rgba(239,68,68,0.35)',
-                    }}
-                  >
-                    {deleting ? 'Löschen...' : 'Ja, löschen'}
-                  </button>
-                </div>
-              </div>
-            )}
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                style={{
+                  flex: 1, padding: '13px', borderRadius: 14, border: 'none', cursor: 'pointer',
+                  background: '#EF4444',
+                  fontSize: 14, fontWeight: 700, fontFamily: "'Poppins', sans-serif",
+                  color: '#fff', opacity: deleting ? 0.6 : 1,
+                  WebkitTapHighlightColor: 'transparent',
+                  boxShadow: '0 4px 14px rgba(239,68,68,0.35)',
+                }}
+              >
+                {deleting ? 'Löschen…' : 'Ja, löschen'}
+              </button>
+            </div>
           </div>
-        )}
-      </main>
+        </div>
+      )}
 
       {toast && (
         <div style={{

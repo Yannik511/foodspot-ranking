@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
+import { useSaveStatus } from '../contexts/SaveStatusContext'
 import { supabase } from '../services/supabase'
 import { scrollFieldIntoView } from '../utils/keyboard'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
@@ -194,6 +195,7 @@ function AddFoodspot() {
   const isEditMode = !!spotId
   const { user } = useAuth()
   const { isDark } = useTheme()
+  const { beginSave, resolveSave, failSave } = useSaveStatus()
   const navigate = useNavigate()
 
   const [list, setList] = useState(null)
@@ -231,9 +233,15 @@ function AddFoodspot() {
 
   // Track the active cover-image Object-URL so we can revoke the previous one
   // before allocating a new preview, and revoke on unmount.
+  // handedOffPreviewRef: bei optimistischem Submit übernimmt der Hintergrund-Upload
+  // die Blob-URL (sie wird noch in der TierList als Preview gezeigt). Dann darf
+  // der Unmount-Cleanup sie NICHT revoken — sonst bricht das Bild sofort weg.
   const previewUrlRef = useRef(null)
+  const handedOffPreviewRef = useRef(false)
   useEffect(() => () => {
-    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+    if (previewUrlRef.current && !handedOffPreviewRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current)
+    }
   }, [])
 
   // Shared list detection – redirect to shared component
@@ -495,142 +503,117 @@ function AddFoodspot() {
     setTimeout(() => setToast(null), 3000)
   }
 
-  // Submit
+  // Submit — optimistischer, nicht-blockierender Ablauf:
+  // 1. Sofort mit lokaler Bild-Preview in die TierList navigieren (kein Overlay).
+  // 2. Bild-Upload + DB-Insert/Update laufen im Hintergrund.
+  // 3. Die globale Save-Pille läuft über die Navigation hinweg weiter, bis der
+  //    echte DB-Eintrag steht — dann Häkchen. Bei Fehler: Rollback + Fehler-Pille.
   const handleSubmit = async () => {
     if (!validateForm()) return
-    
+
     setIsSubmitting(true)
 
+    const termSingular = getCategoryTerms(list?.category || listCategory).singular
+
+    // Snapshot der Formularwerte (formData kann nach dem Unmount nicht mehr gelesen werden)
+    const fileToUpload = formData.cover_photo_file
+    const localPreview = formData.cover_photo_url // Blob (neu) oder echte URL (Edit ohne neues Bild)
+    const isBlobPreview = typeof localPreview === 'string' && localPreview.startsWith('blob:')
+
+    const ratingsData = formData.ratings && Object.keys(formData.ratings).length > 0
+      ? formData.ratings
+      : {}
+
+    const payload = {
+      name: formData.name.trim(),
+      address: formData.address.trim() || null,
+      latitude: formData.latitude || null,
+      longitude: formData.longitude || null,
+      ratings: ratingsData,
+      tier: autoTier,
+      rating: overallRating,
+      notes: formData.notes.trim() || null,
+    }
+
+    // Optimistischer Spot zeigt sofort die lokale Preview (Blob) bzw. bestehende URL.
+    const tempSpotId = `temp-${crypto.randomUUID()}`
+    const optimisticFoodspot = {
+      id: tempSpotId,
+      list_id: id,
+      user_id: user.id,
+      category: selectedCategory || listCategory,
+      cover_photo_url: localPreview || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      ...payload,
+    }
+
+    sessionStorage.setItem('newFoodspot', JSON.stringify({
+      listId: id,
+      foodspot: optimisticFoodspot
+    }))
+
+    // Blob-Preview an den Hintergrund-Task übergeben, damit der Unmount sie nicht revoked.
+    if (isBlobPreview) handedOffPreviewRef.current = true
+
+    // Globale Save-Pille starten — läuft über die Navigation hinweg weiter.
+    beginSave(tempSpotId, isEditMode ? 'Änderungen werden gespeichert…' : `${termSingular} wird hinzugefügt…`)
+
+    // Sofort navigieren — kein blockierendes Overlay.
+    navigate(`/tierlist/${id}`, { state: { scrollToTop: true } })
+
+    // --- Hintergrund: Upload + DB-Schreibvorgang ---
     try {
-      let imageUrl = null
+      let imageUrl = isEditMode && !fileToUpload ? (localPreview || null) : null
 
-      // Upload image if provided
-      if (formData.cover_photo_file) {
-        const fileExt = formData.cover_photo_file.name.split('.').pop()
+      if (fileToUpload) {
+        const fileExt = fileToUpload.name.split('.').pop()
         const fileName = `${user.id}/${Date.now()}.${fileExt}`
-
         const { error: uploadError } = await supabase.storage
           .from('list-covers')
-          .upload(fileName, formData.cover_photo_file, {
-            cacheControl: '3600',
-            upsert: false
-          })
-
+          .upload(fileName, fileToUpload, { cacheControl: '3600', upsert: false })
         if (uploadError) throw uploadError
-
-        const { data: urlData } = supabase.storage
-          .from('list-covers')
-          .getPublicUrl(fileName)
-
-        if (urlData?.publicUrl) {
-          imageUrl = urlData.publicUrl
-        }
-      } else if (isEditMode && formData.cover_photo_url) {
-        // Keep existing image if no new one uploaded
-        imageUrl = formData.cover_photo_url
+        const { data: urlData } = supabase.storage.from('list-covers').getPublicUrl(fileName)
+        imageUrl = urlData?.publicUrl || null
       }
 
-      // Ensure ratings is always a valid JSON object
-      const ratingsData = formData.ratings && Object.keys(formData.ratings).length > 0 
-        ? formData.ratings 
-        : {}
-
-      // Optimistic update: Create temporary foodspot for immediate display
-      const tempSpotId = `temp-${crypto.randomUUID()}`
-      const optimisticFoodspot = {
-        id: tempSpotId,
-        list_id: id,
-        user_id: user.id,
-        name: formData.name.trim(),
-        address: formData.address.trim() || null,
-        latitude: formData.latitude || null,
-        longitude: formData.longitude || null,
-        category: selectedCategory || listCategory,
-        ratings: ratingsData,
-        tier: autoTier,
-        rating: overallRating,
-        notes: formData.notes.trim() || null,
-        cover_photo_url: imageUrl || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
-
-      // Store optimistic foodspot in sessionStorage for TierList to pick up
-      sessionStorage.setItem('newFoodspot', JSON.stringify({
-        listId: id,
-        foodspot: optimisticFoodspot
-      }))
-
-      // Navigate immediately (optimistic) - no loading screen
-      setIsSubmitting(false)
-      navigate(`/tierlist/${id}`, { 
-        state: { scrollToTop: true } // Signal für Scroll-Reset
-      })
-      
-      // Update/Insert in background (non-blocking)
       if (isEditMode) {
-        // Update existing foodspot
         const { error: updateError } = await supabase
           .from('foodspots')
-          .update({
-            name: formData.name.trim(),
-            address: formData.address.trim() || null,
-            latitude: formData.latitude || null,
-            longitude: formData.longitude || null,
-            ratings: ratingsData,
-            tier: autoTier,
-            rating: overallRating,
-            notes: formData.notes.trim() || null,
-            cover_photo_url: imageUrl || null,
-            updated_at: new Date().toISOString()
-          })
+          .update({ ...payload, cover_photo_url: imageUrl || null, updated_at: new Date().toISOString() })
           .eq('id', spotId)
-
-        if (updateError) {
-          console.error('Update error details:', updateError)
-          sessionStorage.removeItem('newFoodspot')
-        } else {
-          // Clear on success - real-time will sync
-          sessionStorage.removeItem('newFoodspot')
-        }
+        if (updateError) throw updateError
+        sessionStorage.removeItem('newFoodspot')
       } else {
-        // Insert new foodspot
         const { data: insertedFoodspot, error: insertError } = await supabase
           .from('foodspots')
           .insert({
             list_id: id,
             user_id: user.id,
-            name: formData.name.trim(),
-            address: formData.address.trim() || null,
-            latitude: formData.latitude || null,
-            longitude: formData.longitude || null,
             category: selectedCategory || listCategory,
-            ratings: ratingsData,
-            tier: autoTier,
-            rating: overallRating,
-            notes: formData.notes.trim() || null,
-            cover_photo_url: imageUrl || null
+            cover_photo_url: imageUrl || null,
+            ...payload,
           })
           .select()
           .single()
-
-        if (insertError) {
-          console.error('Insert error details:', insertError)
-          sessionStorage.removeItem('newFoodspot')
-        } else if (insertedFoodspot) {
-          // Update sessionStorage with real foodspot
-          sessionStorage.setItem('newFoodspot', JSON.stringify({
-            listId: id,
-            foodspot: insertedFoodspot
-          }))
+        if (insertError) throw insertError
+        if (insertedFoodspot) {
+          sessionStorage.setItem('newFoodspot', JSON.stringify({ listId: id, foodspot: insertedFoodspot }))
         }
       }
-      
-      // Real-time subscription will sync automatically
+      // Echter Eintrag steht → Pille quittiert mit Häkchen. Realtime synchronisiert.
+      resolveSave(tempSpotId, isEditMode ? 'Gespeichert' : `${termSingular} hinzugefügt`)
     } catch (error) {
-      console.error('Error adding foodspot:', error)
-      showToast('Fehler beim Hinzufügen. Bitte versuche es erneut.', 'error')
-      setIsSubmitting(false)
+      console.error('Error saving foodspot:', error)
+      // Rollback: optimistischen Eintrag entfernen + Fehler-Pille + Flag für TierList-Cleanup.
+      sessionStorage.removeItem('newFoodspot')
+      sessionStorage.setItem('foodspotSaveError', JSON.stringify({ listId: id }))
+      failSave(tempSpotId, isEditMode
+        ? 'Änderungen konnten nicht gespeichert werden'
+        : `${termSingular} konnte nicht gespeichert werden`)
+    } finally {
+      // Übergebene Blob-Preview jetzt sicher freigeben (echte URL ist gesetzt).
+      if (isBlobPreview && localPreview) URL.revokeObjectURL(localPreview)
     }
   }
 
@@ -855,29 +838,6 @@ function AddFoodspot() {
     <div className={`min-h-screen flex flex-col ${
       isDark ? 'bg-gray-900' : 'bg-white'
     }`}>
-      {/* Loading Overlay */}
-      {isSubmitting && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className={`rounded-3xl p-8 text-center shadow-2xl max-w-sm mx-4 ${
-            isDark ? 'bg-gray-800' : 'bg-white'
-          }`}>
-            <div className="relative w-16 h-16 mx-auto mb-4">
-              <div className={`absolute inset-0 border-4 rounded-full ${
-                isDark ? 'border-[#FF9357]/20' : 'border-[#FF7E42]/20'
-              }`}></div>
-              <div className={`absolute inset-0 border-4 border-t-transparent rounded-full animate-spin ${
-                isDark ? 'border-[#FF9357]' : 'border-[#FF7E42]'
-              }`}></div>
-            </div>
-            <h3 className={`text-xl font-bold mb-2 ${
-              isDark ? 'text-white' : 'text-gray-900'
-            }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-              {isEditMode ? 'Wird gespeichert...' : `${getCategoryTerms(list?.category || listCategory).singular} wird hinzugefügt...`}
-            </h3>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <header
         ref={formHeaderRef}

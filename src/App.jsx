@@ -32,6 +32,8 @@ import ProtectedRoute from './components/ProtectedRoute'
 import ErrorBoundary from './components/ErrorBoundary'
 import { PresenceProvider } from './contexts/PresenceContext'
 import { TabBarActionsProvider } from './contexts/TabBarActionsContext'
+import { SaveStatusProvider } from './contexts/SaveStatusContext'
+import SaveStatusOverlay from './components/SaveStatusOverlay'
 import Discover from './pages/Discover'
 import Legal from './pages/Legal'
 
@@ -39,6 +41,23 @@ function TabBarContainer() {
   const location = useLocation()
   if (!isTabBarPage(location.pathname)) return null
   return <BottomTabBar />
+}
+
+// Weicher Screen-Wechsel: reines Opacity-Crossfade beim Pfadwechsel.
+// Bewusst KEIN transform — sonst würden position:fixed-Header (viele Screens
+// nutzen sie) relativ zum Wrapper positioniert und brechen. Opacity ist sicher.
+// Höhe wird durchgereicht, damit h-full/min-h-screen-Pages korrekt füllen.
+function RouteFade({ children }) {
+  const location = useLocation()
+  return (
+    <div
+      key={location.pathname}
+      className="animate-fade-in"
+      style={{ flex: 1, minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column' }}
+    >
+      {children}
+    </div>
+  )
 }
 
 function App() {
@@ -51,8 +70,11 @@ function App() {
         <PresenceProvider>
         <ProfileProvider>
           <TabBarActionsProvider>
+          <SaveStatusProvider>
           <BrowserRouter>
           <TabBarContainer />
+          <SaveStatusOverlay />
+        <RouteFade>
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/onboarding" element={<Onboarding />} />
@@ -223,7 +245,9 @@ function App() {
           <Route path="/impressum" element={<Legal docKey="impressum" />} />
           <Route path="/terms" element={<Legal docKey="terms" />} />
         </Routes>
+        </RouteFade>
           </BrowserRouter>
+          </SaveStatusProvider>
           </TabBarActionsProvider>
         </ProfileProvider>
         </PresenceProvider>

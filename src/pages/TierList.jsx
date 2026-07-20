@@ -172,6 +172,24 @@ function TierList() {
     }
   }, [id, sharedContextChecked])
 
+  // Hintergrund-Speichern in AddFoodspot fehlgeschlagen → optimistischen Spot
+  // zurückrollen (die Fehler-Rückmeldung übernimmt die globale Save-Pille).
+  useEffect(() => {
+    if (!sharedContextChecked || !id) return
+    const errData = sessionStorage.getItem('foodspotSaveError')
+    if (!errData) return
+    try {
+      const { listId } = JSON.parse(errData)
+      if (listId === id) {
+        setFoodspots(prev => prev.filter(f => !f.id?.startsWith('temp-')))
+      }
+    } catch {
+      // ignore malformed flag
+    } finally {
+      sessionStorage.removeItem('foodspotSaveError')
+    }
+  }, [id, sharedContextChecked])
+
   // Fetch list and foodspots
   useEffect(() => {
     if (!user || !id || !sharedContextChecked) return
@@ -664,7 +682,7 @@ function TierList() {
           left: 0,
           right: 0,
           paddingTop: 24,
-          paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 110px)`,
+          paddingBottom: 'var(--tabbar-clearance)',
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch',
           background: isDark ? '#111827' : '#F9FAFB'

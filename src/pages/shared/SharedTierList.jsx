@@ -962,7 +962,7 @@ function SharedTierList() {
           left: 0,
           right: 0,
           paddingTop: 24,
-          paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 110px)`,
+          paddingBottom: 'var(--tabbar-clearance)',
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'
         }}

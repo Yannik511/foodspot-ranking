@@ -217,11 +217,123 @@
 }
 
 @keyframes fadeIn {
-  from { 
-    opacity: 0; 
+  from {
+    opacity: 0;
   }
-  to { 
-    opacity: 1; 
+  to {
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   Motion-System — EINE gemeinsame Sprache für die ganze App
+   Physik, Timing und Shimmer sind hier zentral definiert.
+   Alle Lade-/Übergangs-Animationen leiten sich hiervon ab,
+   damit nichts wie ein Fremdkörper wirkt.
+   ============================================ */
+:root {
+  /* Feder-Physik (identisch zur bestehenden .pressable-Kurve) */
+  --ease-spring: cubic-bezier(0.2, 0.65, 0.25, 1);
+  /* Weiches iOS-Settle für Eintritts-Animationen */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Standard-Dauern */
+  --dur-fast: 0.16s;
+  --dur-base: 0.28s;
+  --dur-slow: 0.42s;
+  /* Skeleton-Farben */
+  --skeleton-base: rgba(0, 0, 0, 0.06);
+  --skeleton-sheen: rgba(0, 0, 0, 0.10);
+  /* Freiraum unter scrollbarem Inhalt, damit er nicht mit der schwebenden
+     Tab-Bar konkurriert: Safe-Area + Pillen-Höhe (~64px) + etwas Luft.
+     Zentral, damit der Abstand app-weit identisch ist und sich automatisch
+     an neue Inhalte (Spots, Listen, Einladungen …) anpasst. */
+  --tabbar-clearance: calc(env(safe-area-inset-bottom, 0px) + 96px);
+}
+
+/* Utility: einheitlicher Tab-Bar-Freiraum am unteren Ende eines Scroll-Bereichs */
+.pb-tabbar {
+  padding-bottom: var(--tabbar-clearance) !important;
+}
+
+.dark {
+  --skeleton-base: rgba(255, 255, 255, 0.07);
+  --skeleton-sheen: rgba(255, 255, 255, 0.13);
+}
+
+/* Wandernder Shimmer-Sweep (kein harter Opacity-Puls) */
+@keyframes shimmerSweep {
+  from { background-position: -160% 0; }
+  to   { background-position: 160% 0; }
+}
+
+/* Erfolgs-Häkchen: weiches Ein-Federn */
+@keyframes checkPop {
+  0%   { opacity: 0; transform: scale(0.4); }
+  60%  { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Kurzes Fehler-Wackeln */
+@keyframes shakeX {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-5px); }
+  40%      { transform: translateX(5px); }
+  60%      { transform: translateX(-3px); }
+  80%      { transform: translateX(3px); }
+}
+
+/* --- Wiederverwendbare Motion-Utilities --- */
+.skeleton-shimmer {
+  background-color: var(--skeleton-base);
+  background-image: linear-gradient(
+    100deg,
+    transparent 20%,
+    var(--skeleton-sheen) 45%,
+    var(--skeleton-sheen) 55%,
+    transparent 80%
+  );
+  background-size: 220% 100%;
+  background-repeat: no-repeat;
+  animation: shimmerSweep 1.35s var(--ease-spring) infinite;
+}
+
+.animate-fade-slide-up {
+  animation: fadeSlideUp var(--dur-base) var(--ease-out-soft) both;
+}
+
+.animate-scale-in {
+  animation: scaleIn var(--dur-base) var(--ease-out-soft) both;
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--dur-base) var(--ease-out-soft) both;
+}
+
+.animate-check-pop {
+  animation: checkPop 0.38s var(--ease-spring) both;
+}
+
+.animate-shake {
+  animation: shakeX 0.4s var(--ease-spring) both;
+}
+
+/* Gestaffelter Eintritt für Listen (per --i index gesteuert) */
+.stagger-item {
+  animation: fadeSlideUp var(--dur-base) var(--ease-out-soft) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+/* Barrierefreiheit: Bewegung reduzieren respektieren */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer { animation: none; }
+  .animate-fade-slide-up,
+  .animate-scale-in,
+  .animate-fade-in,
+  .animate-check-pop,
+  .animate-shake,
+  .stagger-item {
+    animation-duration: 0.01ms;
+    animation-delay: 0ms;
   }
 }
 

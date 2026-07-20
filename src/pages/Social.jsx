@@ -233,7 +233,7 @@ function Social() {
         className={`page-content ${isDark ? 'bg-gray-900' : 'bg-white'}`}
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 110px)`
+          paddingBottom: 'var(--tabbar-clearance)'
         }}
       >
         <FriendsTab />

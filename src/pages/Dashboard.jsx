@@ -6,7 +6,9 @@ import FeaturesSection from '../components/FeaturesSection'
 import FirstTimeWelcomeOverlay from '../components/FirstTimeWelcomeOverlay'
 import Avatar from '../components/Avatar'
 import LocationPickerSheet from '../components/LocationPickerSheet'
+import SaveButton from '../components/SaveButton'
 import { cityLabelFromAddress } from '../utils/locationLabel'
+import { useSaveStatus } from '../contexts/SaveStatusContext'
 import { supabase } from '../services/supabase'
 import { hapticFeedback } from '../utils/haptics'
 import { springEasing, staggerDelay } from '../utils/animations'
@@ -1887,7 +1889,7 @@ function Dashboard() {
           top: 0,
           paddingBottom: isEmpty
             ? `calc(40px + max(env(safe-area-inset-bottom, 0px), 20px))`
-            : `calc(env(safe-area-inset-bottom, 0px) + 110px)`, // 36px Puffer über der Liquid-Glass-TabBar
+            : 'var(--tabbar-clearance)', // einheitlicher Tab-Bar-Freiraum
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch'
         }}
@@ -2954,6 +2956,7 @@ function Dashboard() {
 function EditSharedListModal({ list, onClose, onSave }) {
   const { isDark } = useTheme()
   const { user } = useAuth()
+  const { beginSave, resolveSave, failSave } = useSaveStatus()
 
   const [formData, setFormData] = useState({
     list_name: list.list_name,
@@ -2967,7 +2970,7 @@ function EditSharedListModal({ list, onClose, onSave }) {
     coverImageFile: null,
   })
   const [errors, setErrors] = useState({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [, setIsSubmitting] = useState(false)
   const [imageRemoved, setImageRemoved] = useState(false)
   const [showLocationPicker, setShowLocationPicker] = useState(false)
 
@@ -3034,8 +3037,11 @@ function EditSharedListModal({ list, onClose, onSave }) {
   }
 
   const handleSave = async () => {
-    if (!validateForm()) return
+    if (!validateForm()) throw new Error('validation')
     setIsSubmitting(true)
+
+    const saveId = `edit-shared-list-${list.id}`
+    beginSave(saveId, 'Liste wird gespeichert…')
 
     // Optimistic update
     const previousList = { ...list }
@@ -3118,9 +3124,11 @@ function EditSharedListModal({ list, onClose, onSave }) {
       if (finalList) {
         onSave(true, finalList)
       }
+      resolveSave(saveId, 'Liste gespeichert')
     } catch (error) {
       console.error('Error updating shared list:', error)
       onSave(false, previousList)
+      failSave(saveId, 'Liste konnte nicht gespeichert werden')
     } finally {
       setIsSubmitting(false)
     }
@@ -3298,9 +3306,26 @@ function EditSharedListModal({ list, onClose, onSave }) {
           .select('id, invitee_id, role, status, created_at')
           .eq('list_id', list.id)
           .eq('status', 'pending')
-        
+
         if (!error && data) {
-          invitationsData = data
+          // Profile der Eingeladenen auflösen → echter Name statt "Unbekannt".
+          // (dieselbe RPC wie bei den Mitgliedern; unabhängig vom Freund-Status)
+          invitationsData = await Promise.all(data.map(async (inv) => {
+            try {
+              const { data: prof, error: profErr } = await supabase.rpc('get_user_profile', { user_id: inv.invitee_id })
+              if (!profErr && prof && prof.length > 0) {
+                return {
+                  ...inv,
+                  username: prof[0].username,
+                  profile_image_url: prof[0].profile_image_url,
+                  email: prof[0].email,
+                }
+              }
+            } catch (profileErr) {
+              console.warn('Could not fetch invitee profile:', inv.invitee_id, profileErr)
+            }
+            return inv
+          }))
         }
       } catch (invError) {
         console.warn('Error fetching invitations (non-critical):', invError)
@@ -3553,31 +3578,37 @@ function EditSharedListModal({ list, onClose, onSave }) {
       <div className={`rounded-3xl shadow-2xl max-w-2xl w-full max-h-[calc(100vh-120px)] flex flex-col overflow-hidden ${
         isDark ? 'bg-gray-800' : 'bg-white'
       }`}>
-        {/* Header */}
-        <div className={`header-safe border-b px-6 py-4 flex items-center justify-between flex-shrink-0 shadow-sm backdrop-blur-xl ${
+        {/* Header — X links, Titel mittig, Häkchen (Speichern) rechts (App-Muster) */}
+        <div className={`header-safe border-b px-4 py-3 flex items-center justify-between gap-2 flex-shrink-0 shadow-sm backdrop-blur-xl ${
           isDark ? 'bg-gray-900/80 border-gray-800/50' : 'bg-white/80 border-gray-200/50'
         }`}>
-          <h2 className={`text-2xl font-bold ${
-            isDark ? 'text-white' : 'text-gray-900'
-          }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-            Geteilte Liste bearbeiten
-          </h2>
           <button
             onClick={onClose}
-            className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
+            className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all flex-shrink-0 ${
               isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
             }`}
+            aria-label="Abbrechen"
           >
             <svg className={`w-6 h-6 ${isDark ? 'text-gray-300' : 'text-gray-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+
+          <h2 className={`text-lg font-bold flex-1 text-center px-1 truncate ${
+            isDark ? 'text-white' : 'text-gray-900'
+          }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+            Liste bearbeiten
+          </h2>
+
+          <SaveButton onSave={handleSave} isDark={isDark} label="Liste speichern" />
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6" style={{
           overscrollBehavior: 'none',
-          WebkitOverflowScrolling: 'touch'
+          WebkitOverflowScrolling: 'touch',
+          // Extra Platz, damit der letzte Eintrag nicht hinter der Tab-Bar verschwindet
+          paddingBottom: 'var(--tabbar-clearance)'
         }}>
           {/* List Name */}
           <div>
@@ -4024,14 +4055,22 @@ function EditSharedListModal({ list, onClose, onSave }) {
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${
-                          isDark ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700'
-                        }`}>
-                          {getUsername(invitation.users).charAt(0).toUpperCase()}
-                        </div>
+                        {invitation.profile_image_url ? (
+                          <img
+                            src={invitation.profile_image_url}
+                            alt={invitation.username || 'Unbekannt'}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${
+                            isDark ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700'
+                          }`}>
+                            {(invitation.username || invitation.email?.split('@')[0] || 'U').charAt(0).toUpperCase()}
+                          </div>
+                        )}
                         <div>
                           <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                            {getUsername(invitation.users)}
+                            {invitation.username || invitation.email?.split('@')[0] || 'Unbekannt'}
                           </p>
                           <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                             {invitation.role === 'editor' ? 'Editor' : 'Viewer'}
@@ -4051,33 +4090,6 @@ function EditSharedListModal({ list, onClose, onSave }) {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className={`flex-shrink-0 border-t px-6 py-4 flex gap-3 ${
-          isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-        }`}>
-          <button
-            onClick={onClose}
-            disabled={isSubmitting}
-            className={`flex-1 py-3 rounded-[14px] border font-semibold disabled:opacity-50 transition-all ${
-              isDark
-                ? 'border-gray-600 text-gray-200 hover:bg-gray-700'
-                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            Abbrechen
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isSubmitting}
-            className={`flex-1 py-3 rounded-[14px] text-white font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 transition-all ${
-              isDark
-                ? 'bg-gradient-to-r from-[#FF9357] to-[#B85C2C]'
-                : 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]'
-            }`}
-          >
-            {isSubmitting ? 'Speichern...' : 'Speichern'}
-          </button>
-        </div>
       </div>
 
       <LocationPickerSheet
@@ -4097,6 +4109,7 @@ function EditSharedListModal({ list, onClose, onSave }) {
 function EditListModal({ list, onClose, onSave }) {
   const { isDark } = useTheme()
   const { user } = useAuth()
+  const { beginSave, resolveSave, failSave } = useSaveStatus()
 
   const [formData, setFormData] = useState({
     list_name: list.list_name,
@@ -4110,7 +4123,7 @@ function EditListModal({ list, onClose, onSave }) {
     coverImageFile: null,
   })
   const [errors, setErrors] = useState({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [, setIsSubmitting] = useState(false)
   const [imageRemoved, setImageRemoved] = useState(false)
   const [showLocationPicker, setShowLocationPicker] = useState(false)
   const previewUrlRef = useRef(null)
@@ -4161,8 +4174,11 @@ function EditListModal({ list, onClose, onSave }) {
   }
 
   const handleSave = async () => {
-    if (!validateForm()) return
+    if (!validateForm()) throw new Error('validation')
     setIsSubmitting(true)
+
+    const saveId = `edit-list-${list.id}`
+    beginSave(saveId, 'Liste wird gespeichert…')
 
     // Optimistic update: Update UI immediately
     const previousList = { ...list }
@@ -4250,10 +4266,12 @@ function EditListModal({ list, onClose, onSave }) {
       if (finalList) {
         onSave(true, finalList)
       }
+      resolveSave(saveId, 'Liste gespeichert')
     } catch (error) {
       console.error('Error updating list:', error)
       // Rollback on error
       onSave(false, previousList)
+      failSave(saveId, 'Liste konnte nicht gespeichert werden')
     } finally {
       setIsSubmitting(false)
     }
@@ -4264,31 +4282,37 @@ function EditListModal({ list, onClose, onSave }) {
       <div className={`rounded-3xl shadow-2xl max-w-2xl w-full max-h-[calc(100vh-120px)] flex flex-col overflow-hidden ${
         isDark ? 'bg-gray-800' : 'bg-white'
       }`}>
-        {/* Header */}
-        <div className={`header-safe border-b px-6 py-4 flex items-center justify-between flex-shrink-0 shadow-sm backdrop-blur-xl ${
+        {/* Header — X links, Titel mittig, Häkchen (Speichern) rechts (App-Muster) */}
+        <div className={`header-safe border-b px-4 py-3 flex items-center justify-between gap-2 flex-shrink-0 shadow-sm backdrop-blur-xl ${
           isDark ? 'bg-gray-900/80 border-gray-800/50' : 'bg-white/80 border-gray-200/50'
         }`}>
-          <h2 className={`text-2xl font-bold ${
-            isDark ? 'text-white' : 'text-gray-900'
-          }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-            Liste bearbeiten
-          </h2>
           <button
             onClick={onClose}
-            className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
+            className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all flex-shrink-0 ${
               isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
             }`}
+            aria-label="Abbrechen"
           >
             <svg className={`w-6 h-6 ${isDark ? 'text-gray-300' : 'text-gray-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+
+          <h2 className={`text-lg font-bold flex-1 text-center px-1 truncate ${
+            isDark ? 'text-white' : 'text-gray-900'
+          }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+            Liste bearbeiten
+          </h2>
+
+          <SaveButton onSave={handleSave} isDark={isDark} label="Liste speichern" />
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6" style={{
           overscrollBehavior: 'none',
-          WebkitOverflowScrolling: 'touch'
+          WebkitOverflowScrolling: 'touch',
+          // Extra Platz, damit der letzte Eintrag nicht hinter der Tab-Bar verschwindet
+          paddingBottom: 'var(--tabbar-clearance)'
         }}>
           {/* List Name */}
           <div>
@@ -4452,33 +4476,6 @@ function EditListModal({ list, onClose, onSave }) {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className={`flex-shrink-0 border-t px-6 py-4 flex gap-3 ${
-          isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-        }`}>
-          <button
-            onClick={onClose}
-            disabled={isSubmitting}
-            className={`flex-1 py-3 rounded-[14px] border font-semibold disabled:opacity-50 transition-all ${
-              isDark
-                ? 'border-gray-600 text-gray-200 hover:bg-gray-700'
-                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            Abbrechen
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isSubmitting}
-            className={`flex-1 py-3 rounded-[14px] text-white font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 transition-all ${
-              isDark
-                ? 'bg-gradient-to-r from-[#FF9357] to-[#B85C2C]'
-                : 'bg-gradient-to-r from-[#FF7E42] to-[#FFB25A]'
-            }`}
-          >
-            {isSubmitting ? 'Speichern...' : 'Speichern'}
-          </button>
-        </div>
       </div>
 
       <LocationPickerSheet

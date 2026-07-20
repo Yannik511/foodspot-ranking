@@ -7,9 +7,11 @@ import { scrollFieldIntoView } from '../utils/keyboard'
 import { useHeaderHeight } from '../hooks/useHeaderHeight'
 import LocationPickerSheet from '../components/LocationPickerSheet'
 import { cityLabelFromAddress } from '../utils/locationLabel'
+import { useSaveStatus } from '../contexts/SaveStatusContext'
 
 function CreateList() {
   const { user } = useAuth()
+  const { beginSave, resolveSave, failSave } = useSaveStatus()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { headerRef, headerHeight } = useHeaderHeight()
@@ -44,7 +46,6 @@ function CreateList() {
   const [errors, setErrors] = useState({})
   const [validationState, setValidationState] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [toast, setToast] = useState(null)
 
   const { isDark } = useTheme()
   const handleFieldFocus = (event) => scrollFieldIntoView(event.currentTarget)
@@ -168,15 +169,14 @@ function CreateList() {
   }
 
   // Show toast helper
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type })
-    setTimeout(() => setToast(null), 3000)
-  }
 
   // Handle submit
   const handleSubmit = async () => {
     if (!validateForm()) return
     setIsSubmitting(true)
+
+    const saveId = `create-list-${Date.now()}`
+    beginSave(saveId, 'Liste wird erstellt…')
 
     try {
       console.log('Creating list with data:', {
@@ -243,9 +243,9 @@ function CreateList() {
       if (insertError) {
         console.error('Insert error details:', insertError)
         if (insertError.code === '23505') {
-          showToast('Diese Liste existiert bereits.', 'error')
+          failSave(saveId, 'Diese Liste existiert bereits')
         } else {
-          showToast('Fehler beim Erstellen der Liste. Bitte versuche es erneut.', 'error')
+          failSave(saveId, 'Liste konnte nicht erstellt werden')
         }
         setIsSubmitting(false)
         return
@@ -258,13 +258,14 @@ function CreateList() {
         sessionStorage.setItem('scrollTargetListId', realList.id)
       }
 
-      // Clear draft, then navigate
+      // Liste steht — Pille quittiert; danach zum Dashboard.
+      resolveSave(saveId, 'Liste erstellt')
       localStorage.removeItem('createListDraft')
       setIsSubmitting(false)
       navigate('/dashboard', { replace: true })
     } catch (error) {
       console.error('Error creating list:', error)
-      showToast('Fehler beim Erstellen der Liste. Bitte versuche es erneut.', 'error')
+      failSave(saveId, 'Liste konnte nicht erstellt werden')
       setIsSubmitting(false)
     }
   }
@@ -624,33 +625,6 @@ function CreateList() {
           </button>
         </div>
       </main>
-
-      {/* Toast Notification */}
-      {toast && (
-        <div 
-          className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-fadeSlideDown"
-          style={{ animation: 'fadeSlideDown 0.3s ease-out' }}
-        >
-          <div className={`rounded-[16px] px-6 py-4 shadow-xl flex items-center gap-3 ${
-            toast.type === 'success' 
-              ? 'bg-green-500 text-white' 
-              : 'bg-red-500 text-white'
-          }`}>
-            {toast.type === 'success' ? (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-              </svg>
-            ) : (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            )}
-            <span className="font-semibold" style={{ fontFamily: "'Poppins', sans-serif" }}>
-              {toast.message}
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* CSS Animations */}
       <style>{`

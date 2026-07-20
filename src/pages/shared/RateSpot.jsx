@@ -8,7 +8,7 @@ import {
   getCategoryScale, calculateOverallRating, calculateTier
 } from '../../lib/categories'
 import { useScrollHeader } from '../../hooks/useScrollHeader'
-import { hapticFeedback } from '../../utils/haptics'
+import { useSaveStatus } from '../../contexts/SaveStatusContext'
 import SaveButton from '../../components/SaveButton'
 
 export default function RateSpot() {
@@ -17,18 +17,17 @@ export default function RateSpot() {
   const spotId = searchParams.get('spotId')
   const { user } = useAuth()
   const { isDark } = useTheme()
+  const { beginSave, resolveSave, failSave } = useSaveStatus()
   const navigate = useNavigate()
 
   const scrollContainerRef = useRef(null)
   const scrolled = useScrollHeader(scrollContainerRef)
   const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
   const [spot, setSpot] = useState(null)
   const [category, setCategory] = useState(null)
   const [ratings, setRatings] = useState({})
   const [comment, setComment] = useState('')
   const [error, setError] = useState(null)
-  const [toast, setToast] = useState(null)
 
   useEffect(() => {
     if (!user || !id || !spotId) return
@@ -67,22 +66,21 @@ export default function RateSpot() {
     load()
   }, [user, id, spotId, navigate])
 
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type })
-    setTimeout(() => setToast(null), 3000)
-  }
-
   const overall = calculateOverallRating(ratings, category)
   const tier = calculateTier(overall)
 
+  // onSave-Vertrag: wirft bei Validierungs-/Serverfehler → SaveButton zeigt Fehler-Zustand.
+  // Erfolg → SaveButton zeigt Häkchen-Pop + Erfolgs-Haptik, danach zurück.
   const handleSave = async () => {
     const filled = Object.values(ratings).filter(r => r > 0)
     if (filled.length < 3) {
       setError('Bitte bewerte mindestens 3 Kriterien')
-      return
+      throw new Error('validation') // kein Save-Vorgang gestartet → keine Pille
     }
     setError(null)
-    setSubmitting(true)
+
+    const saveId = `rate-${spotId}`
+    beginSave(saveId, 'Bewertung wird gespeichert…')
     try {
       const { error: rpcError } = await supabase.rpc('update_shared_foodspot', {
         p_foodspot_id: spotId,
@@ -92,15 +90,13 @@ export default function RateSpot() {
         p_comment: comment.trim() || null,
       })
       if (rpcError) throw rpcError
-      hapticFeedback.success()
-      showToast('Bewertung gespeichert')
-      // Direkt zurück — SharedTierList aktualisiert Tier/Score per Realtime automatisch
-      setTimeout(() => navigate(-1), 450)
     } catch (e) {
-      showToast(e?.message || 'Fehler beim Speichern', 'error')
-    } finally {
-      setSubmitting(false)
+      failSave(saveId, 'Bewertung konnte nicht gespeichert werden')
+      throw e
     }
+    // Erfolg — Pille quittiert; SharedTierList aktualisiert Tier/Score per Realtime.
+    resolveSave(saveId, 'Bewertung gespeichert')
+    setTimeout(() => navigate(-1), 600)
   }
 
   if (loading) {
@@ -155,8 +151,7 @@ export default function RateSpot() {
             </h1>
           </div>
           <SaveButton
-            onClick={() => { hapticFeedback.medium(); handleSave() }}
-            saving={submitting}
+            onSave={handleSave}
             isDark={isDark}
             label="Bewertung speichern"
           />
@@ -291,20 +286,6 @@ export default function RateSpot() {
           />
         </div>
       </main>
-
-      {toast && (
-        <div style={{
-          position: 'fixed', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 90px)',
-          left: '50%', transform: 'translateX(-50%)',
-          padding: '12px 20px', borderRadius: 16, zIndex: 100,
-          background: toast.type === 'success' ? '#22C55E' : '#EF4444',
-          color: '#fff', fontSize: 14, fontWeight: 600,
-          fontFamily: "'Poppins', sans-serif",
-          boxShadow: '0 8px 24px rgba(0,0,0,0.2)', whiteSpace: 'nowrap',
-        }}>
-          {toast.message}
-        </div>
-      )}
     </div>
   )
 }
