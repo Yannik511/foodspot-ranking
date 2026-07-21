@@ -73,7 +73,7 @@ function SpotCard({ spot, isDark, onOpen, variant = 'aggregate' }) {
       style={{
         width: CARD_W, flexShrink: 0, textAlign: 'left', border: 'none', padding: 0,
         background: isDark ? '#1c1c1e' : '#fff',
-        borderRadius: 18, overflow: 'hidden', cursor: hasCoords ? 'pointer' : 'default',
+        borderRadius: 18, overflow: 'hidden', cursor: (hasCoords || showImage) ? 'pointer' : 'default',
         boxShadow: isDark ? '0 4px 16px rgba(0,0,0,0.35)' : '0 4px 16px rgba(0,0,0,0.08)',
         WebkitTapHighlightColor: 'transparent',
       }}
@@ -172,7 +172,7 @@ function SpotCard({ spot, isDark, onOpen, variant = 'aggregate' }) {
 
 function Row({ children }) {
   return (
-    <div style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '4px 16px 8px', WebkitOverflowScrolling: 'touch', scrollSnapType: 'x proximity' }}>
+    <div style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '4px 20px 8px', WebkitOverflowScrolling: 'touch', scrollSnapType: 'x proximity' }}>
       {children}
     </div>
   )
@@ -197,7 +197,7 @@ function SkeletonRow({ isDark }) {
 
 function SectionHeader({ title, subtitle, isDark }) {
   return (
-    <div style={{ padding: '0 16px', marginBottom: 4 }}>
+    <div style={{ padding: '0 20px', marginBottom: 4 }}>
       <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: isDark ? '#fff' : '#111', fontFamily: "'Poppins', sans-serif" }}>{title}</h2>
       {subtitle && <p style={{ margin: '2px 0 0', fontSize: 13, color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)', fontFamily: "'Poppins', sans-serif" }}>{subtitle}</p>}
     </div>
@@ -207,7 +207,7 @@ function SectionHeader({ title, subtitle, isDark }) {
 function EmptyHint({ text, isDark }) {
   return (
     <div style={{
-      margin: '0 16px', padding: '18px 16px', borderRadius: 16,
+      margin: '0 20px', padding: '18px 16px', borderRadius: 16,
       background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
       fontSize: 13, color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)',
       fontFamily: "'Poppins', sans-serif", textAlign: 'center',
@@ -237,7 +237,7 @@ function FilterBar({ isDark, mode, setMode, cityQuery, setCityQuery, countryCode
   return (
     <div style={{ padding: '4px 0 8px', position: 'relative' }}>
       {/* Standort-Modus + Kategorie-Dropdown-Button in einer Reihe */}
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '0 16px 8px', WebkitOverflowScrolling: 'touch' }}>
+      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '0 20px 8px', WebkitOverflowScrolling: 'touch' }}>
         {modes.map((m) => (
           <button key={m.key} onClick={() => setMode(m.key)} style={chipBase(mode === m.key)}>{m.label}</button>
         ))}
@@ -254,11 +254,11 @@ function FilterBar({ isDark, mode, setMode, cityQuery, setCityQuery, countryCode
 
       {/* Stadt-Eingabe */}
       {mode === 'city' && (
-        <div style={{ padding: '0 16px 8px' }}>
+        <div style={{ padding: '0 20px 8px' }}>
           <input
             value={cityQuery}
             onChange={(e) => setCityQuery(e.target.value)}
-            placeholder="Stadt eingeben, z. B. München"
+            placeholder="Stadt oder Bundesland, z. B. München"
             style={{
               width: '100%', padding: '10px 14px', borderRadius: 12, border: 'none', outline: 'none',
               background: inputBg, color: isDark ? '#fff' : '#111', fontSize: 14, fontFamily: "'Poppins', sans-serif",
@@ -269,7 +269,7 @@ function FilterBar({ isDark, mode, setMode, cityQuery, setCityQuery, countryCode
 
       {/* Land-Auswahl */}
       {mode === 'country' && (
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '0 16px 8px', WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '0 20px 8px', WebkitOverflowScrolling: 'touch' }}>
           {COUNTRIES.map((c) => (
             <button key={c.code} onClick={() => setCountryCode(c.code)} style={chipBase(countryCode === c.code)}>{c.label}</button>
           ))}
@@ -278,7 +278,7 @@ function FilterBar({ isDark, mode, setMode, cityQuery, setCityQuery, countryCode
 
       {/* Kategorie-Dropdown */}
       {catOpen && (
-        <div style={{ padding: '4px 16px 6px' }}>
+        <div style={{ padding: '4px 20px 6px' }}>
           <div style={{
             borderRadius: 16, padding: 12,
             background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
@@ -406,7 +406,9 @@ export default function Discover() {
   const openSpot = (spot) => {
     // Produktbasiert → keine Karte, auch wenn zufällig Koordinaten dranhängen
     const isProduct = typeof spot.canonical_key === 'string' && spot.canonical_key.startsWith('product|')
-    if (!isProduct && spot.latitude != null && spot.longitude != null) setMapSpot(spot)
+    const hasCoords = !isProduct && spot.latitude != null && spot.longitude != null
+    // Detail-Sheet öffnen, wenn es eine Karte ODER Bilder zu zeigen gibt
+    if (hasCoords || spot.cover_photo_url) setMapSpot(spot)
   }
 
   // Tab-Bar ausblenden, solange die Karte offen ist (sonst überlagert sie die Karte)
@@ -429,7 +431,7 @@ export default function Discover() {
         className="header-safe fixed top-0 left-0 right-0 z-20 backdrop-blur-xl"
         style={{ background: isDark ? 'rgba(15,15,19,0.9)' : 'rgba(245,245,247,0.9)', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}` }}
       >
-        <div style={{ padding: '10px 16px 4px' }}>
+        <div style={{ padding: '10px 20px 4px' }}>
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: isDark ? '#fff' : '#111', fontFamily: "'Poppins', sans-serif" }}>
             Entdecken
           </h1>
@@ -473,7 +475,7 @@ export default function Discover() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {byCategory.map(({ category, spots }) => (
                       <div key={category}>
-                        <div style={{ padding: '0 16px', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ padding: '0 20px', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontSize: 15 }}>{catEmoji(category)}</span>
                           <span style={{ fontSize: 14, fontWeight: 700, color: isDark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.7)', fontFamily: "'Poppins', sans-serif" }}>{category}</span>
                         </div>

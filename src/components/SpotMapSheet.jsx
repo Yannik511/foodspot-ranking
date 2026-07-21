@@ -42,9 +42,29 @@ export default function SpotMapSheet({ isOpen, onClose, spot }) {
   const mapRef = useRef(null)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState(null)
+  // Galerie: bis zu 5 Bilder der kanonischen Gruppe (lazy beim Öffnen)
+  const [images, setImages] = useState(() => (spot?.cover_photo_url ? [spot.cover_photo_url] : []))
 
-  const lat = spot?.latitude != null ? Number(spot.latitude) : null
-  const lng = spot?.longitude != null ? Number(spot.longitude) : null
+  const isProduct = typeof spot?.canonical_key === 'string' && spot.canonical_key.startsWith('product|')
+  const lat = !isProduct && spot?.latitude != null ? Number(spot.latitude) : null
+  const lng = !isProduct && spot?.longitude != null ? Number(spot.longitude) : null
+  const hasMap = lat != null && lng != null
+
+  // Galerie-Bilder nachladen
+  useEffect(() => {
+    if (!isOpen) return
+    // sofort mit dem bekannten Repräsentanten-Bild starten (kein Leer-Flash)
+    setImages(spot?.cover_photo_url ? [spot.cover_photo_url] : [])
+    if (!spot?.canonical_key) return
+    let cancelled = false
+    supabase.rpc('get_spot_gallery', { p_canonical_key: spot.canonical_key, p_limit: 5 })
+      .then(({ data }) => {
+        if (cancelled || !Array.isArray(data)) return
+        const urls = data.map((r) => r.url).filter(Boolean)
+        if (urls.length) setImages(urls)
+      })
+    return () => { cancelled = true }
+  }, [isOpen, spot?.canonical_key, spot?.cover_photo_url])
 
   useEffect(() => {
     if (!isOpen || lat == null || lng == null) return
@@ -152,23 +172,44 @@ export default function SpotMapSheet({ isOpen, onClose, spot }) {
           </button>
         </div>
 
-        {/* Karte */}
-        <div style={{ position: 'relative', height: '52vh', background: isDark ? '#0f0f13' : '#e5e5ea' }}>
-          {!ready && !error && (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div className="w-8 h-8 border-2 border-[#FF9357] border-t-transparent rounded-full animate-spin" />
-            </div>
-          )}
-          {error && (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 24, textAlign: 'center' }}>
-              <span style={{ fontSize: 28 }}>⚠️</span>
-              <span style={{ fontSize: 13, color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)', fontFamily: "'Poppins', sans-serif" }}>
-                Karte konnte nicht geladen werden
-              </span>
-            </div>
-          )}
-          <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
-        </div>
+        {/* Galerie — bis zu 5 Bilder der Gruppe, horizontal scrollbar */}
+        {images.length > 0 && (
+          <div style={{
+            display: 'flex', gap: 8, overflowX: 'auto', padding: '0 16px 12px',
+            WebkitOverflowScrolling: 'touch', scrollSnapType: 'x mandatory',
+          }}>
+            {images.map((url, i) => (
+              <div key={url + i} style={{
+                flexShrink: 0, width: images.length === 1 ? '100%' : '82%',
+                height: 200, borderRadius: 16, overflow: 'hidden', scrollSnapAlign: 'center',
+                background: isDark ? '#0f0f13' : '#e5e5ea',
+              }}>
+                <img src={url} alt="" loading="lazy"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Karte — nur wenn Koordinaten vorhanden */}
+        {hasMap && (
+          <div style={{ position: 'relative', height: images.length > 0 ? '42vh' : '52vh', background: isDark ? '#0f0f13' : '#e5e5ea' }}>
+            {!ready && !error && (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="w-8 h-8 border-2 border-[#FF9357] border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+            {error && (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 24, textAlign: 'center' }}>
+                <span style={{ fontSize: 28 }}>⚠️</span>
+                <span style={{ fontSize: 13, color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)', fontFamily: "'Poppins', sans-serif" }}>
+                  Karte konnte nicht geladen werden
+                </span>
+              </div>
+            )}
+            <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
+          </div>
+        )}
       </div>
     </div>
   )

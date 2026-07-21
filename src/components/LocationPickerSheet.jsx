@@ -53,6 +53,8 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
   const geocoderRef = useRef(null)
+  // Verwaltungsebenen der zuletzt reverse-geocodeten Position (für Standort-Filter im Entdecken-Tab)
+  const geoMetaRef = useRef({ countryCode: null, adminArea: null, city: null })
   const searchRef = useRef(null)
   const reverseTimer = useRef(null)
   const searchTimer = useRef(null)
@@ -84,7 +86,14 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
       geocoderRef.current.reverseLookup(coord, (err, data) => {
         setAddressUpdating(false)
         if (!err && data.results?.[0]) {
-          setAddress(data.results[0].formattedAddress || `${lat.toFixed(5)}, ${lng.toFixed(5)}`)
+          const r = data.results[0]
+          setAddress(r.formattedAddress || `${lat.toFixed(5)}, ${lng.toFixed(5)}`)
+          // country/Bundesland/Stadt aus derselben Antwort (MapKit hat keinen Landkreis)
+          geoMetaRef.current = {
+            countryCode: r.countryCode || null,
+            adminArea: r.administrativeArea || null,
+            city: r.locality || null,
+          }
         }
       })
     }, 600)
@@ -391,7 +400,16 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
 
   const handleConfirm = () => {
     if (!coords) return
-    onConfirm({ address, latitude: coords.lat, longitude: coords.lng, name: pickedName || null })
+    const meta = geoMetaRef.current || {}
+    onConfirm({
+      address,
+      latitude: coords.lat,
+      longitude: coords.lng,
+      name: pickedName || null,
+      countryCode: meta.countryCode || null,
+      adminArea: meta.adminArea || null,
+      city: meta.city || null,
+    })
     onClose()
   }
 

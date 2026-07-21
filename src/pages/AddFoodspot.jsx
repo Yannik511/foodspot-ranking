@@ -361,6 +361,9 @@ function AddFoodspot() {
             address: spotData.address || '',
             latitude: spotData.latitude || null,
             longitude: spotData.longitude || null,
+            country_code: spotData.country_code || null,
+            admin_area: spotData.admin_area || null,
+            city: spotData.city || null,
             ratings: ratings,
             notes: spotData.notes || '',
             cover_photo_url: spotData.cover_photo_url || null,
@@ -529,6 +532,9 @@ function AddFoodspot() {
       address: formData.address.trim() || null,
       latitude: formData.latitude || null,
       longitude: formData.longitude || null,
+      country_code: formData.country_code || null,
+      admin_area: formData.admin_area || null,
+      city: formData.city || null,
       ratings: ratingsData,
       tier: autoTier,
       rating: overallRating,
@@ -1298,12 +1304,15 @@ function AddFoodspot() {
             ? { lat: formData.latitude, lng: formData.longitude }
             : (list?.latitude != null ? { lat: list.latitude, lng: list.longitude } : undefined)
         }
-        onConfirm={({ address, latitude, longitude, name }) => {
+        onConfirm={({ address, latitude, longitude, name, countryCode, adminArea, city }) => {
           setFormData(prev => ({
             ...prev,
             address,
             latitude,
             longitude,
+            country_code: countryCode || null,
+            admin_area: adminArea || null,
+            city: city || null,
             ...(name && !prev.name ? { name } : {}),
           }))
         }}
