@@ -83,6 +83,7 @@ function Settings() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [profileVisibility, setProfileVisibility] = useState('private') // 'private' | 'friends'
+  const [discoverSharing, setDiscoverSharing] = useState(true) // Entdecken-Tab opt-in (Default: an)
   const [hasChanges, setHasChanges] = useState(false)
   const [loading, setLoading] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
@@ -108,6 +109,8 @@ function Settings() {
       // Load profile visibility (default: 'private')
       const visibility = user?.user_metadata?.profile_visibility || 'private'
       setProfileVisibility(visibility)
+      // Load Entdecken-Freigabe (Default: an — fehlt der Wert, gilt opt-in)
+      setDiscoverSharing(user?.user_metadata?.discover_sharing !== false)
     }
   }, [user])
   
@@ -151,15 +154,17 @@ function Settings() {
     const originalUsername = getUsername()
     
     const originalVisibility = user?.user_metadata?.profile_visibility || 'private'
-    
-    const changed = 
+    const originalDiscoverSharing = user?.user_metadata?.discover_sharing !== false
+
+    const changed =
       (displayName !== originalDisplayName && displayName.trim() !== '') ||
       (username !== originalUsername && username.trim() !== '' && !usernameError) ||
       (currentPassword !== '' && newPassword !== '' && !passwordError) ||
-      (profileVisibility !== originalVisibility)
-    
+      (profileVisibility !== originalVisibility) ||
+      (discoverSharing !== originalDiscoverSharing)
+
     setHasChanges(changed)
-  }, [displayName, username, currentPassword, newPassword, confirmPassword, usernameError, passwordError, profileVisibility, user])
+  }, [displayName, username, currentPassword, newPassword, confirmPassword, usernameError, passwordError, profileVisibility, discoverSharing, user])
   
   const handleSave = async () => {
     if (!hasChanges || loading) return
@@ -215,7 +220,13 @@ function Settings() {
         metadataUpdates.profile_visibility = profileVisibility
         hasMetadataUpdate = true
       }
-      
+
+      const originalDiscoverSharing = user?.user_metadata?.discover_sharing !== false
+      if (discoverSharing !== originalDiscoverSharing) {
+        metadataUpdates.discover_sharing = discoverSharing
+        hasMetadataUpdate = true
+      }
+
       if (hasMetadataUpdate) {
         updates.data = metadataUpdates
       }
@@ -1042,6 +1053,40 @@ function Settings() {
                 <div
                   className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
                     profileVisibility === 'friends' ? 'translate-x-6' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Statistik teilen (Entdecken-Tab) */}
+            <div className={`flex items-center justify-between pt-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+              <div className="flex-1 pr-4">
+                <p
+                  className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
+                  style={{ fontFamily: "'Poppins', sans-serif" }}
+                >
+                  Statistik teilen
+                </p>
+                <p
+                  className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
+                  style={{ fontFamily: "'Inter', sans-serif" }}
+                >
+                  Wenn aktiviert, werden deine Bewertungen mit deinen Freunden geteilt und erscheinen im Entdecken-Tab.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  hapticFeedback.light()
+                  setDiscoverSharing(!discoverSharing)
+                }}
+                className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
+                  discoverSharing ? 'bg-[#FF7E42]' : isDark ? 'bg-gray-600' : 'bg-gray-300'
+                }`}
+                aria-label="Statistik teilen"
+              >
+                <div
+                  className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                    discoverSharing ? 'translate-x-6' : 'translate-x-0'
                   }`}
                 />
               </button>
