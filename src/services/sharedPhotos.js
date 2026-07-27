@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { assertImageAllowed } from './moderation'
 
 export const SUPPORTED_IMAGE_TYPES = [
   'image/jpeg',
@@ -109,6 +110,11 @@ export const normalizeImageFile = async (file) => {
   }
 
   const compressedFile = await canvasCompress(workingFile)
+
+  // Inhalts-Moderation vor dem Upload (Apple Guideline 1.2). Wirft bei Ablehnung;
+  // fail-open, wenn die Moderation nicht erreichbar / noch kein Key gesetzt ist.
+  await assertImageAllowed(compressedFile)
+
   const dimensions = await loadImageDimensions(compressedFile)
 
   return {
