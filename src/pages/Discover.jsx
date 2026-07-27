@@ -24,6 +24,7 @@ const CATEGORY_EMOJI = {
   'Döner': '🥙', 'Burger': '🍔', 'Pizza': '🍕', 'Asiatisch': '🍜', 'Bratwurst': '🥓',
   'Glühwein': '🍷', 'Sushi': '🍣', 'Deutsche Küche': '🥨', 'Bier': '🍺', 'Steak': '🥩',
   'Fast Food': '🍔', 'Streetfood': '🌯', 'Leberkässemmel': '🥪',
+  'Eis': '🍦', 'Wein': '🍷', 'Kaffeebohnen': '☕', 'Tee': '🍵',
 }
 const CATEGORIES = Object.keys(CATEGORY_EMOJI)
 const catEmoji = (c) => CATEGORY_EMOJI[c] || '🍽️'
@@ -217,8 +218,7 @@ function EmptyHint({ text, isDark }) {
 }
 
 // ---- Filterleiste ----
-function FilterBar({ isDark, mode, setMode, cityQuery, setCityQuery, countryCode, setCountryCode, selectedCategories, toggleCategory, clearCategories }) {
-  const [catOpen, setCatOpen] = useState(false)
+function FilterBar({ isDark, mode, setMode, cityQuery, setCityQuery, countryCode, setCountryCode, selectedCategory, setCategory }) {
   const chipBase = (active) => ({
     padding: '7px 14px', borderRadius: 999, border: 'none', cursor: 'pointer', flexShrink: 0,
     fontSize: 13, fontWeight: 600, fontFamily: "'Poppins', sans-serif",
@@ -233,7 +233,6 @@ function FilterBar({ isDark, mode, setMode, cityQuery, setCityQuery, countryCode
     { key: 'world', label: 'Weltweit' },
   ]
   const inputBg = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'
-  const catActive = selectedCategories.length > 0
 
   return (
     <div style={{ padding: '4px 0 8px', position: 'relative' }}>
@@ -242,15 +241,24 @@ function FilterBar({ isDark, mode, setMode, cityQuery, setCityQuery, countryCode
         {modes.map((m) => (
           <button key={m.key} onClick={() => setMode(m.key)} style={chipBase(mode === m.key)}>{m.label}</button>
         ))}
-        {/* Trennlinie */}
-        <div style={{ width: 1, alignSelf: 'stretch', background: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)', margin: '2px 2px', flexShrink: 0 }} />
-        <button onClick={() => setCatOpen((v) => !v)} style={chipBase(catActive)}>
-          <span>Kategorie{catActive ? ` · ${selectedCategories.length}` : ''}</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-            style={{ transform: catOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </button>
+      </div>
+
+      {/* Kategorie-Filter — Dropdown (Einfach-Auswahl wie im Dashboard) */}
+      <div style={{ padding: '0 20px 8px' }}>
+        <select
+          value={selectedCategory}
+          onChange={(e) => setCategory(e.target.value)}
+          style={{
+            width: '100%', padding: '10px 14px', borderRadius: 12, border: 'none', outline: 'none',
+            background: inputBg, color: isDark ? '#fff' : '#111',
+            fontSize: 16, fontFamily: "'Poppins', sans-serif",
+          }}
+        >
+          <option value="">Alle Kategorien</option>
+          {CATEGORIES.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
       </div>
 
       {/* Stadt-Eingabe */}
@@ -276,43 +284,6 @@ function FilterBar({ isDark, mode, setMode, cityQuery, setCityQuery, countryCode
           ))}
         </div>
       )}
-
-      {/* Kategorie-Dropdown */}
-      {catOpen && (
-        <div style={{ padding: '4px 20px 6px' }}>
-          <div style={{
-            borderRadius: 16, padding: 12,
-            background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-          }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {CATEGORIES.map((c) => {
-                const on = selectedCategories.includes(c)
-                return (
-                  <button key={c} onClick={() => toggleCategory(c)} style={{
-                    ...chipBase(on), padding: '6px 12px', fontSize: 12.5,
-                  }}>
-                    {catEmoji(c)} {c}
-                    {on && (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-            {catActive && (
-              <button onClick={clearCategories} style={{
-                marginTop: 10, background: 'none', border: 'none', cursor: 'pointer',
-                color: '#FF7E42', fontSize: 12.5, fontWeight: 600, fontFamily: "'Poppins', sans-serif",
-                WebkitTapHighlightColor: 'transparent', padding: 0,
-              }}>
-                Auswahl zurücksetzen
-              </button>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -336,9 +307,9 @@ export default function Discover() {
   const coordsRef = useRef(null)
   const cityDebounce = useRef(null)
 
-  const toggleCategory = (c) =>
-    setSelectedCategories((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c])
-  const clearCategories = () => setSelectedCategories([])
+  // Einfach-Auswahl im UI (wie Dashboard), intern weiter als Array für die Query
+  const selectedCategory = selectedCategories[0] || ''
+  const setCategory = (c) => setSelectedCategories(c ? [c] : [])
 
   const loadFeeds = useCallback(async () => {
     setRanked(null); setByCategory(null); setFriends(null)
@@ -441,7 +412,7 @@ export default function Discover() {
           isDark={isDark} mode={mode} setMode={setMode}
           cityQuery={cityQuery} setCityQuery={setCityQuery}
           countryCode={countryCode} setCountryCode={setCountryCode}
-          selectedCategories={selectedCategories} toggleCategory={toggleCategory} clearCategories={clearCategories}
+          selectedCategory={selectedCategory} setCategory={setCategory}
         />
       </header>
 

@@ -65,6 +65,26 @@ export const CATEGORIES = {
     imageUrl: '/images/categories/leberkaessemmel.jpg',
     criteria: ['Semmel', 'Soßen', 'Leberkäs-Sorte', 'Rand / Knusprigkeit', 'Preis-Leistung'],
     scale: DEFAULT_SCALE
+  },
+  Eis: {
+    imageUrl: '/images/categories/eis.jpg',
+    criteria: ['Geschmack', 'Cremigkeit & Textur', 'Sortenauswahl', 'Frische', 'Preis-Leistung'],
+    scale: DEFAULT_SCALE
+  },
+  Wein: {
+    imageUrl: '/images/categories/wein.jpg',
+    criteria: ['Geschmack', 'Aroma & Bouquet', 'Körper & Balance', 'Abgang', 'Preis-Leistung'],
+    scale: DEFAULT_SCALE
+  },
+  Kaffeebohnen: {
+    imageUrl: '/images/categories/kaffeebohnen.jpg',
+    criteria: ['Aroma', 'Geschmack', 'Säure & Balance', 'Röstung', 'Preis-Leistung'],
+    scale: DEFAULT_SCALE
+  },
+  Tee: {
+    imageUrl: '/images/categories/tee.jpg',
+    criteria: ['Geschmack', 'Aroma', 'Blattqualität', 'Aufguss & Ergiebigkeit', 'Preis-Leistung'],
+    scale: DEFAULT_SCALE
   }
 }
 
@@ -90,7 +110,11 @@ export const CRITERIA_ICONS = {
   'Authentizität & Atmosphäre': '🎪', 'Semmel': '🥯', 'Leberkäs-Sorte': '🥩',
   'Rand / Knusprigkeit': '🥨', 'Preis-Leistungs-Verhältnis': '💰',
   'Pommes': '🍟', 'Preis / Leistung': '💰', 'Burger': '🍔',
-  'Chicken Nuggets / Beilagen': '🍗'
+  'Chicken Nuggets / Beilagen': '🍗',
+  'Cremigkeit & Textur': '🍦', 'Sortenauswahl': '🎨',
+  'Aroma & Bouquet': '👃', 'Körper & Balance': '⚖️', 'Abgang': '🍷',
+  'Aroma': '👃', 'Säure & Balance': '🍋', 'Röstung': '🔥',
+  'Blattqualität': '🍃', 'Aufguss & Ergiebigkeit': '🫖'
 }
 
 export const getCategoryScale = (category) => CATEGORIES[category]?.scale || DEFAULT_SCALE

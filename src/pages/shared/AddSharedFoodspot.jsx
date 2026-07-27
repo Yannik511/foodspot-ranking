@@ -722,7 +722,11 @@ function AddSharedFoodspot() {
                           'Steak': '🥩',
                           'Fast Food': '🍔',
                           'Streetfood': '🌯',
-                          'Leberkässemmel': '🥪'
+                          'Leberkässemmel': '🥪',
+                          'Eis': '🍦',
+                          'Wein': '🍷',
+                          'Kaffeebohnen': '☕',
+                          'Tee': '🍵'
                         }
                         e.target.style.display = 'none'
                         const emoji = fallbackEmojis[category] || '🍔'

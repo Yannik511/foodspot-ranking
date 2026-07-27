@@ -34,7 +34,11 @@ const CATEGORY_OPTIONS = [
   'Streetfood',
   'Deutsche Küche',
   'Bier',
-  'Leberkässemmel'
+  'Leberkässemmel',
+  'Eis',
+  'Wein',
+  'Kaffeebohnen',
+  'Tee'
 ]
 
 
@@ -52,7 +56,11 @@ const CATEGORY_EMOJIS = {
   'Deutsche Küche': '🥨',
   'Bier': '🍺',
   'Grillgerichte': '🔥',
-  'Leberkässemmel': '🥪'
+  'Leberkässemmel': '🥪',
+  'Eis': '🍦',
+  'Wein': '🍷',
+  'Kaffeebohnen': '☕',
+  'Tee': '🍵'
 }
 
 const SkeletonListSection = ({ isDark, count = 3 }) => (

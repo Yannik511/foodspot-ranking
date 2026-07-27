@@ -85,6 +85,26 @@ const CATEGORIES = {
     imageUrl: '/images/categories/leberkaessemmel.jpg',
     criteria: ['Semmel', 'Soßen', 'Leberkäs-Sorte', 'Rand / Knusprigkeit', 'Preis-Leistung'],
     scale: DEFAULT_SCALE
+  },
+  Eis: {
+    imageUrl: '/images/categories/eis.jpg',
+    criteria: ['Geschmack', 'Cremigkeit & Textur', 'Sortenauswahl', 'Frische', 'Preis-Leistung'],
+    scale: DEFAULT_SCALE
+  },
+  Wein: {
+    imageUrl: '/images/categories/wein.jpg',
+    criteria: ['Geschmack', 'Aroma & Bouquet', 'Körper & Balance', 'Abgang', 'Preis-Leistung'],
+    scale: DEFAULT_SCALE
+  },
+  Kaffeebohnen: {
+    imageUrl: '/images/categories/kaffeebohnen.jpg',
+    criteria: ['Aroma', 'Geschmack', 'Säure & Balance', 'Röstung', 'Preis-Leistung'],
+    scale: DEFAULT_SCALE
+  },
+  Tee: {
+    imageUrl: '/images/categories/tee.jpg',
+    criteria: ['Geschmack', 'Aroma', 'Blattqualität', 'Aufguss & Ergiebigkeit', 'Preis-Leistung'],
+    scale: DEFAULT_SCALE
   }
 }
 
@@ -149,7 +169,11 @@ const CRITERIA_ICONS = {
   'Pommes': '🍟',
   'Preis / Leistung': '💰',
   'Burger': '🍔',
-  'Chicken Nuggets / Beilagen': '🍗'
+  'Chicken Nuggets / Beilagen': '🍗',
+  'Cremigkeit & Textur': '🍦', 'Sortenauswahl': '🎨',
+  'Aroma & Bouquet': '👃', 'Körper & Balance': '⚖️', 'Abgang': '🍷',
+  'Aroma': '👃', 'Säure & Balance': '🍋', 'Röstung': '🔥',
+  'Blattqualität': '🍃', 'Aufguss & Ergiebigkeit': '🫖'
 }
 
 const getCategoryScale = (category) => CATEGORIES[category]?.scale || DEFAULT_SCALE
@@ -753,7 +777,11 @@ function AddFoodspot() {
                             'Steak': '🥩',
                             'Fast Food': '🍔',
                           'Streetfood': '🌯',
-                          'Leberkässemmel': '🥪'
+                          'Leberkässemmel': '🥪',
+                          'Eis': '🍦',
+                          'Wein': '🍷',
+                          'Kaffeebohnen': '☕',
+                          'Tee': '🍵'
                           }
                           e.target.style.display = 'none'
                           const emoji = fallbackEmojis[category] || '🍔'

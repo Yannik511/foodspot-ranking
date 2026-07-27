@@ -33,6 +33,38 @@ export const getCategoryTerms = (category) => {
         editAction: 'Glühweinbewertung bearbeiten',
         headerPrefix: 'Glühweine'
       }
+    case 'Eis':
+      return {
+        plural: 'Eissorten',
+        singular: 'Eis',
+        createAction: 'Eisbewertung erstellen',
+        editAction: 'Eisbewertung bearbeiten',
+        headerPrefix: 'Eissorten'
+      }
+    case 'Wein':
+      return {
+        plural: 'Weine',
+        singular: 'Wein',
+        createAction: 'Weinbewertung erstellen',
+        editAction: 'Weinbewertung bearbeiten',
+        headerPrefix: 'Weine'
+      }
+    case 'Kaffeebohnen':
+      return {
+        plural: 'Kaffeebohnen',
+        singular: 'Kaffeebohne',
+        createAction: 'Kaffeebewertung erstellen',
+        editAction: 'Kaffeebewertung bearbeiten',
+        headerPrefix: 'Kaffeebohnen'
+      }
+    case 'Tee':
+      return {
+        plural: 'Tees',
+        singular: 'Tee',
+        createAction: 'Teebewertung erstellen',
+        editAction: 'Teebewertung bearbeiten',
+        headerPrefix: 'Tees'
+      }
     default:
       return {
         plural: 'Foodspots',

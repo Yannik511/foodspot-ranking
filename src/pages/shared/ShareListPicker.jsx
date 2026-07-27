@@ -20,6 +20,10 @@ const CATEGORY_EMOJIS = {
   'Deutsche Küche': '🥨',
   'Bier': '🍺',
   'Leberkässemmel': '🥪',
+  'Eis': '🍦',
+  'Wein': '🍷',
+  'Kaffeebohnen': '☕',
+  'Tee': '🍵',
 }
 
 export default function ShareListPicker() {

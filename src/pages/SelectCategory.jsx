@@ -70,6 +70,26 @@ const CATEGORIES = {
     emoji: '🥪',
     description: 'Finde die beste Leberkässemmel – von Semmel bis Preis-Leistung.',
     color: '#FF7E42'
+  },
+  Eis: {
+    emoji: '🍦',
+    description: 'Beste Eisdielen & Sorten bewerten',
+    color: '#FFB25A'
+  },
+  Wein: {
+    emoji: '🍷',
+    description: 'Weine verkosten & bewerten',
+    color: '#FF9C68'
+  },
+  Kaffeebohnen: {
+    emoji: '☕',
+    description: 'Kaffeebohnen & Röstungen bewerten',
+    color: '#FF7E42'
+  },
+  Tee: {
+    emoji: '🍵',
+    description: 'Tees & Aufgüsse bewerten',
+    color: '#FFB25A'
   }
 }
 

@@ -23,7 +23,11 @@ const CATEGORY_EMOJIS = {
   'Streetfood': '🌯',
   'Deutsche Küche': '🥨',
   'Bier': '🍺',
-  'Leberkässemmel': '🥪'
+  'Leberkässemmel': '🥪',
+  'Eis': '🍦',
+  'Wein': '🍷',
+  'Kaffeebohnen': '☕',
+  'Tee': '🍵'
 }
 
 // Helper function to compress image

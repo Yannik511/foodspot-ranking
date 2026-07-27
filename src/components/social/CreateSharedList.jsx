@@ -22,7 +22,11 @@ const CATEGORIES = {
   Streetfood: { emoji: '🌯', color: '#FF7E42' },
   'Deutsche Küche': { emoji: '🥨', color: '#FF9C68' },
   'Bier': { emoji: '🍺', color: '#FFB25A' },
-  'Leberkässemmel': { emoji: '🥪', color: '#FF7E42' }
+  'Leberkässemmel': { emoji: '🥪', color: '#FF7E42' },
+  'Eis': { emoji: '🍦', color: '#FFB25A' },
+  'Wein': { emoji: '🍷', color: '#FF9C68' },
+  'Kaffeebohnen': { emoji: '☕', color: '#FF7E42' },
+  'Tee': { emoji: '🍵', color: '#FFB25A' }
 }
 
 
