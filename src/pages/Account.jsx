@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import Avatar from '../components/Avatar'
 import { supabase } from '../services/supabase'
+import { assertImageAllowed } from '../services/moderation'
 import { useProfilesStore } from '../contexts/ProfileContext'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 import { useScrollHeader } from '../hooks/useScrollHeader'
@@ -676,6 +677,8 @@ function Account() {
 
       const oldAvatarPath = `${user.id}/avatar.${fileExt}`
       await supabase.storage.from('profile-avatars').remove([oldAvatarPath])
+
+      await assertImageAllowed(compressedFile)
 
       const { error: uploadError } = await supabase.storage
         .from('profile-avatars')

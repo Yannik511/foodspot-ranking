@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import Avatar from '../components/Avatar'
 import { supabase } from '../services/supabase'
+import { assertImageAllowed } from '../services/moderation'
 import { hapticFeedback } from '../utils/haptics'
 import { springEasing } from '../utils/animations'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
@@ -441,6 +442,8 @@ function Settings() {
       // Delete old avatar if exists (ignore errors if file doesn't exist)
       const oldAvatarPath = `${user.id}/avatar.${fileExt}`
       await supabase.storage.from('profile-avatars').remove([oldAvatarPath])
+
+      await assertImageAllowed(compressedFile)
 
       // Upload new avatar
       const { error: uploadError } = await supabase.storage

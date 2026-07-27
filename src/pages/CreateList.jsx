@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
+import { assertImageAllowed } from '../services/moderation'
 import { scrollFieldIntoView } from '../utils/keyboard'
 import { useHeaderHeight } from '../hooks/useHeaderHeight'
 import LocationPickerSheet from '../components/LocationPickerSheet'
@@ -191,6 +192,9 @@ function CreateList() {
       if (formData.coverImageFile) {
         const fileExt = formData.coverImageFile.name.split('.').pop()
         const fileName = `${user.id}/${Date.now()}.${fileExt}`
+
+        // Inhalts-Moderation vor Upload (Apple 1.2)
+        await assertImageAllowed(formData.coverImageFile)
 
         // Upload to storage
         const { error: uploadError } = await supabase.storage

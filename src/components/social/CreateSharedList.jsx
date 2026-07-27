@@ -5,6 +5,7 @@ import { useTheme } from '../../contexts/ThemeContext'
 import { useHeaderHeight } from '../../hooks/useHeaderHeight'
 import UserAvatar from './UserAvatar'
 import { supabase } from '../../services/supabase'
+import { assertImageAllowed } from '../../services/moderation'
 import { hapticFeedback } from '../../utils/haptics'
 import { devLog } from '../../utils/devLog'
 
@@ -284,6 +285,8 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
       const fileExt = file.name.split('.').pop()
       const fileName = `${user.id}/${Date.now()}.${fileExt}`
       
+      await assertImageAllowed(file)
+
       const { error: uploadError } = await supabase.storage
         .from('list-covers')
         .upload(fileName, file, { upsert: false })

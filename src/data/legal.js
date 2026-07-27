@@ -129,6 +129,7 @@ export const LEGAL = {
         paragraphs: [
           'Für die von dir erstellten Inhalte (Listen, Bewertungen, Fotos) bist du selbst verantwortlich. Du sicherst zu, dass du die erforderlichen Rechte an hochgeladenen Fotos besitzt und keine Rechte Dritter verletzt.',
           'Es ist untersagt, rechtswidrige, beleidigende oder rechteverletzende Inhalte einzustellen.',
+          'Wir dulden keine anstößigen, gewaltverherrlichenden, sexuellen, hasserfüllten oder anderweitig unangemessenen Inhalte sowie kein missbräuchliches Verhalten gegenüber anderen Nutzern (Null-Toleranz). Hochgeladene Bilder werden automatisiert auf solche Inhalte geprüft. Verstöße führen zur Entfernung der betreffenden Inhalte und können zur Sperrung oder Löschung deines Kontos führen.',
         ],
       },
       {

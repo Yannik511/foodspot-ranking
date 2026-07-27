@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { useSaveStatus } from '../contexts/SaveStatusContext'
 import { supabase } from '../services/supabase'
+import { assertImageAllowed } from '../services/moderation'
 import { scrollFieldIntoView } from '../utils/keyboard'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 import { getCategoryTerms } from '../utils/categoryTerms'
@@ -599,6 +600,7 @@ function AddFoodspot() {
       if (fileToUpload) {
         const fileExt = fileToUpload.name.split('.').pop()
         const fileName = `${user.id}/${Date.now()}.${fileExt}`
+        await assertImageAllowed(fileToUpload)
         const { error: uploadError } = await supabase.storage
           .from('list-covers')
           .upload(fileName, fileToUpload, { cacheControl: '3600', upsert: false })

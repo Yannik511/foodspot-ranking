@@ -10,6 +10,7 @@ import SaveButton from '../components/SaveButton'
 import { cityLabelFromAddress } from '../utils/locationLabel'
 import { useSaveStatus } from '../contexts/SaveStatusContext'
 import { supabase } from '../services/supabase'
+import { assertImageAllowed } from '../services/moderation'
 import { hapticFeedback } from '../utils/haptics'
 import { springEasing, staggerDelay } from '../utils/animations'
 import { useHeaderHeight } from '../hooks/useHeaderHeight'
@@ -3074,6 +3075,8 @@ function EditSharedListModal({ list, onClose, onSave }) {
         const fileExt = formData.coverImageFile.name.split('.').pop()
         const fileName = `${user.id}/${Date.now()}.${fileExt}`
 
+        await assertImageAllowed(formData.coverImageFile)
+
         const { error: uploadError } = await supabase.storage
           .from('list-covers')
           .upload(fileName, formData.coverImageFile, {
@@ -4211,6 +4214,9 @@ function EditListModal({ list, onClose, onSave }) {
       if (formData.coverImageFile) {
         const fileExt = formData.coverImageFile.name.split('.').pop()
         const fileName = `${user.id}/${Date.now()}.${fileExt}`
+
+        // Inhalts-Moderation vor Upload (Apple 1.2)
+        await assertImageAllowed(formData.coverImageFile)
 
         // Upload to storage (async, non-blocking)
         const { error: uploadError, data: _uploadData } = await supabase.storage

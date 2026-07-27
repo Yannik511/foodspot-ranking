@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
+import { assertImageAllowed } from '../services/moderation'
 import { useHeaderHeight } from '../hooks/useHeaderHeight'
 import { useScrollHeader } from '../hooks/useScrollHeader'
 import { usePlusAction } from '../contexts/TabBarActionsContext'
@@ -506,6 +507,8 @@ function TierList() {
     try {
       const fileExt = file.name.split('.').pop()
       const fileName = `${user.id}/${Date.now()}.${fileExt}`
+
+      await assertImageAllowed(file)
 
       const { error: uploadError } = await supabase.storage
         .from('list-covers')
