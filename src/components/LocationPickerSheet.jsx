@@ -99,10 +99,54 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
     }, 600)
   }, [])
 
-  // Placeholder — POI-Tap über MapKit JS tile events ist in Capacitor/WKWebView
-  // nicht verfügbar (nativer Layer fängt den Touch ab bevor JS ihn sieht).
-  // Name-Befüllung läuft ausschließlich über die Suche (handlePickResult).
-  const attachSelectListener = useCallback((_map) => {}, [])
+  // POI-Tap wie in Apple Karten: eingebaute Karten-POIs antippbar machen
+  // (selectableMapFeatures) und beim 'select'-Event Name + Adresse übernehmen.
+  // Suche & Fadenkreuz bleiben als Fallback unverändert erhalten.
+  const attachSelectListener = useCallback((map) => {
+    const mk = window.mapkit
+    if (!mk || !map) return
+
+    // Ältere MapKit-Versionen ohne Feature: still überspringen, Suche bleibt Fallback.
+    try {
+      if (mk.MapFeatureType?.PointOfInterest) {
+        map.selectableMapFeatures = [mk.MapFeatureType.PointOfInterest]
+      }
+    } catch { /* Feature nicht verfügbar */ }
+
+    map.addEventListener('select', (e) => {
+      const ann = e?.annotation
+      if (!ann || !ann.coordinate) return
+      // Nur eingebaute POI-Features behandeln (falls die Klasse bekannt ist)
+      if (mk.MapFeatureAnnotation && !(ann instanceof mk.MapFeatureAnnotation)) return
+
+      const coord = ann.coordinate
+      // Automatisches Zentrieren auf den POI nicht als „Nutzer scrollt" werten
+      suppressRegion.current = true
+      setCoords({ lat: coord.latitude, lng: coord.longitude })
+      setPickedName(ann.title || 'Ausgewählter Ort')
+      setAddress(ann.subtitle || '')
+      setAddressUpdating(true)
+
+      if (typeof ann.fetchPlace === 'function') {
+        ann.fetchPlace((err, place) => {
+          setAddressUpdating(false)
+          if (err || !place) return
+          if (place.formattedAddress) setAddress(place.formattedAddress)
+          geoMetaRef.current = {
+            countryCode: place.countryCode || null,
+            adminArea: place.administrativeArea || null,
+            city: place.locality || null,
+          }
+        })
+      } else {
+        // Kein fetchPlace: Adresse + Verwaltungsebenen über Reverse-Geocode
+        setAddressUpdating(false)
+        reverseGeocode(coord.latitude, coord.longitude)
+      }
+
+      setTimeout(() => { suppressRegion.current = false }, 1200)
+    })
+  }, [reverseGeocode])
 
   useEffect(() => {
     if (!isOpen) return
