@@ -3,6 +3,7 @@ import { useTheme } from '../contexts/ThemeContext'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../services/supabase'
 import { useHeaderHeight } from '../hooks/useHeaderHeight'
+import { glassBarStyle, glassCardStyle } from '../lib/glass'
 import { useTabBarActions } from '../contexts/TabBarActionsContext'
 import { SkeletonBox } from '../components/ui/Skeleton'
 import SpotMapSheet from '../components/SpotMapSheet'
@@ -71,8 +72,8 @@ function SpotCard({ spot, isDark, onOpen, variant = 'aggregate' }) {
       onClick={() => onOpen(spot)}
       className="active:scale-[0.97] transition-transform"
       style={{
-        width: CARD_W, flexShrink: 0, textAlign: 'left', border: 'none', padding: 0,
-        background: isDark ? '#1c1c1e' : '#fff',
+        width: CARD_W, flexShrink: 0, textAlign: 'left', padding: 0,
+        ...glassCardStyle(isDark),
         borderRadius: 18, overflow: 'hidden', cursor: (hasCoords || showImage) ? 'pointer' : 'default',
         boxShadow: isDark ? '0 4px 16px rgba(0,0,0,0.35)' : '0 4px 16px rgba(0,0,0,0.08)',
         WebkitTapHighlightColor: 'transparent',
@@ -428,8 +429,8 @@ export default function Discover() {
       {/* Header + Filterleiste */}
       <header
         ref={headerRef}
-        className="header-safe fixed top-0 left-0 right-0 z-20 backdrop-blur-xl"
-        style={{ background: isDark ? 'rgba(15,15,19,0.9)' : 'rgba(245,245,247,0.9)', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}` }}
+        className="header-safe fixed top-0 left-0 right-0 z-20"
+        style={glassBarStyle(isDark)}
       >
         <div style={{ padding: '10px 20px 4px' }}>
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: isDark ? '#fff' : '#111', fontFamily: "'Poppins', sans-serif" }}>

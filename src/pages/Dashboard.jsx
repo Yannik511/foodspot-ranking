@@ -14,6 +14,7 @@ import { hapticFeedback } from '../utils/haptics'
 import { springEasing, staggerDelay } from '../utils/animations'
 import { useHeaderHeight } from '../hooks/useHeaderHeight'
 import { useScrollHeader } from '../hooks/useScrollHeader'
+import { glassHeaderStyle } from '../lib/glass'
 import { useSocialNotifications } from '../hooks/useSocialNotifications'
 import { usePlusAction, useTabBarActions } from '../contexts/TabBarActionsContext'
 import { devLog } from '../utils/devLog'
@@ -1747,14 +1748,11 @@ function Dashboard() {
       {/* Top Navigation (Fixed) - Transparent mit Glass-Effekt */}
       <div
         ref={headerRef}
-        className={`fixed top-0 left-0 right-0 z-30 backdrop-blur-xl transition-all duration-300 ${
-          scrolled
-            ? (isDark ? 'bg-gray-900/80 border-b border-gray-800/50 shadow-sm' : 'bg-white/80 border-b border-gray-200/50 shadow-sm')
-            : 'bg-transparent border-b border-transparent'
-        }`}
+        className="fixed top-0 left-0 right-0 z-30"
         style={{
           top: 0,
           paddingTop: 0,
+          ...glassHeaderStyle(isDark, scrolled),
         }}
       >
         <header

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
+import { glassPanelStyle } from '../lib/glass'
 
 // Read-only MapKit-Ansicht: fliegt zu einem Spot-Standort und markiert ihn.
 // Teilt sich die MapKit-Ladelogik-Konvention mit dem LocationPickerSheet
@@ -137,7 +138,8 @@ export default function SpotMapSheet({ isOpen, onClose, spot }) {
         onClick={(e) => e.stopPropagation()}
         className="animate-fade-slide-up"
         style={{
-          width: '100%', background: isDark ? '#1c1c1e' : '#fff',
+          width: '100%',
+          ...glassPanelStyle(isDark),
           borderTopLeftRadius: 26, borderTopRightRadius: 26, overflow: 'hidden',
           paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
         }}

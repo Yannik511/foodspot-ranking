@@ -6,6 +6,7 @@ import FriendsTab from '../components/social/FriendsTab'
 import { supabase } from '../services/supabase'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 import { useScrollHeader } from '../hooks/useScrollHeader'
+import { glassHeaderStyle } from '../lib/glass'
 import { usePlusAction } from '../contexts/TabBarActionsContext'
 import { hapticFeedback } from '../utils/haptics'
 
@@ -197,11 +198,8 @@ function Social() {
       {/* Header */}
       <header
         ref={headerRef}
-        className={`header-safe fixed top-0 left-0 right-0 z-20 backdrop-blur-xl transition-all duration-300 ${
-          scrolled
-            ? (isDark ? 'bg-gray-900/80 border-b border-gray-800/50 shadow-sm' : 'bg-white/80 border-b border-gray-200/50 shadow-sm')
-            : 'bg-transparent border-b border-transparent'
-        }`}
+        className="header-safe fixed top-0 left-0 right-0 z-20"
+        style={glassHeaderStyle(isDark, scrolled)}
       >
         <div className="flex items-center gap-3 px-4 py-2">
           <button
