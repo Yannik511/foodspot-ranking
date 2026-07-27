@@ -53,5 +53,7 @@
 	<string>Rankify benötigt Zugriff auf die Kamera, um Fotos deiner Foodspots aufzunehmen.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Rankify benötigt Zugriff auf deine Fotos, um Bilder für Foodspots und dein Profil auszuwählen.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
