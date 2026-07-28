@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
 import { glassPanelStyle } from '../lib/glass'
+import AddToListSheet from './AddToListSheet'
 
 // Read-only MapKit-Ansicht: fliegt zu einem Spot-Standort und markiert ihn.
 // Teilt sich die MapKit-Ladelogik-Konvention mit dem LocationPickerSheet
@@ -43,6 +44,7 @@ export default function SpotMapSheet({ isOpen, onClose, spot }) {
   const mapRef = useRef(null)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState(null)
+  const [showAddToList, setShowAddToList] = useState(false)
   // Galerie: bis zu 5 Bilder der kanonischen Gruppe (lazy beim Öffnen)
   const [images, setImages] = useState(() => (spot?.cover_photo_url ? [spot.cover_photo_url] : []))
 
@@ -174,6 +176,26 @@ export default function SpotMapSheet({ isOpen, onClose, spot }) {
           </button>
         </div>
 
+        {/* Zu Liste hinzufügen */}
+        <div style={{ padding: '0 16px 12px' }}>
+          <button
+            onClick={() => setShowAddToList(true)}
+            className="active:scale-[0.98] transition-transform"
+            style={{
+              width: '100%', padding: '12px', borderRadius: 14, border: 'none',
+              color: '#fff', fontWeight: 700, fontSize: 15, fontFamily: "'Poppins', sans-serif",
+              background: 'linear-gradient(135deg, #FF9357, #B85C2C)',
+              cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Zu Liste hinzufügen
+          </button>
+        </div>
+
         {/* Galerie — bis zu 5 Bilder der Gruppe, horizontal scrollbar */}
         {images.length > 0 && (
           <div style={{
@@ -212,6 +234,8 @@ export default function SpotMapSheet({ isOpen, onClose, spot }) {
             <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
           </div>
         )}
+
+        <AddToListSheet isOpen={showAddToList} onClose={() => setShowAddToList(false)} spot={spot} />
       </div>
     </div>
   )

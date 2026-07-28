@@ -218,6 +218,8 @@ function AddFoodspot() {
   const _preselectedTier = searchParams.get('tier') || null
   const spotId = searchParams.get('spotId') || null // For edit mode
   const isEditMode = !!spotId
+  // Prefill aus „Entdecken → Liste hinzufügen": Name/Standort vorbelegen
+  const prefill = searchParams.get('prefill') === '1'
   const { user } = useAuth()
   const { isDark } = useTheme()
   const { beginSave, resolveSave, failSave } = useSaveStatus()
@@ -244,8 +246,10 @@ function AddFoodspot() {
   const _activeHeaderHeight = showCategorySelection ? categoryHeaderHeight : formHeaderHeight
 
   const [formData, setFormData] = useState({
-    name: '',
-    address: '',
+    name: prefill ? (searchParams.get('name') || '') : '',
+    address: prefill ? (searchParams.get('address') || '') : '',
+    latitude: prefill && searchParams.get('lat') ? Number(searchParams.get('lat')) : null,
+    longitude: prefill && searchParams.get('lng') ? Number(searchParams.get('lng')) : null,
     ratings: {},
     notes: '',
     cover_photo_url: null,

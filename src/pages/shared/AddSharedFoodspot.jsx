@@ -22,6 +22,8 @@ function AddSharedFoodspot() {
   const [searchParams] = useSearchParams()
   const spotId = searchParams.get('spotId')
   const isEditMode = !!spotId
+  // Prefill aus „Entdecken → Liste hinzufügen": Name/Standort vorbelegen
+  const prefill = searchParams.get('prefill') === '1'
   const { user } = useAuth()
   const { isDark } = useTheme()
   const navigate = useNavigate()
@@ -41,10 +43,10 @@ function AddSharedFoodspot() {
   const [showCategorySelection, setShowCategorySelection] = useState(!isEditMode)
 
   const [formData, setFormData] = useState({
-    name: '',
-    address: '',
-    latitude: null,
-    longitude: null,
+    name: prefill ? (searchParams.get('name') || '') : '',
+    address: prefill ? (searchParams.get('address') || '') : '',
+    latitude: prefill && searchParams.get('lat') ? Number(searchParams.get('lat')) : null,
+    longitude: prefill && searchParams.get('lng') ? Number(searchParams.get('lng')) : null,
     ratings: {}
   })
   const [showLocationPicker, setShowLocationPicker] = useState(false)
