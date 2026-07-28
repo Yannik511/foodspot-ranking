@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTheme } from '../../contexts/ThemeContext'
 import { hapticFeedback } from '../../utils/haptics'
 import { springEasing } from '../../utils/animations'
+import { isBiometricAvailable, hasBiometricLogin, enableBiometricLogin, loginWithBiometrics } from '../../services/biometric'
 
 function Login() {
   const { isDark } = useTheme()
@@ -13,6 +14,11 @@ function Login() {
   const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [bioEnabled, setBioEnabled] = useState(false)
+  const [showBioPrompt, setShowBioPrompt] = useState(false)
+  const bioAvailableRef = useRef(false)
+  const pendingCredsRef = useRef(null)
+  const didAutoBioRef = useRef(false)
   const { signIn } = useAuth()
   const navigate = useNavigate()
 
@@ -67,6 +73,14 @@ function Login() {
           localStorage.removeItem('foodspot_remember_me')
         }
 
+        // Face ID anbieten, falls verfügbar und noch nicht aktiviert
+        if (bioAvailableRef.current && !bioEnabled) {
+          pendingCredsRef.current = { email, password }
+          setLoading(false)
+          setShowBioPrompt(true)
+          return
+        }
+
         hapticFeedback.success()
         navigate('/dashboard')
       }
@@ -75,6 +89,58 @@ function Login() {
       setLoading(false)
     }
   }
+
+  // Anmeldung per Face ID (nutzt im Keychain gespeicherte Zugangsdaten)
+  const handleBiometricLogin = async () => {
+    const creds = await loginWithBiometrics()
+    if (!creds) return
+    setError('')
+    setLoading(true)
+    try {
+      const { data, error } = await signIn(creds.email, creds.password)
+      if (error) {
+        setError('Face-ID-Anmeldung fehlgeschlagen. Bitte mit Passwort anmelden.')
+        setLoading(false)
+        return
+      }
+      if (data?.user) {
+        hapticFeedback.success()
+        navigate('/dashboard')
+      }
+    } catch {
+      setError('Face-ID-Anmeldung fehlgeschlagen. Bitte mit Passwort anmelden.')
+      setLoading(false)
+    }
+  }
+
+  // Antwort auf die „Face ID aktivieren?"-Abfrage nach dem Login
+  const confirmBioPrompt = async (accept) => {
+    setShowBioPrompt(false)
+    if (accept && pendingCredsRef.current) {
+      await enableBiometricLogin(pendingCredsRef.current.email, pendingCredsRef.current.password)
+    }
+    pendingCredsRef.current = null
+    hapticFeedback.success()
+    navigate('/dashboard')
+  }
+
+  // Face-ID-Verfügbarkeit prüfen; wenn aktiv, einmalig automatisch anbieten
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const available = await isBiometricAvailable()
+      const enabled = await hasBiometricLogin()
+      if (cancelled) return
+      bioAvailableRef.current = available
+      setBioEnabled(enabled)
+      if (available && enabled && !didAutoBioRef.current) {
+        didAutoBioRef.current = true
+        handleBiometricLogin()
+      }
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const inputGroupStyle = {
     borderRadius: 16,
@@ -336,6 +402,26 @@ function Login() {
           >
             {loading ? 'Wird angemeldet...' : 'Login'}
           </button>
+
+          {bioEnabled && (
+            <button
+              type="button"
+              onClick={handleBiometricLogin}
+              style={{
+                width: '100%', marginTop: 12, padding: '15px', borderRadius: 16,
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.12)'}`,
+                background: 'transparent', color: isDark ? '#fff' : '#0f0f13',
+                fontSize: 15, fontWeight: 600, fontFamily: "'Poppins', sans-serif",
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" />
+                <path d="M9 10h.01M15 10h.01M9.5 14.5a3.5 3.5 0 0 0 5 0" />
+              </svg>
+              Mit Face ID anmelden
+            </button>
+          )}
         </form>
 
         {/* Register link */}
@@ -362,6 +448,24 @@ function Login() {
           </p>
         </div>
       </div>
+
+      {showBioPrompt && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(6px)' }}>
+          <div style={{ width: '100%', maxWidth: 340, borderRadius: 22, padding: 24, background: isDark ? '#1c1c1e' : '#fff', textAlign: 'center' }}>
+            <div style={{ fontSize: 40, marginBottom: 10 }}>🔒</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: isDark ? '#fff' : '#111', fontFamily: "'Poppins', sans-serif", marginBottom: 8 }}>Mit Face ID anmelden?</div>
+            <div style={{ fontSize: 14, color: isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.5)', fontFamily: "'Poppins', sans-serif", marginBottom: 20, lineHeight: 1.4 }}>
+              Beim nächsten Mal meldest du dich einfach per Face ID an – kein Passwort tippen.
+            </div>
+            <button onClick={() => confirmBioPrompt(true)} style={{ width: '100%', padding: '14px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, #FF9357, #B85C2C)', color: '#fff', fontSize: 15, fontWeight: 700, fontFamily: "'Poppins', sans-serif", cursor: 'pointer', marginBottom: 10 }}>
+              Face ID aktivieren
+            </button>
+            <button onClick={() => confirmBioPrompt(false)} style={{ width: '100%', padding: '12px', borderRadius: 14, border: 'none', background: 'transparent', color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)', fontSize: 14, fontWeight: 600, fontFamily: "'Poppins', sans-serif", cursor: 'pointer' }}>
+              Nicht jetzt
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

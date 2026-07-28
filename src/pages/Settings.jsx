@@ -5,6 +5,7 @@ import { useTheme } from '../contexts/ThemeContext'
 import Avatar from '../components/Avatar'
 import { supabase } from '../services/supabase'
 import { assertImageAllowed } from '../services/moderation'
+import { isBiometricAvailable, hasBiometricLogin, disableBiometricLogin } from '../services/biometric'
 import { hapticFeedback } from '../utils/haptics'
 import { springEasing } from '../utils/animations'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
@@ -75,7 +76,27 @@ function Settings() {
   const { darkMode, isDark, setDarkMode } = useTheme()
   const navigate = useNavigate()
   const { headerRef, headerHeight } = useHeaderHeight()
-  
+
+  // Face ID (nur nativ verfügbar)
+  const [bioAvailable, setBioAvailable] = useState(false)
+  const [bioEnabled, setBioEnabled] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const [a, e] = await Promise.all([isBiometricAvailable(), hasBiometricLogin()])
+      if (!cancelled) { setBioAvailable(a); setBioEnabled(e) }
+    })()
+    return () => { cancelled = true }
+  }, [])
+  const handleToggleBiometric = async () => {
+    if (bioEnabled) {
+      await disableBiometricLogin()
+      setBioEnabled(false)
+      hapticFeedback.success()
+    }
+    // Aktivieren erfolgt beim Login (dort ist das Passwort verfügbar)
+  }
+
   // Form state
   const [displayName, setDisplayName] = useState('')
   const [username, setUsername] = useState('')
@@ -1303,10 +1324,45 @@ function Settings() {
           </div>
         </section>
 
+        {/* Face ID / Sicherheit — nur nativ */}
+        {bioAvailable && (
+          <section className={`${isDark ? 'bg-gray-800' : 'bg-white'} mt-4 mx-4 rounded-2xl overflow-hidden shadow-sm`}>
+            <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+              <h2 className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-semibold`} style={{ fontFamily: "'Poppins', sans-serif", fontSize: '14px' }}>
+                Sicherheit
+              </h2>
+            </div>
+            <div className="px-4 py-4 flex items-center justify-between gap-3">
+              <div style={{ minWidth: 0 }}>
+                <div className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`} style={{ fontFamily: "'Poppins', sans-serif", fontSize: '15px' }}>
+                  Mit Face ID anmelden
+                </div>
+                <div className={`${isDark ? 'text-gray-400' : 'text-gray-500'}`} style={{ fontFamily: "'Poppins', sans-serif", fontSize: '12.5px', marginTop: 2 }}>
+                  {bioEnabled ? 'Aktiv – Login ohne Passwort' : 'Beim nächsten Login aktivierbar'}
+                </div>
+              </div>
+              <button
+                onClick={handleToggleBiometric}
+                role="switch"
+                aria-checked={bioEnabled}
+                aria-label="Face ID für Anmeldung"
+                style={{
+                  width: 50, height: 30, borderRadius: 15, flexShrink: 0, border: 'none',
+                  cursor: bioEnabled ? 'pointer' : 'default',
+                  background: bioEnabled ? '#34C759' : (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'),
+                  position: 'relative', transition: 'background 0.2s',
+                }}
+              >
+                <span style={{ position: 'absolute', top: 3, left: bioEnabled ? 23 : 3, width: 24, height: 24, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+              </button>
+            </div>
+          </section>
+        )}
+
         {/* Language Section */}
         <section className={`${isDark ? 'bg-gray-800' : 'bg-white'} mt-4 mx-4 rounded-2xl overflow-hidden shadow-sm`}>
           <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-            <h2 
+            <h2
               className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-semibold`}
               style={{ fontFamily: "'Poppins', sans-serif", fontSize: '14px' }}
             >

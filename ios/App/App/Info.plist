@@ -55,5 +55,7 @@
 	<string>Rankify benötigt Zugriff auf deine Fotos, um Bilder für Foodspots und dein Profil auszuwählen.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Rankify nutzt Face ID, um dich schnell und sicher anzumelden.</string>
 </dict>
 </plist>
