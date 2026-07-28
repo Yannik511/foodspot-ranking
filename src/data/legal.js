@@ -5,8 +5,8 @@
 //
 // ⚠️ Rechtlicher Hinweis: Diese Texte sind ein fachlich fundierter Entwurf auf Basis der
 // tatsächlichen Datenflüsse der App. Sie ersetzen KEINE Rechtsberatung. Vor Release:
-//   1. Alle [PLATZHALTER] im Impressum mit echten Daten füllen.
-//   2. Supabase-Server-Region bestätigen (EU vs. US → Drittlandtransfer-Klausel).
+//   1. ✅ Impressum-Daten eingesetzt (Peter Rabenstein, privat/nicht-kommerziell).
+//   2. ✅ Supabase-Region bestätigt: EU (Frankfurt, aws-eu-central-1).
 //   3. Idealerweise einmal juristisch gegenprüfen lassen.
 
 export const LAST_UPDATED = '2026-07-05'
@@ -48,7 +48,7 @@ export const LEGAL = {
           'Zur Bereitstellung der App nutzen wir folgende Dienste:',
         ],
         list: [
-          'Supabase (Supabase Inc.): Hosting von Datenbank, Authentifizierung und Datei-Speicher. Hier werden deine Konto-, Profil- und Inhaltsdaten gespeichert. Serverstandort: [REGION BESTÄTIGEN – z. B. EU]. Bei Verarbeitung außerhalb der EU erfolgt der Transfer auf Grundlage von EU-Standardvertragsklauseln.',
+          'Supabase (Supabase Inc.): Hosting von Datenbank, Authentifizierung und Datei-Speicher. Hier werden deine Konto-, Profil- und Inhaltsdaten gespeichert. Serverstandort: EU (Frankfurt, aws-eu-central-1) – die Daten werden innerhalb der EU verarbeitet.',
           'Apple MapKit (Apple Inc.): Darstellung von Karten. Bei Kartennutzung werden technisch notwendige Daten (z. B. IP-Adresse, Kartenausschnitt) an Apple übertragen.',
           'OpenStreetMap / Nominatim (OpenStreetMap Foundation): Ortssuche. Wenn du nach einem Ort suchst, wird deine Suchanfrage an nominatim.openstreetmap.org übertragen.',
         ],
@@ -79,30 +79,21 @@ export const LEGAL = {
     updated: LAST_UPDATED,
     sections: [
       {
-        heading: 'Angaben gemäß § 5 DDG',
+        heading: 'Verantwortlicher',
         paragraphs: [
-          '[NAME / VERANTWORTLICHE PERSON]',
-          '[STRASSE UND HAUSNUMMER]',
-          '[PLZ UND ORT]',
-          '[LAND]',
+          'Peter Rabenstein',
         ],
       },
       {
         heading: 'Kontakt',
         paragraphs: [
-          'E-Mail: [KONTAKT-E-MAIL]',
-        ],
-      },
-      {
-        heading: 'Verantwortlich für den Inhalt',
-        paragraphs: [
-          '[NAME], Anschrift wie oben.',
+          'E-Mail: peterrabenstein96@gmail.com',
         ],
       },
       {
         heading: 'Hinweis',
         paragraphs: [
-          'Die Platzhalter in eckigen Klammern sind vor Veröffentlichung mit den tatsächlichen Angaben zu ersetzen. In Deutschland besteht für geschäftsmäßig betriebene Apps eine Impressumspflicht.',
+          'Rankify ist ein privates, nicht-kommerzielles Projekt. Verantwortlich für die Datenverarbeitung im Sinne der DSGVO ist die oben genannte Person.',
         ],
       },
     ],
