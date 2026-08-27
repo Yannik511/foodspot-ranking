@@ -6,6 +6,7 @@ import Avatar from '../components/Avatar'
 import { supabase } from '../services/supabase'
 import { assertImageAllowed } from '../services/moderation'
 import { isBiometricAvailable, hasBiometricLogin, disableBiometricLogin } from '../services/biometric'
+import { getBlockedUsers, unblockUser } from '../services/ugc'
 import { hapticFeedback } from '../utils/haptics'
 import { springEasing } from '../utils/animations'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
@@ -95,6 +96,24 @@ function Settings() {
       hapticFeedback.success()
     }
     // Aktivieren erfolgt beim Login (dort ist das Passwort verfügbar)
+  }
+
+  // Blockierte Nutzer (UGC)
+  const [blockedUsers, setBlockedUsers] = useState([])
+  const [loadingBlocked, setLoadingBlocked] = useState(true)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const list = await getBlockedUsers()
+      if (!cancelled) { setBlockedUsers(list); setLoadingBlocked(false) }
+    })()
+    return () => { cancelled = true }
+  }, [])
+  const handleUnblock = async (blockedId) => {
+    const { error } = await unblockUser(blockedId)
+    if (error) return
+    hapticFeedback.success()
+    setBlockedUsers((prev) => prev.filter((u) => u.id !== blockedId))
   }
 
   // Form state
@@ -1115,6 +1134,52 @@ function Settings() {
                 />
               </button>
             </div>
+          </div>
+        </section>
+
+        {/* Blocked Users Section */}
+        <section className={`${isDark ? 'bg-gray-800' : 'bg-white'} mt-4 mx-4 rounded-2xl overflow-hidden shadow-sm`}>
+          <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+            <h2
+              className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-semibold`}
+              style={{ fontFamily: "'Poppins', sans-serif", fontSize: '14px' }}
+            >
+              Blockierte Nutzer
+            </h2>
+          </div>
+          <div className="px-4 py-4">
+            {loadingBlocked ? (
+              <p className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm`} style={{ fontFamily: "'Inter', sans-serif" }}>
+                Wird geladen…
+              </p>
+            ) : blockedUsers.length === 0 ? (
+              <p className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm`} style={{ fontFamily: "'Inter', sans-serif" }}>
+                Du hast niemanden blockiert.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {blockedUsers.map((u) => (
+                  <div key={u.id} className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-9 h-9 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'}`}>
+                        {u.profile_image_url
+                          ? <img src={u.profile_image_url} alt="" className="w-full h-full object-cover" />
+                          : <span className="text-sm font-semibold">{(u.username || '?').charAt(0).toUpperCase()}</span>}
+                      </div>
+                      <span className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium truncate`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        {u.username}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleUnblock(u.id)}
+                      className={`text-sm font-semibold flex-shrink-0 px-3 py-1.5 rounded-full ${isDark ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
+                    >
+                      Entblocken
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 

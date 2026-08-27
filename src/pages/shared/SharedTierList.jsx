@@ -15,6 +15,8 @@ import {
 import { useProfilesStore } from '../../contexts/ProfileContext'
 import { usePlusAction } from '../../contexts/TabBarActionsContext'
 import { hapticFeedback } from '../../utils/haptics'
+import ReportSheet from '../../components/ugc/ReportSheet'
+import { reportContent } from '../../services/ugc'
 
 const TIER_COLORS = {
   S: { 
@@ -91,6 +93,8 @@ function SharedTierList() {
   const [loading, setLoading] = useState(true)
   const [showTierModal, setShowTierModal] = useState(null)
   const [selectedSpot, setSelectedSpot] = useState(null)
+  const [showReport, setShowReport] = useState(false)
+  const [reportSubmitting, setReportSubmitting] = useState(false)
   const [showSpotDetails, setShowSpotDetails] = useState(false)
   const [descriptionDraft, setDescriptionDraft] = useState('')
   const [descriptionSaving, setDescriptionSaving] = useState(false)
@@ -163,6 +167,23 @@ function SharedTierList() {
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
     setTimeout(() => setToast(null), 3000)
+  }
+
+  const handleReportSpot = async (reasonKey) => {
+    if (!selectedSpot) return
+    setReportSubmitting(true)
+    try {
+      const { error } = await reportContent('spot', selectedSpot.id, reasonKey)
+      if (error) throw error
+      hapticFeedback.success()
+      setShowReport(false)
+      showToast('Danke – deine Meldung ist eingegangen', 'success')
+    } catch (e) {
+      console.error('[SharedTierList] Melden fehlgeschlagen:', e)
+      showToast('Meldung konnte nicht gesendet werden', 'error')
+    } finally {
+      setReportSubmitting(false)
+    }
   }
 
   const fetchProfilesForIds = useCallback(async (ids, retryCount = 0) => {
@@ -1225,16 +1246,30 @@ function SharedTierList() {
                   {selectedSpot.category || list?.category || 'Kategorie'}
                 </p>
               </div>
-              <button
-                onClick={closeSpotDetails}
-                className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-100'
-                }`}
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setShowReport(true)}
+                  title="Inhalt melden"
+                  aria-label="Inhalt melden"
+                  className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-500 hover:bg-gray-100'
+                  }`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 2H21l-3 6 3 6h-8.5l-1-2H5a2 2 0 00-2 2z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={closeSpotDetails}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-100'
+                  }`}
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             <div className="px-6 py-4 overflow-y-auto" style={{ maxHeight: 'calc(85vh - 70px)' }}>
@@ -1621,8 +1656,16 @@ function SharedTierList() {
       />
 
 
+      <ReportSheet
+        open={showReport}
+        title="Inhalt melden"
+        submitting={reportSubmitting}
+        onClose={() => setShowReport(false)}
+        onSubmit={handleReportSpot}
+      />
+
       {toast && (
-        <div 
+        <div
           className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 px-4 py-3 rounded-2xl shadow-lg z-50 ${
             toast.type === 'success'
               ? 'bg-green-500 text-white'

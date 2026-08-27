@@ -7,6 +7,8 @@ import { supabase } from '../services/supabase'
 import { hapticFeedback } from '../utils/haptics'
 import { useProfilesStore } from '../contexts/ProfileContext'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
+import ReportSheet from '../components/ugc/ReportSheet'
+import { reportContent, blockUser } from '../services/ugc'
 
 const CATEGORY_EMOJIS = {
   'Döner': '🥙',
@@ -62,6 +64,8 @@ function FriendProfile() {
   const [_friendProfileVisibility, setFriendProfileVisibility] = useState('private')
   const [canViewStats, setCanViewStats] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [showReport, setShowReport] = useState(false)
+  const [reportSubmitting, setReportSubmitting] = useState(false)
 
   useEffect(() => {
     if (!id || !currentUser) return
@@ -404,6 +408,40 @@ function FriendProfile() {
     }
   }
 
+  const handleReportUser = async (reasonKey) => {
+    setReportSubmitting(true)
+    try {
+      const { error } = await reportContent('user', id, reasonKey)
+      if (error) throw error
+      hapticFeedback.success()
+      setShowReport(false)
+      showToast('Danke – deine Meldung ist eingegangen', 'success')
+    } catch (e) {
+      console.error('Error reporting user:', e)
+      showToast('Meldung konnte nicht gesendet werden', 'error')
+    } finally {
+      setReportSubmitting(false)
+    }
+  }
+
+  const handleBlockUser = async () => {
+    const ok = window.confirm(
+      `${getUsername(friendUser)} blockieren?\n\n` +
+      'Ihr seht euch dann gegenseitig nicht mehr als Freunde und diese Person kann dir keine Anfrage mehr schicken.'
+    )
+    if (!ok) return
+    try {
+      const { error } = await blockUser(id)
+      if (error) throw error
+      hapticFeedback.success()
+      showToast('Nutzer blockiert', 'success')
+      navigate('/social')
+    } catch (e) {
+      console.error('Error blocking user:', e)
+      showToast('Blockieren fehlgeschlagen', 'error')
+    }
+  }
+
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
     setTimeout(() => setToast(null), 3000)
@@ -590,6 +628,23 @@ function FriendProfile() {
                   Freund entfernen
                 </button>
               )}
+            </div>
+
+            {/* Melden / Blockieren (UGC-Schutz) */}
+            <div className="flex items-center justify-center gap-4 mt-5">
+              <button
+                onClick={() => setShowReport(true)}
+                className={`text-sm font-medium ${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Melden
+              </button>
+              <span className={isDark ? 'text-gray-600' : 'text-gray-300'}>·</span>
+              <button
+                onClick={handleBlockUser}
+                className={`text-sm font-medium ${isDark ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-600'}`}
+              >
+                Blockieren
+              </button>
             </div>
           </div>
 
@@ -1224,6 +1279,14 @@ function FriendProfile() {
       </main>
 
       {/* Toast */}
+      <ReportSheet
+        open={showReport}
+        title="Nutzer melden"
+        submitting={reportSubmitting}
+        onClose={() => setShowReport(false)}
+        onSubmit={handleReportUser}
+      />
+
       {toast && (
         <div
           className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50"
