@@ -5,12 +5,21 @@
 
 export const GLASS_BLUR = 'blur(28px) saturate(180%)'
 
+// Im Dark Mode ist der Seitenhintergrund ein blaustichiges Grau (Tailwind
+// gray-900 = #111827). saturate(180%) verstärkt genau diesen Blauanteil, das
+// Glas wirkt dann blau statt neutral → dunkle Flächen bleiben nahe 100%.
+export const GLASS_BLUR_DARK = 'blur(28px) saturate(105%)'
+
+const glassBase = (isDark, blur = isDark ? GLASS_BLUR_DARK : GLASS_BLUR) => ({
+  backdropFilter: blur,
+  WebkitBackdropFilter: blur,
+})
+
 // Obere Seiten-Leiste: am Seitenanfang transparent, beim Scrollen Glas.
 // Blur liegt immer an (wie bisher), nur Tönung/Rand/Schatten schalten mit `scrolled`.
 export function glassHeaderStyle(isDark, scrolled) {
   const base = {
-    backdropFilter: GLASS_BLUR,
-    WebkitBackdropFilter: GLASS_BLUR,
+    ...glassBase(isDark),
     transition: 'background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
   }
 
@@ -26,7 +35,7 @@ export function glassHeaderStyle(isDark, scrolled) {
   return isDark
     ? {
         ...base,
-        background: 'rgba(20,20,24,0.62)',
+        background: 'rgba(22,22,22,0.72)',
         borderBottom: '1px solid rgba(255,255,255,0.08)',
         boxShadow: '0 1px 12px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.06)',
       }
@@ -41,14 +50,11 @@ export function glassHeaderStyle(isDark, scrolled) {
 // Persistente Glas-Leiste, die immer sichtbar über Inhalt liegt (z. B. Discover
 // mit Filterleiste). Etwas kräftigere Tönung für bessere Lesbarkeit.
 export function glassBarStyle(isDark) {
-  const base = {
-    backdropFilter: GLASS_BLUR,
-    WebkitBackdropFilter: GLASS_BLUR,
-  }
+  const base = glassBase(isDark)
   return isDark
     ? {
         ...base,
-        background: 'rgba(20,20,24,0.72)',
+        background: 'rgba(22,22,22,0.80)',
         borderBottom: '1px solid rgba(255,255,255,0.08)',
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
       }
@@ -63,25 +69,19 @@ export function glassBarStyle(isDark) {
 // Inhalts-Card mit dezentem Glas — frostet den soliden Card-Hintergrund
 // leicht über dem Seitenhintergrund. Bewusst zurückhaltend (Lesbarkeit > Effekt).
 export function glassCardStyle(isDark) {
-  const base = {
-    backdropFilter: 'blur(20px) saturate(160%)',
-    WebkitBackdropFilter: 'blur(20px) saturate(160%)',
-  }
+  const base = glassBase(isDark, isDark ? 'blur(20px) saturate(105%)' : 'blur(20px) saturate(160%)')
   return isDark
-    ? { ...base, background: 'rgba(28,28,30,0.72)', border: '1px solid rgba(255,255,255,0.06)' }
+    ? { ...base, background: 'rgba(30,30,30,0.80)', border: '1px solid rgba(255,255,255,0.06)' }
     : { ...base, background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(255,255,255,0.7)' }
 }
 
 // Panel/Sheet-Fläche (Kopf- oder Fußleiste eines Sheets, Karten-Overlays).
 export function glassPanelStyle(isDark) {
-  const base = {
-    backdropFilter: GLASS_BLUR,
-    WebkitBackdropFilter: GLASS_BLUR,
-  }
+  const base = glassBase(isDark)
   return isDark
     ? {
         ...base,
-        background: 'rgba(20,20,24,0.75)',
+        background: 'rgba(22,22,22,0.82)',
         border: '1px solid rgba(255,255,255,0.08)',
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
       }

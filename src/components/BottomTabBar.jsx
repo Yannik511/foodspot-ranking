@@ -86,8 +86,10 @@ export default function BottomTabBar() {
   const activeColor  = isDark ? '#FF9357' : '#FF7E42'
   const inactiveColor = isDark ? 'rgba(255,255,255,0.40)' : 'rgba(0,0,0,0.32)'
 
+  // Dark: neutrale Tönung + kaum saturate — sonst verstärkt das Glas den
+  // Blaustich des Seitenhintergrunds (gray-900 = #111827). Siehe lib/glass.js.
   const glassStyle = isDark ? {
-    background: 'rgba(20, 20, 24, 0.58)',
+    background: 'rgba(22, 22, 22, 0.68)',
     border: '1px solid rgba(255,255,255,0.08)',
     boxShadow: '0 12px 40px rgba(0,0,0,0.50), 0 2px 8px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06)',
   } : {
@@ -105,8 +107,8 @@ export default function BottomTabBar() {
         transform: 'translateX(-50%)',
         zIndex: 50,
         borderRadius: '999px',
-        backdropFilter: 'blur(48px) saturate(200%)',
-        WebkitBackdropFilter: 'blur(48px) saturate(200%)',
+        backdropFilter: isDark ? 'blur(48px) saturate(105%)' : 'blur(48px) saturate(200%)',
+        WebkitBackdropFilter: isDark ? 'blur(48px) saturate(105%)' : 'blur(48px) saturate(200%)',
         display: 'flex',
         alignItems: 'center',
         padding: '6px',
