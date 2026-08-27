@@ -5,6 +5,7 @@ import { useTheme } from '../../contexts/ThemeContext'
 import { hapticFeedback } from '../../utils/haptics'
 import { springEasing } from '../../utils/animations'
 import { isBiometricAvailable, hasBiometricLogin, enableBiometricLogin, loginWithBiometrics } from '../../services/biometric'
+import { isEmail, normalizeIdentifier } from '../../utils/authIdentifier'
 
 function Login() {
   const { isDark } = useTheme()
@@ -19,7 +20,7 @@ function Login() {
   const bioAvailableRef = useRef(false)
   const pendingCredsRef = useRef(null)
   const didAutoBioRef = useRef(false)
-  const { signIn } = useAuth()
+  const { signIn, getEmailForUsername } = useAuth()
   const navigate = useNavigate()
 
   // Setze data-page Attribut für CSS (ähnlich wie Landing)
@@ -48,12 +49,18 @@ function Login() {
     setLoading(true)
 
     try {
-      let email = emailOrUsername
+      const identifier = normalizeIdentifier(emailOrUsername)
+      let email = identifier
 
-      if (!emailOrUsername.includes('@')) {
-        setError('Bitte gib eine gültige E-Mail-Adresse ein')
-        setLoading(false)
-        return
+      // Kein "@" → als Zugangsname behandeln und serverseitig zur E-Mail auflösen.
+      if (!isEmail(identifier)) {
+        email = await getEmailForUsername(identifier)
+        if (!email) {
+          // Generische Meldung (keine Enumeration: gleich wie falsches Passwort).
+          setError('Zugangsname/E-Mail oder Passwort ist falsch')
+          setLoading(false)
+          return
+        }
       }
 
       const { data, error } = await signIn(email, password)
@@ -281,13 +288,16 @@ function Login() {
             {/* Email field */}
             <input
               id="emailOrUsername"
-              type="email"
+              type="text"
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
               value={emailOrUsername}
               onChange={(e) => setEmailOrUsername(e.target.value)}
               required
               style={inputStyle}
-              placeholder="E-Mail"
-              autoComplete="email"
+              placeholder="E-Mail oder Zugangsname"
+              autoComplete="username"
             />
             <div style={dividerStyle} />
             {/* Password field */}
@@ -354,8 +364,21 @@ function Login() {
                 userSelect: 'none',
               }}
             >
-              E-Mail merken
+              Zugangsdaten merken
             </label>
+            <Link
+              to="/forgot-password"
+              style={{
+                marginLeft: 'auto',
+                fontSize: 14,
+                color: '#FF7E42',
+                fontWeight: 600,
+                textDecoration: 'none',
+                fontFamily: "'Poppins', sans-serif",
+              }}
+            >
+              Passwort vergessen?
+            </Link>
           </div>
 
           {/* Error message */}

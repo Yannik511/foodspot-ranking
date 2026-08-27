@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../services/supabase'
+import { getEmailForUsername, resetPassword } from '../services/auth'
 
 const AuthContext = createContext({})
 
@@ -65,6 +66,8 @@ export const AuthProvider = ({ children }) => {
     loading,
     signUp,
     signIn,
+    getEmailForUsername,
+    resetPassword,
     signOut,
   }
 

@@ -8,6 +8,7 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import Landing from './pages/Landing'
 import Login from './components/auth/Login'
 import Register from './components/auth/Register'
+import ForgotPassword from './components/auth/ForgotPassword'
 import Dashboard from './pages/Dashboard'
 import CreateList from './pages/CreateList'
 import SelectCategory from './pages/SelectCategory'
@@ -80,6 +81,7 @@ function App() {
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route
             path="/dashboard"
             element={
