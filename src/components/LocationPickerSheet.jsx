@@ -1,38 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTheme } from '../contexts/ThemeContext'
-import { supabase } from '../services/supabase'
+import { ensureMapkit } from '../lib/mapkit'
 
-const MAPKIT_CDN = 'https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js'
 const MUNICH = { lat: 48.1351, lng: 11.5820 }
 const GERMANY = { lat: 51.1657, lng: 10.4515, latSpan: 7.5, lngSpan: 9.0 }
-
-let scriptPromise = null
-let mkInitialized = false
-let tokenCache = null
-
-async function fetchToken() {
-  const now = Math.floor(Date.now() / 1000)
-  if (tokenCache && tokenCache.exp > now + 60) return tokenCache.token
-  const { data, error } = await supabase.functions.invoke('swift-worker')
-  if (error) throw new Error(`Edge Function Fehler: ${error.message}`)
-  if (!data?.token) throw new Error(`Kein Token erhalten`)
-  tokenCache = data
-  return data.token
-}
-
-function loadScript() {
-  if (scriptPromise) return scriptPromise
-  scriptPromise = new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${MAPKIT_CDN}"]`)) { resolve(); return }
-    const s = document.createElement('script')
-    s.src = MAPKIT_CDN
-    s.async = true
-    s.onload = resolve
-    s.onerror = () => reject(new Error('MapKit JS CDN konnte nicht geladen werden'))
-    document.head.appendChild(s)
-  })
-  return scriptPromise
-}
 
 // props:
 //   isOpen, onClose, onConfirm, initialCenter
@@ -157,26 +128,8 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
 
     async function init() {
       try {
-        await loadScript()
+        await ensureMapkit()
         if (cancelled || !mapContainerRef.current) return
-
-        if (!mkInitialized) {
-          mkInitialized = true
-          window.mapkit.init({
-            authorizationCallback: async (done) => {
-              try {
-                const token = await fetchToken()
-                done(token)
-              } catch (e) {
-                console.error('MapKit auth error:', e)
-                mkInitialized = false
-                tokenCache = null
-                if (!cancelled) setInitError(e.message)
-              }
-            },
-            language: 'de',
-          })
-        }
 
         const map = new window.mapkit.Map(mapContainerRef.current, {
           colorScheme: isDarkRef.current
@@ -382,26 +335,14 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
   }
 
   const handleRetry = () => {
-    mkInitialized = false
-    tokenCache = null
     setInitError(null)
     setMapReady(false)
     setPickedName(null)
     if (mapRef.current) { mapRef.current.destroy(); mapRef.current = null }
     ;(async () => {
       try {
-        await loadScript()
+        await ensureMapkit()
         if (!mapContainerRef.current) return
-        if (!mkInitialized) {
-          mkInitialized = true
-          window.mapkit.init({
-            authorizationCallback: async (done) => {
-              try { done(await fetchToken()) }
-              catch (e) { mkInitialized = false; tokenCache = null; setInitError(e.message) }
-            },
-            language: 'de',
-          })
-        }
         const map = new window.mapkit.Map(mapContainerRef.current, {
           colorScheme: isDark ? window.mapkit.Map.ColorSchemes.Dark : window.mapkit.Map.ColorSchemes.Light,
           mapType: window.mapkit.Map.MapTypes.Hybrid,

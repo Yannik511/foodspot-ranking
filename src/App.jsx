@@ -17,6 +17,7 @@ import AddFoodspot from './pages/AddFoodspot'
 import SharedTierList from './pages/shared/SharedTierList'
 import AddSharedFoodspot from './pages/shared/AddSharedFoodspot'
 import Account from './pages/Account'
+import WorldMap from './pages/WorldMap'
 import Settings from './pages/Settings'
 import About from './pages/About'
 import Social from './pages/Social'
@@ -143,6 +144,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Account />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/worldmap"
+            element={
+              <ProtectedRoute>
+                <WorldMap />
               </ProtectedRoute>
             }
           />
