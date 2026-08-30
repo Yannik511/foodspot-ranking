@@ -9,6 +9,37 @@ import { useProfilesStore } from '../contexts/ProfileContext'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 import { useScrollHeader } from '../hooks/useScrollHeader'
 import { glassHeaderStyle } from '../lib/glass'
+import ProfileSkeleton from '../components/skeletons/ProfileSkeleton'
+import { ensureMapkit } from '../lib/mapkit'
+
+// Zuletzt berechnete Profil-Zahlen. Sie werden beim Oeffnen sofort angezeigt
+// und im Hintergrund aktualisiert, damit der Screen nicht bei jedem Besuch
+// leer startet. Pro Nutzer getrennt; nach 24h wird wieder normal geladen.
+const STATS_CACHE_PREFIX = 'rankify:profile-stats:v1:'
+const STATS_CACHE_MAX_AGE = 24 * 60 * 60 * 1000
+
+function readStatsCache(userId) {
+  if (!userId) return null
+  try {
+    const raw = localStorage.getItem(STATS_CACHE_PREFIX + userId)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed?.ts || Date.now() - parsed.ts > STATS_CACHE_MAX_AGE) return null
+    if (!parsed.statsByContext || !parsed.listSummary || !parsed.contextListIds) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeStatsCache(userId, payload) {
+  if (!userId) return
+  try {
+    localStorage.setItem(STATS_CACHE_PREFIX + userId, JSON.stringify({ ...payload, ts: Date.now() }))
+  } catch {
+    // Cache ist reine Beschleunigung — wenn der Speicher voll ist, egal.
+  }
+}
 
 // Category emojis for display
 const CATEGORY_EMOJIS = {
@@ -156,6 +187,17 @@ function Account() {
   const isProfileVisibleToFriends = () => {
     return getProfileVisibility() === 'friends'
   }
+
+  // Die Weltkarte wird vom Profil aus geoeffnet — MapKit-Script und Token
+  // schon mal im Leerlauf vorladen, damit beim Tippen auf den Globus nur noch
+  // die Karte selbst aufgebaut werden muss. Fehler sind hier egal: der Screen
+  // laedt im Zweifel wie bisher.
+  useEffect(() => {
+    const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 600))
+    const cancelIdle = window.cancelIdleCallback || clearTimeout
+    const handle = idle(() => { ensureMapkit().catch(() => {}) })
+    return () => cancelIdle(handle)
+  }, [])
 
   useEffect(() => {
     if (typeof document === 'undefined') return
@@ -380,51 +422,63 @@ function Account() {
 
   // Fetch profile statistics
   useEffect(() => {
-    const fetchStats = async () => {
+    // silent = Hintergrund-Aktualisierung (Realtime): die bereits sichtbaren
+    // Zahlen bleiben stehen, statt dass der ganze Screen in den Ladezustand
+    // zurueckfaellt und das Layout springt.
+    const fetchStats = async ({ silent = false } = {}) => {
       if (!user) return
 
-      setLoading(true)
+      if (!silent) setLoading(true)
       try {
-        const { data: privateLists, error: privateListsError } = await supabase
-          .from('lists')
-          .select('id, city, category, user_id')
-          .eq('user_id', user.id)
+        // WELLE 1 — eigene Listen und eigene Mitgliedschaften haengen nicht
+        // voneinander ab und liefen bisher trotzdem nacheinander.
+        const [
+          { data: privateLists, error: privateListsError },
+          { data: membershipRows, error: membershipError },
+        ] = await Promise.all([
+          supabase
+            .from('lists')
+            .select('id, city, category, user_id')
+            .eq('user_id', user.id),
+          supabase
+            .from('list_members')
+            .select('list_id')
+            .eq('user_id', user.id),
+        ])
 
         if (privateListsError) throw privateListsError
-
-        const privateListIds = privateLists?.map(list => list.id) || []
-
-        let privateSpots = []
-        if (privateListIds.length > 0) {
-          const { data: privateSpotsData, error: privateSpotsError } = await supabase
-            .from('foodspots')
-            .select('id, name, rating, avg_score, tier, category, address, cover_photo_url, list_id, created_at, updated_at, normalized_name, user_id')
-            .in('list_id', privateListIds)
-
-          if (privateSpotsError) throw privateSpotsError
-          privateSpots = privateSpotsData || []
-        }
-        const { data: membershipRows, error: membershipError } = await supabase
-          .from('list_members')
-          .select('list_id')
-          .eq('user_id', user.id)
-
         if (membershipError && membershipError.code !== 'PGRST116') {
           throw membershipError
         }
 
+        const privateListIds = privateLists?.map(list => list.id) || []
         const memberListIds = membershipRows?.map(row => row.list_id) || []
 
-        const sharedOwnedChecks = await Promise.all(
-          privateListIds.map(async (listId) => {
-            const { data, error } = await supabase.rpc('is_shared_list', { p_list_id: listId })
-            if (error) {
-              console.warn('is_shared_list error:', error)
-              return null
-            }
-            return data ? listId : null
-          })
-        )
+        // WELLE 2 — Spots der eigenen Listen und die Pruefung, welche dieser
+        // Listen geteilt sind. is_shared_list bleibt bewusst die RPC (sie ist
+        // SECURITY DEFINER und sieht mehr als eine direkte Abfrage), laeuft
+        // jetzt aber in derselben Welle wie die Spot-Abfrage statt danach.
+        const [privateSpotsResult, sharedOwnedChecks] = await Promise.all([
+          privateListIds.length > 0
+            ? supabase
+                .from('foodspots')
+                .select('id, name, rating, avg_score, tier, category, address, cover_photo_url, list_id, created_at, updated_at, normalized_name, user_id')
+                .in('list_id', privateListIds)
+            : Promise.resolve({ data: [], error: null }),
+          Promise.all(
+            privateListIds.map(async (listId) => {
+              const { data, error } = await supabase.rpc('is_shared_list', { p_list_id: listId })
+              if (error) {
+                console.warn('is_shared_list error:', error)
+                return null
+              }
+              return data ? listId : null
+            })
+          ),
+        ])
+
+        if (privateSpotsResult.error) throw privateSpotsResult.error
+        const privateSpots = privateSpotsResult.data || []
 
         const sharedOwnedIds = sharedOwnedChecks.filter(Boolean)
         const sharedListIdSet = new Set([...memberListIds, ...sharedOwnedIds])
@@ -434,27 +488,41 @@ function Account() {
         const privateListsPure = (privateLists || []).filter(list => purePrivateListIds.includes(list.id))
         const privateSpotsPure = (privateSpots || []).filter(spot => purePrivateListIds.includes(spot.list_id))
 
-        let sharedLists = []
-        if (sharedListIds.length > 0) {
-          const { data: sharedListsData, error: sharedListsError } = await supabase
-            .from('lists')
-            .select('id, city, category, user_id')
-            .in('id', sharedListIds)
+        // WELLE 3 — alles, was nur die geteilten Listen-IDs braucht: Listen,
+        // Spots, Mitglieder und Bewertungen. Lief bisher als vier einzelne
+        // Wartestufen, verteilt ueber die Aggregations-Logik.
+        const empty = { data: [], error: null }
+        const [
+          sharedListsResult,
+          sharedSpotsResult,
+          sharedMembersResult,
+          sharedRatingsResult,
+        ] = sharedListIds.length > 0
+          ? await Promise.all([
+              supabase
+                .from('lists')
+                .select('id, city, category, user_id')
+                .in('id', sharedListIds),
+              supabase
+                .from('foodspots')
+                .select('id, name, rating, avg_score, tier, category, address, cover_photo_url, list_id, created_at, updated_at, user_id, normalized_name')
+                .in('list_id', sharedListIds),
+              supabase
+                .from('list_members')
+                .select('list_id, user_id')
+                .in('list_id', sharedListIds),
+              supabase
+                .from('foodspot_ratings')
+                .select('list_id, user_id')
+                .in('list_id', sharedListIds),
+            ])
+          : [empty, empty, empty, empty]
 
-          if (sharedListsError) throw sharedListsError
-          sharedLists = sharedListsData || []
-        }
+        if (sharedListsResult.error) throw sharedListsResult.error
+        if (sharedSpotsResult.error) throw sharedSpotsResult.error
 
-        let sharedSpots = []
-        if (sharedListIds.length > 0) {
-          const { data: sharedSpotsData, error: sharedSpotsError } = await supabase
-            .from('foodspots')
-            .select('id, name, rating, avg_score, tier, category, address, cover_photo_url, list_id, created_at, updated_at, user_id, normalized_name')
-            .in('list_id', sharedListIds)
-
-          if (sharedSpotsError) throw sharedSpotsError
-          sharedSpots = sharedSpotsData || []
-        }
+        const sharedLists = sharedListsResult.data || []
+        const sharedSpots = sharedSpotsResult.data || []
 
         const participantMap = new Map()
         const ownerMap = new Map()
@@ -478,33 +546,20 @@ function Account() {
           ensureParticipant(list.id, list.user_id)
         })
 
-        if (sharedListIds.length > 0) {
-          const { data: sharedMembersData, error: sharedMembersError } = await supabase
-            .from('list_members')
-            .select('list_id, user_id')
-            .in('list_id', sharedListIds)
-
-          if (sharedMembersError && sharedMembersError.code !== 'PGRST116') {
-            console.warn('Error fetching shared members for profile stats:', sharedMembersError)
-          } else {
-            sharedMembersData?.forEach(member => ensureParticipant(member.list_id, member.user_id))
-          }
+        // Daten aus Welle 3 auswerten — Fehler bleiben wie bisher nicht-fatal.
+        if (sharedMembersResult.error && sharedMembersResult.error.code !== 'PGRST116') {
+          console.warn('Error fetching shared members for profile stats:', sharedMembersResult.error)
+        } else {
+          sharedMembersResult.data?.forEach(member => ensureParticipant(member.list_id, member.user_id))
         }
 
         privateSpots?.forEach(spot => ensureParticipant(spot.list_id, spot.user_id))
         sharedSpots?.forEach(spot => ensureParticipant(spot.list_id, spot.user_id))
 
-        if (sharedListIds.length > 0) {
-          const { data: ratingsData, error: ratingsError } = await supabase
-            .from('foodspot_ratings')
-            .select('list_id, user_id')
-            .in('list_id', sharedListIds)
-
-          if (ratingsError && ratingsError.code !== 'PGRST116') {
-            console.warn('Error fetching shared ratings for profile stats:', ratingsError)
-          } else {
-            ratingsData?.forEach(rating => ensureParticipant(rating.list_id, rating.user_id))
-          }
+        if (sharedRatingsResult.error && sharedRatingsResult.error.code !== 'PGRST116') {
+          console.warn('Error fetching shared ratings for profile stats:', sharedRatingsResult.error)
+        } else {
+          sharedRatingsResult.data?.forEach(rating => ensureParticipant(rating.list_id, rating.user_id))
         }
 
         const participantIds = new Set()
@@ -601,31 +656,61 @@ function Account() {
           dedupeByName: true
         })
 
-        setStatsByContext({
+        const nextStatsByContext = {
           private: privateStats,
           shared: sharedStats,
           overall: overallStats
-        })
+        }
 
-        setListSummary({
+        const nextListSummary = {
           private: purePrivateListIds.length,
           shared: sharedListIds.length,
           total: new Set([...purePrivateListIds, ...sharedListIds]).size
-        })
+        }
 
-        setContextListIds({
+        const nextContextListIds = {
           private: purePrivateListIds,
           shared: sharedListIds,
           overall: overallListIds
+        }
+
+        setStatsByContext(nextStatsByContext)
+        setListSummary(nextListSummary)
+        setContextListIds(nextContextListIds)
+
+        writeStatsCache(user.id, {
+          statsByContext: nextStatsByContext,
+          listSummary: nextListSummary,
+          contextListIds: nextContextListIds,
         })
       } catch (error) {
         console.error('Error fetching stats:', error)
       } finally {
-        setLoading(false)
+        if (!silent) setLoading(false)
       }
     }
 
-    fetchStats()
+    // Zuletzt bekannte Zahlen sofort zeigen, dann still im Hintergrund
+    // aktualisieren — statt bei jedem Besuch mit leerem Screen zu starten.
+    const cached = readStatsCache(user?.id)
+    if (cached) {
+      setStatsByContext(cached.statsByContext)
+      setListSummary(cached.listSummary)
+      setContextListIds(cached.contextListIds)
+      setLoading(false)
+    }
+
+    fetchStats({ silent: !!cached })
+
+    // Ein Realtime-Event loeste bisher SOFORT die komplette Query-Kette aus —
+    // bei mehreren Aenderungen kurz hintereinander (z. B. jemand pflegt eine
+    // geteilte Liste) entsprechend oft. Jetzt werden Events gesammelt und
+    // hoechstens einmal pro Fenster nachgeladen.
+    let refetchTimer = null
+    const scheduleRefetch = () => {
+      clearTimeout(refetchTimer)
+      refetchTimer = setTimeout(() => fetchStats({ silent: true }), 400)
+    }
 
     const channel = supabase
       .channel('account_stats')
@@ -633,24 +718,28 @@ function Account() {
         event: '*',
         schema: 'public',
         table: 'foodspots'
-      }, () => fetchStats())
+      }, scheduleRefetch)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'lists'
-      }, () => fetchStats())
+      }, scheduleRefetch)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'list_members',
         filter: `user_id=eq.${user?.id}`
-      }, () => fetchStats())
+      }, scheduleRefetch)
       .subscribe()
 
     return () => {
+      clearTimeout(refetchTimer)
       supabase.removeChannel(channel)
     }
-  }, [user])
+    // Bewusst nur die User-ID: ein neues user-OBJEKT (z. B. nach Token-Refresh)
+    // hat sonst die komplette Kette samt Channel-Neuaufbau ausgeloest.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
 
   const handleImageChange = async (e) => {
     const file = e.target.files?.[0]
@@ -942,6 +1031,8 @@ function Account() {
                     src={avatarUrl}
                     alt={profile?.username || 'Avatar'}
                     className="w-full h-full object-cover"
+                    loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   <span className={`text-xs font-semibold ${
@@ -973,15 +1064,40 @@ function Account() {
     navigate(isSharedList ? `/shared/tierlist/${spot.list_id}` : `/tierlist/${spot.list_id}`)
   }
 
+  // Ladezustand: gleicher Seitenrahmen wie der fertige Screen (Header oben,
+  // gleicher Scrollcontainer, gleiches Padding) mit Platzhaltern in der
+  // finalen Layoutform — statt eines zentrierten Vollbild-Spinners, nach dem
+  // das komplette Layout auf einen Schlag umspringt. Der Header ist hier
+  // bewusst nachgebaut, damit der Hauptrender unangetastet bleibt.
   if (loading) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${
-        isDark ? 'bg-gray-900' : 'bg-gray-50'
-      }`}>
-        <div className="text-center">
-          <div className="text-4xl mb-4 animate-bounce">🍔</div>
-          <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>Lädt Profil...</p>
-        </div>
+      <div className={`h-full flex flex-col ${isDark ? 'bg-gray-900' : 'bg-white'} relative overflow-hidden`}>
+        <header className="header-safe fixed top-0 left-0 right-0 z-20" style={glassHeaderStyle(isDark, false)}>
+          <div className="flex items-center justify-between px-4 py-2">
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="w-10 h-10 rounded-full flex items-center justify-center active:scale-95"
+              aria-label="Zurück"
+            >
+              <svg className={`w-6 h-6 ${isDark ? 'text-gray-200' : 'text-gray-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+              Profil
+            </h1>
+            <div className="w-10 h-10" />
+          </div>
+        </header>
+        <main
+          className="page-content px-4"
+          style={{
+            paddingTop: getContentPaddingTop(headerHeight, 24),
+            paddingBottom: 'var(--tabbar-clearance)'
+          }}
+        >
+          <ProfileSkeleton isDark={isDark} />
+        </main>
       </div>
     )
   }
@@ -1317,6 +1433,7 @@ function Account() {
                         <img
                           src={spot.cover_photo_url}
                           alt={spot.name}
+                          decoding="async"
                           style={{
                             position: 'absolute', inset: 0,
                             width: '100%', height: '100%',
@@ -1603,6 +1720,10 @@ function Account() {
                       <img
                         src={spot.cover_photo_url}
                         alt={spot.name}
+                        width={40}
+                        height={40}
+                        loading="lazy"
+                        decoding="async"
                         className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
                       />
                     ) : (
