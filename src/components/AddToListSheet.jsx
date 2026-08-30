@@ -4,12 +4,15 @@ import { useTheme } from '../contexts/ThemeContext'
 import { useAuth } from '../contexts/AuthContext'
 import { fetchEligibleLists } from '../services/eligibleLists'
 import { glassPanelStyle } from '../lib/glass'
+import { useDisableSwipeBack } from '../hooks/useDisableSwipeBack'
 
 // Auswahl-Sheet für „Spot aus Entdecken → Liste hinzufügen".
 // Zeigt Listen, in die der User den Spot legen darf (Kategorie passt / „Alle
 // Kategorien"), graut Listen aus, die den Spot schon enthalten (Dedupe), und
 // navigiert bei Auswahl in den passenden Add-Screen mit vorausgefüllten Daten.
 export default function AddToListSheet({ isOpen, onClose, spot }) {
+  // Solange der Sheet offen ist, darf die Zurueck-Geste nicht wegnavigieren.
+  useDisableSwipeBack(isOpen)
   const { isDark } = useTheme()
   const { user } = useAuth()
   const navigate = useNavigate()

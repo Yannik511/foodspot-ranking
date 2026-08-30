@@ -4,11 +4,14 @@ import { supabase } from '../services/supabase'
 import { glassPanelStyle } from '../lib/glass'
 import { ensureMapkit } from '../lib/mapkit'
 import AddToListSheet from './AddToListSheet'
+import { useDisableSwipeBack } from '../hooks/useDisableSwipeBack'
 
 // Read-only MapKit-Ansicht: fliegt zu einem Spot-Standort und markiert ihn.
 // MapKit-Laden/Token über die zentrale lib/mapkit (ensureMapkit).
 
 export default function SpotMapSheet({ isOpen, onClose, spot }) {
+  // Solange der Sheet offen ist, darf die Zurueck-Geste nicht wegnavigieren.
+  useDisableSwipeBack(isOpen)
   const { isDark } = useTheme()
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)

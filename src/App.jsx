@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import BottomTabBar, { isTabBarPage } from './components/BottomTabBar'
+import NavStack from './components/NavStack'
 import { AuthProvider } from './contexts/AuthContext'
 import { initNative } from './lib/native'
 import { ProfileProvider } from './contexts/ProfileContext'
@@ -45,23 +46,6 @@ function TabBarContainer() {
   return <BottomTabBar />
 }
 
-// Weicher Screen-Wechsel: reines Opacity-Crossfade beim Pfadwechsel.
-// Bewusst KEIN transform — sonst würden position:fixed-Header (viele Screens
-// nutzen sie) relativ zum Wrapper positioniert und brechen. Opacity ist sicher.
-// Höhe wird durchgereicht, damit h-full/min-h-screen-Pages korrekt füllen.
-function RouteFade({ children }) {
-  const location = useLocation()
-  return (
-    <div
-      key={location.pathname}
-      className="animate-fade-in"
-      style={{ flex: 1, minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column' }}
-    >
-      {children}
-    </div>
-  )
-}
-
 function App() {
   useEffect(() => { initNative() }, [])
 
@@ -76,7 +60,7 @@ function App() {
           <BrowserRouter>
           <TabBarContainer />
           <SaveStatusOverlay />
-        <RouteFade>
+        <NavStack>
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/onboarding" element={<Onboarding />} />
@@ -256,7 +240,7 @@ function App() {
           <Route path="/impressum" element={<Legal docKey="impressum" />} />
           <Route path="/terms" element={<Legal docKey="terms" />} />
         </Routes>
-        </RouteFade>
+        </NavStack>
           </BrowserRouter>
           </SaveStatusProvider>
           </TabBarActionsProvider>

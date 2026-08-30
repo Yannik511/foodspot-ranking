@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTheme } from '../contexts/ThemeContext'
 import { ensureMapkit } from '../lib/mapkit'
 import { getLastKnownLocation, rememberLocation } from '../utils/geo'
+import { useDisableSwipeBack } from '../hooks/useDisableSwipeBack'
 
 const MUNICH = { lat: 48.1351, lng: 11.5820 }
 const GERMANY = { lat: 51.1657, lng: 10.4515, latSpan: 7.5, lngSpan: 9.0 }
@@ -11,6 +12,8 @@ const GERMANY = { lat: 51.1657, lng: 10.4515, latSpan: 7.5, lngSpan: 9.0 }
 //   returnsName – wenn true, zeigt der Sheet Hinweise zur POI-/Namensauswahl
 //   onConfirm({ address, latitude, longitude, name }) – name ist null wenn kein POI/Suche gewählt
 export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initialCenter, returnsName = false }) {
+  // Solange der Sheet offen ist, darf die Zurueck-Geste nicht wegnavigieren.
+  useDisableSwipeBack(isOpen)
   const { isDark } = useTheme()
 
   const startCenter =
