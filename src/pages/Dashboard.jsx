@@ -159,14 +159,18 @@ function Dashboard() {
     navigate(listView === 'geteilt' ? '/create-shared-list' : '/select-category')
   }, [listView])
 
-  // Update URL when view changes
+  // Update URL when view changes.
+  // Nur schreiben, wenn sich wirklich etwas aendert: setSearchParams ist in
+  // React Router NICHT stabil (haengt an der Location), der Effekt loeste sich
+  // sonst selbst immer wieder aus — mit dem Navigations-Stack lief das in
+  // "history.replaceState() more than 100 times per 10 seconds".
   useEffect(() => {
-    if (listView === 'geteilt') {
-      setSearchParams({ view: 'geteilt' }, { replace: true })
-    } else {
-      setSearchParams({}, { replace: true })
-    }
-  }, [listView, setSearchParams])
+    const current = searchParams.get('view')
+    const wanted = listView === 'geteilt' ? 'geteilt' : null
+    if (current === wanted) return
+    if (wanted) setSearchParams({ view: wanted }, { replace: true })
+    else setSearchParams({}, { replace: true })
+  }, [listView, searchParams, setSearchParams])
 
   const [sharedLists, setSharedLists] = useState([])
   const [sharedListsLoading, setSharedListsLoading] = useState(false)
