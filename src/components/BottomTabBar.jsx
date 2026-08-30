@@ -9,9 +9,16 @@ const TAB_BAR_PATTERNS = [
   '/social',
   '/discover',
   '/account',
+  '/settings',
   '/tierlist/:id',
   '/shared/tierlist/:id',
 ]
+
+// Unterseiten, die zu einem Tab gehoeren: dort bleibt der zugehoerige Tab
+// hervorgehoben (wie man es von nativen Apps kennt).
+const TAB_SUBPAGES = {
+  '/account': ['/settings'],
+}
 
 function IconHome({ active, color }) {
   return active ? (
@@ -119,34 +126,48 @@ export default function BottomTabBar() {
     >
       {TABS.map((tab, _i) => {
         if (tab === null) {
-          // Center + button
+          // Center + button — klappt auf Screens OHNE Plus-Aktion (Entdecken,
+          // Profil, Einstellungen) zusammen, statt ausgegraut Platz zu belegen.
+          // Der Slot bleibt im DOM und animiert seine Breite auf 0; die vier
+          // uebrigen Tabs sind flex:1 und wachsen dadurch weich mit.
           return (
-            <div key="plus" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div
+              key="plus"
+              style={{
+                flex: hasAction ? 1 : 0,
+                maxWidth: hasAction ? 80 : 0,
+                opacity: hasAction ? 1 : 0,
+                overflow: 'hidden',
+                pointerEvents: hasAction ? 'auto' : 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, flex-grow 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
+              aria-hidden={!hasAction}
+            >
               <button
                 onClick={() => { if (hasAction) { hapticFeedback.medium(); trigger() } }}
                 onTouchStart={e => { if (hasAction) e.currentTarget.style.transform = 'scale(0.88)' }}
                 onTouchEnd={e => { e.currentTarget.style.transform = 'scale(1)' }}
+                tabIndex={hasAction ? 0 : -1}
                 style={{
                   width: '46px',
                   height: '46px',
                   borderRadius: '50%',
                   border: 'none',
-                  cursor: hasAction ? 'pointer' : 'default',
+                  flexShrink: 0,
+                  cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: hasAction
-                    ? (isDark
-                        ? 'linear-gradient(135deg, #FF9357 0%, #B85C2C 100%)'
-                        : 'linear-gradient(135deg, #FF7E42 0%, #FFB25A 100%)')
-                    : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'),
-                  boxShadow: hasAction
-                    ? (isDark
-                        ? '0 4px 16px rgba(255,147,87,0.45), inset 0 1px 0 rgba(255,255,255,0.2)'
-                        : '0 4px 16px rgba(255,126,66,0.35), inset 0 1px 0 rgba(255,255,255,0.35)')
-                    : 'none',
-                  opacity: hasAction ? 1 : 0.35,
-                  transition: 'background 0.25s ease, box-shadow 0.25s ease, opacity 0.2s ease, transform 0.15s ease',
+                  background: isDark
+                    ? 'linear-gradient(135deg, #FF9357 0%, #B85C2C 100%)'
+                    : 'linear-gradient(135deg, #FF7E42 0%, #FFB25A 100%)',
+                  boxShadow: isDark
+                    ? '0 4px 16px rgba(255,147,87,0.45), inset 0 1px 0 rgba(255,255,255,0.2)'
+                    : '0 4px 16px rgba(255,126,66,0.35), inset 0 1px 0 rgba(255,255,255,0.35)',
+                  transition: 'transform 0.15s ease',
                   WebkitTapHighlightColor: 'transparent',
                 }}
                 aria-label="Aktion"
@@ -160,7 +181,9 @@ export default function BottomTabBar() {
         }
 
         const { path, label, Icon } = tab
-        const isActive = location.pathname === path
+        const isActive =
+          location.pathname === path ||
+          (TAB_SUBPAGES[path] || []).some(sub => location.pathname === sub)
         const isNotif = path === '/social' && hasSocialNotifications
 
         return (

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import Avatar from '../components/Avatar'
+import SaveButton from '../components/SaveButton'
 import { supabase } from '../services/supabase'
 import { assertImageAllowed } from '../services/moderation'
 import { isBiometricAvailable, hasBiometricLogin, disableBiometricLogin } from '../services/biometric'
@@ -629,7 +630,17 @@ function Settings() {
           Einstellungen
         </h1>
         
-        <div style={{ width: '44px', height: '44px' }} />
+        {/* Speichern als Haekchen — dasselbe Muster wie in den Listen-Screens.
+            Tippbar nur, wenn wirklich etwas geaendert wurde (hasChanges). */}
+        <div style={{ width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <SaveButton
+            onClick={handleSave}
+            saving={loading}
+            disabled={!hasChanges || !!usernameError || !!passwordError}
+            isDark={isDark}
+            size={40}
+          />
+        </div>
       </header>
       
       {/* Content */}
@@ -637,7 +648,7 @@ function Settings() {
         className="page-content px-4"
         style={{
           paddingTop: getContentPaddingTop(headerHeight, 24),
-          paddingBottom: `calc(48px + env(safe-area-inset-bottom, 0px) + 120px)` // Bottom Bar (~48px) + extra spacing für App-Info-Block + safe-area
+          paddingBottom: 'var(--tabbar-clearance)' // Platz fuer die Tab-Bar (wie auf den anderen Tab-Screens)
         }}
       >
         {/* Error/Success Messages */}
@@ -1526,41 +1537,6 @@ function Settings() {
         </section>
       </main>
       
-      {/* Bottom Action Bar */}
-      <div 
-        className={`fixed bottom-0 left-0 right-0 ${isDark ? 'bg-gray-800' : 'bg-white'} border-t ${isDark ? 'border-gray-700' : 'border-gray-200'} px-4 py-3 flex gap-3`}
-        style={{
-          paddingBottom: `max(12px, env(safe-area-inset-bottom))`,
-        }}
-      >
-        <button
-          onClick={handleBack}
-          className="flex-1 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 active:scale-[0.98] transition-all dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-          style={{ 
-            fontFamily: "'Poppins', sans-serif",
-            transition: `all 0.2s ${springEasing.default}`
-          }}
-        >
-          Zurück
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={!hasChanges || loading || !!usernameError || !!passwordError}
-          className={`flex-1 py-3 rounded-xl font-semibold active:scale-[0.98] transition-all ${
-            hasChanges && !loading && !usernameError && !passwordError
-              ? 'bg-[#FF7E42] text-white hover:bg-[#FF6B2E]'
-              : isDark
-              ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-          }`}
-          style={{ 
-            fontFamily: "'Poppins', sans-serif",
-            transition: `all 0.2s ${springEasing.default}`
-          }}
-        >
-          {loading ? 'Wird gespeichert...' : 'Speichern'}
-        </button>
-      </div>
     </div>
   )
 }
