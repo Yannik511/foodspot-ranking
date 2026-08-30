@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTheme } from '../contexts/ThemeContext'
 import { ensureMapkit } from '../lib/mapkit'
+import { getLastKnownLocation, rememberLocation } from '../utils/geo'
 
 const MUNICH = { lat: 48.1351, lng: 11.5820 }
 const GERMANY = { lat: 51.1657, lng: 10.4515, latSpan: 7.5, lngSpan: 9.0 }
@@ -315,6 +316,7 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
           true
         )
         setTimeout(() => { suppressRegion.current = false }, 1000)
+        rememberLocation(latitude, longitude)
         setCoords({ lat: latitude, lng: longitude })
         setPickedName(null)
         reverseGeocode(latitude, longitude)
@@ -324,6 +326,35 @@ export default function LocationPickerSheet({ isOpen, onClose, onConfirm, initia
       { enableHighAccuracy: true, timeout: 10000 }
     )
   }
+
+  // Beim Anlegen eines NEUEN Ortes direkt am eigenen Standort starten, statt
+  // erst den Standort-Button tippen zu muessen. Wird der Sheet mit einem
+  // bereits gesetzten Ort geoeffnet (Spot bearbeiten), bleibt dieser stehen.
+  const autoLocatedRef = useRef(false)
+  useEffect(() => {
+    if (!isOpen) { autoLocatedRef.current = false; return }
+    if (!mapReady || autoLocatedRef.current) return
+    const hasStart =
+      initialCenter &&
+      Number.isFinite(initialCenter.lat) &&
+      Number.isFinite(initialCenter.lng)
+    if (hasStart) return
+    autoLocatedRef.current = true
+    // Kamera sofort in die richtige Gegend stellen, damit der Sheet nicht
+    // ueber der Weltansicht aufgeht. Bewusst nur die Kamera — als Auswahl
+    // zaehlt erst der metergenaue Punkt aus handleGPS.
+    const known = getLastKnownLocation()
+    if (known && mapRef.current && window.mapkit) {
+      suppressRegion.current = true
+      mapRef.current.region = new window.mapkit.CoordinateRegion(
+        new window.mapkit.Coordinate(known.lat, known.lng),
+        new window.mapkit.CoordinateSpan(0.02, 0.02)
+      )
+      setTimeout(() => { suppressRegion.current = false }, 300)
+    }
+    handleGPS()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, mapReady])
 
   const toggleMapType = () => {
     if (!mapRef.current) return

@@ -8,6 +8,7 @@ import { useTabBarActions } from '../contexts/TabBarActionsContext'
 import { SkeletonBox } from '../components/ui/Skeleton'
 import SpotMapSheet from '../components/SpotMapSheet'
 import { calculateTier } from '../lib/categories'
+import { getLastKnownLocation, getLocation } from '../utils/geo'
 
 // Tier-Farbcodierung — identisch zum Rest der App
 const TIER_COLORS = {
@@ -304,7 +305,9 @@ export default function Discover() {
   const [cityQuery, setCityQuery] = useState('')
   const [countryCode, setCountryCode] = useState('DE')
   const [selectedCategories, setSelectedCategories] = useState([])
-  const coordsRef = useRef(null)
+  // Mit dem zuletzt bekannten Standort vorbelegt, damit "In deiner Naehe"
+  // schon beim ersten Laden Koordinaten hat statt einer zweiten Runde.
+  const coordsRef = useRef(getLastKnownLocation())
   const cityDebounce = useRef(null)
 
   // Einfach-Auswahl im UI (wie Dashboard), intern weiter als Array für die Query
@@ -353,13 +356,12 @@ export default function Discover() {
   // Standort einmalig holen (für Nähe-Modus)
   useEffect(() => {
     if (!user) return
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        ({ coords }) => { coordsRef.current = { lat: coords.latitude, lng: coords.longitude }; if (mode === 'nearby') loadFeeds() },
-        () => { coordsRef.current = null; if (mode === 'nearby') loadFeeds() },
-        { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
-      )
-    }
+    getLocation().then((c) => {
+      // Ortung fehlgeschlagen: einen bereits bekannten Standort behalten wir.
+      if (!c && coordsRef.current) return
+      coordsRef.current = c
+      if (mode === 'nearby') loadFeeds()
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
