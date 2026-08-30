@@ -19,6 +19,7 @@ import { glassHeaderStyle } from '../lib/glass'
 import { useSocialNotifications } from '../hooks/useSocialNotifications'
 import { usePlusAction, useTabBarActions } from '../contexts/TabBarActionsContext'
 import { devLog } from '../utils/devLog'
+import { prefetchList } from '../services/listPrefetch'
 
 const PRIVATE_FILTER_STORAGE_KEY = 'dashboard_private_filters'
 const SHARED_FILTER_STORAGE_KEY = 'dashboard_shared_filters'
@@ -2169,6 +2170,9 @@ function Dashboard() {
                 key={list.id}
                 ref={registerListRef(list.id)}
                 onClick={(e) => handleListClick(list.id, e)}
+                // Laden startet schon beim Beruehren. Bis der Finger wieder
+                // hochgeht und der Screen steht, sind die Daten meist da.
+                onTouchStart={() => prefetchList(list.id, user?.id)}
                 className="relative overflow-hidden shadow-lg active:scale-[0.98] transition-all cursor-pointer group"
                 style={{
                   height: `${cardHeight}px`,

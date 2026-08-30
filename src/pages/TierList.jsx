@@ -9,6 +9,11 @@ import { useScrollHeader } from '../hooks/useScrollHeader'
 import { usePlusAction } from '../contexts/TabBarActionsContext'
 import { getCategoryTerms } from '../utils/categoryTerms'
 import { hapticFeedback } from '../utils/haptics'
+import TierListSkeleton from '../components/skeletons/TierListSkeleton'
+import { useDelayedLoading } from '../hooks/useDelayedLoading'
+import { takePrefetchedList } from '../services/listPrefetch'
+import { useScreenFocus } from '../hooks/useScreenFocus'
+import { useSaveStatus } from '../contexts/SaveStatusContext'
 
 const TIER_COLORS = {
   S: { 
@@ -191,6 +196,23 @@ function TierList() {
     }
   }, [id, sharedContextChecked])
 
+  // Kommt der Screen aus dem Hintergrund zurueck (z. B. nach "Spot
+  // hinzufuegen"), einmal frisch laden. Der NavStack haelt den Screen am Leben,
+  // deshalb wuerde sonst der Stand von vor dem Verlassen stehen bleiben — der
+  // neue Spot fehlte, bis man die Liste von Hand neu oeffnet.
+  const [refreshTick, setRefreshTick] = useState(0)
+  useScreenFocus(() => setRefreshTick((n) => n + 1))
+
+  // Zweite Absicherung: sobald die Speicher-Pille "fertig" meldet, einmal
+  // frisch laden. Der optimistische Spot oben wird normalerweise vom
+  // INSERT-Ereignis der Realtime-Verbindung durch den echten ersetzt — falls
+  // das Ereignis ausbleibt (die Verbindung steht erst nach der
+  // Kontextpruefung), holt das hier den echten Datensatz nach.
+  const { op: saveOp } = useSaveStatus()
+  useEffect(() => {
+    if (saveOp?.state === 'success') setRefreshTick((n) => n + 1)
+  }, [saveOp?.state, saveOp?.id])
+
   // Fetch list and foodspots
   useEffect(() => {
     if (!user || !id || !sharedContextChecked) return
@@ -198,25 +220,37 @@ function TierList() {
     const fetchData = async () => {
       setLoading(true)
       try {
-        // Fetch list
-        const { data: listData, error: listError } = await supabase
-          .from('lists')
-          .select('*')
-          .eq('id', id)
-          .eq('user_id', user.id)
-          .single()
+        // Hat das Dashboard beim Antippen schon vorgeladen? Dann liegen Liste
+        // und Spots bereits vor und wir sparen zwei Roundtrips.
+        const prefetched = await (takePrefetchedList(id) || Promise.resolve(null))
 
-        if (listError) throw listError
+        let listData = prefetched?.list ?? null
+        let spotsData = prefetched?.spots ?? null
+
+        if (!listData) {
+          // Beide Abfragen parallel — sie haengen nicht voneinander ab.
+          // Vorher liefen sie nacheinander, also zwei Wartezeiten hintereinander.
+          const [listRes, spotsRes] = await Promise.all([
+            supabase
+              .from('lists')
+              .select('*')
+              .eq('id', id)
+              .eq('user_id', user.id)
+              .single(),
+            supabase
+              .from('foodspots')
+              .select('*')
+              .eq('list_id', id)
+              .order('rating', { ascending: false, nullsLast: true }),
+          ])
+
+          if (listRes.error) throw listRes.error
+          if (spotsRes.error) throw spotsRes.error
+          listData = listRes.data
+          spotsData = spotsRes.data
+        }
+
         setList(listData)
-
-        // Fetch foodspots
-        const { data: spotsData, error: spotsError } = await supabase
-          .from('foodspots')
-          .select('*')
-          .eq('list_id', id)
-          .order('rating', { ascending: false, nullsLast: true })
-
-        if (spotsError) throw spotsError
         
         // Merge with existing optimistic foodspots (preserve them if real foodspot not found yet)
         const newFoodspotData = sessionStorage.getItem('newFoodspot')
@@ -235,7 +269,15 @@ function TierList() {
           }
         })
         
-        // Clear sessionStorage if real foodspot was found
+        // Der gerade angelegte Spot, den AddFoodspot hinterlegt hat, bevor es
+        // sofort hierher navigiert ist — gespeichert wird er erst im
+        // Hintergrund (die Pille unten laeuft noch).
+        //
+        // Bisher wurde der Eintrag nur GELESEN, um ihn wegzuraeumen, sobald der
+        // echte Spot da ist — eingefuegt wurde er nie. Der Zweig darueber
+        // rettet nur optimistische Spots aus dem eigenen State, und der ist
+        // beim Neuaufbau des Screens leer. Genau deshalb blieb ein frisch
+        // angelegter Spot unsichtbar, bis man die Liste von Hand neu oeffnete.
         if (newFoodspotData) {
           try {
             const { listId, foodspot } = JSON.parse(newFoodspotData)
@@ -245,6 +287,12 @@ function TierList() {
               )
               if (realFoodspotExists) {
                 sessionStorage.removeItem('newFoodspot')
+              } else if (!mergedFoodspots.some(f => f.id === foodspot.id)) {
+                // Noch nicht in der Datenbank → sichtbar machen. Sobald der
+                // echte Datensatz eintrifft, ersetzt ihn der INSERT-Handler
+                // der Realtime-Verbindung (er raeumt temp-Eintraege mit
+                // gleichem Namen weg).
+                mergedFoodspots.unshift(foodspot)
               }
             }
           } catch (error) {
@@ -313,7 +361,7 @@ function TierList() {
       .subscribe()
 
     return () => supabase.removeChannel(channel)
-  }, [id, user, sharedContextChecked])
+  }, [id, user, sharedContextChecked, refreshTick])
 
   // Fix scroll container height after navigation or foodspots update
   // This fixes the scroll bug after creating a new spot
@@ -533,15 +581,17 @@ function TierList() {
   }
 
   // Don't show loading screen if we have optimistic foodspots (seamless transition)
+  const showSkeleton = useDelayedLoading(loading && !list && foodspots.length === 0)
+
   if (loading && !list && foodspots.length === 0) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${
+      <div className={`h-full flex flex-col relative overflow-hidden ${
         isDark ? 'bg-gray-900' : 'bg-gray-50'
       }`}>
-        <div className="text-center">
-          <div className="text-4xl mb-4 animate-bounce">🍔</div>
-          <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>Lädt Liste...</p>
-        </div>
+        {/* Bei kurzen Ladezeiten bleibt die Flaeche bewusst leer — siehe
+            useDelayedLoading. Der Hintergrund steht trotzdem, damit nichts
+            aufblitzt. */}
+        {showSkeleton && <TierListSkeleton isDark={isDark} />}
       </div>
     )
   }

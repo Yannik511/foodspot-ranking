@@ -17,6 +17,9 @@ import { usePlusAction } from '../../contexts/TabBarActionsContext'
 import { hapticFeedback } from '../../utils/haptics'
 import ReportSheet from '../../components/ugc/ReportSheet'
 import { reportContent } from '../../services/ugc'
+import SharedTierListSkeleton from '../../components/skeletons/SharedTierListSkeleton'
+import { useDelayedLoading } from '../../hooks/useDelayedLoading'
+import { useScreenFocus } from '../../hooks/useScreenFocus'
 
 const TIER_COLORS = {
   S: { 
@@ -442,6 +445,11 @@ function SharedTierList() {
       scrollContainerRef.current.scrollTop = 0
     }
   }, [id])
+
+  // Zurueck aus dem Hintergrund (z. B. nach "Spot hinzufuegen") einmal still
+  // nachladen. Der NavStack haelt den Screen am Leben, sonst bliebe der Stand
+  // von vor dem Verlassen stehen. background: true laesst die Ladeanzeige weg.
+  useScreenFocus(() => fetchTierData({ background: true }))
 
   useEffect(() => {
     fetchTierData()
@@ -922,15 +930,14 @@ function SharedTierList() {
     }
   }
 
+  const showSkeleton = useDelayedLoading(loading)
+
   if (loading) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${
-        isDark ? 'bg-gray-900' : 'bg-gray-50'
+      <div className={`h-full flex flex-col relative overflow-hidden ${
+        isDark ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'
       }`}>
-        <div className="text-center">
-          <div className="text-4xl mb-4 animate-bounce">🤝</div>
-          <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>Lädt geteilte Liste...</p>
-        </div>
+        {showSkeleton && <SharedTierListSkeleton isDark={isDark} />}
       </div>
     )
   }
