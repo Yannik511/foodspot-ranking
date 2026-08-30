@@ -22,6 +22,9 @@ const normalizeProfile = (profile) => {
 export const ProfileProvider = ({ children }) => {
   const [profiles, setProfiles] = useState({})
   const profilesRef = useRef(profiles)
+  // Laufende Anfragen, damit gleichzeitig gerenderte Avatare denselben Nutzer
+  // nicht mehrfach anfordern.
+  const inFlightRef = useRef(new Set())
 
   useEffect(() => {
     profilesRef.current = profiles
@@ -58,48 +61,65 @@ export const ProfileProvider = ({ children }) => {
     const uniqueIds = Array.from(new Set(ids.filter(Boolean)))
     if (uniqueIds.length === 0) return
 
-    const missing = uniqueIds.filter(id => !profilesRef.current[id])
+    // Schon angefragte IDs nicht noch einmal holen: auf einem Screen haengen
+    // mehrere Avatare am selben Nutzer und rufen alle gleichzeitig hier an.
+    const missing = uniqueIds.filter(
+      id => !profilesRef.current[id] && !inFlightRef.current.has(id)
+    )
     if (missing.length === 0) return
+    missing.forEach(id => inFlightRef.current.add(id))
 
     let fetched = []
     let needsFallback = false
 
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('id, user_id, username, profile_image_url, profile_visibility, updated_at')
-      .in('id', missing)
+    try {
+      // Batch-RPC statt direkter Tabellenabfrage. Die Tabelle user_profiles hat
+      // weder user_id noch profile_visibility — letztere hat Migration 045
+      // wieder entfernt, die Sichtbarkeit liegt seither in
+      // auth.users.raw_user_meta_data. Die alte Abfrage lief deshalb IMMER in
+      // einen 400er (Postgres 42703) und fiel danach auf einen einzelnen
+      // get_user_profile-Aufruf pro Nutzer zurueck. Bei fuenf Gruppen-
+      // mitgliedern also ein Fehlschlag plus fuenf Roundtrips statt einem.
+      // Gleiches Muster wie in FriendsTab, siehe Migration 047.
+      const { data, error } = await supabase.rpc('get_user_profiles_batch', {
+        p_user_ids: missing
+      })
 
-    if (!error && data) {
-      fetched = data
-      needsFallback = data.length < missing.length
-    } else {
-      needsFallback = true
-    }
-
-    if (needsFallback) {
-      const fallbackIds = missing.filter(id => !fetched.some(profile => (profile.id || profile.user_id) === id))
-
-      if (fallbackIds.length > 0) {
-        const fallbackResults = await Promise.all(fallbackIds.map(async (id) => {
-          try {
-            const { data: profileData } = await supabase.rpc('get_user_profile', { user_id: id })
-            if (Array.isArray(profileData) && profileData.length > 0) return profileData[0]
-            if (profileData) return profileData
-          } catch (rpcError) {
-            console.warn('[ProfileContext] get_user_profile RPC failed', rpcError)
-          }
-          return null
-        }))
-
-        fetched = [
-          ...fetched,
-          ...fallbackResults.filter(Boolean)
-        ]
+      if (!error && Array.isArray(data)) {
+        fetched = data
+        needsFallback = data.length < missing.length
+      } else {
+        // Solange Migration 047 irgendwo noch nicht ausgefuehrt ist.
+        needsFallback = true
       }
-    }
 
-    if (fetched.length > 0) {
-      upsertProfiles(fetched)
+      if (needsFallback) {
+        const fallbackIds = missing.filter(id => !fetched.some(profile => (profile.id || profile.user_id) === id))
+
+        if (fallbackIds.length > 0) {
+          const fallbackResults = await Promise.all(fallbackIds.map(async (id) => {
+            try {
+              const { data: profileData } = await supabase.rpc('get_user_profile', { user_id: id })
+              if (Array.isArray(profileData) && profileData.length > 0) return profileData[0]
+              if (profileData) return profileData
+            } catch (rpcError) {
+              console.warn('[ProfileContext] get_user_profile RPC failed', rpcError)
+            }
+            return null
+          }))
+
+          fetched = [
+            ...fetched,
+            ...fallbackResults.filter(Boolean)
+          ]
+        }
+      }
+
+      if (fetched.length > 0) {
+        upsertProfiles(fetched)
+      }
+    } finally {
+      missing.forEach(id => inFlightRef.current.delete(id))
     }
   }, [upsertProfiles])
 

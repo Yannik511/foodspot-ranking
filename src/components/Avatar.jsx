@@ -37,7 +37,7 @@ function Avatar({
   forceImageUrl = null // Force a specific image URL (for optimistic updates)
 }) {
   const { user } = useAuth()
-  const { ensureProfiles, getProfile } = useProfilesStore()
+  const { ensureProfiles, profiles } = useProfilesStore()
 
   useEffect(() => {
     if (user?.id) {
@@ -53,7 +53,8 @@ function Avatar({
     return getUsername().charAt(0).toUpperCase()
   }
   
-  const profileFromStore = useMemo(() => getProfile(user?.id), [getProfile, user?.id])
+  // Siehe UserAvatar: getProfile ist stabil und loest keine Neuberechnung aus.
+  const profileFromStore = useMemo(() => profiles[user?.id] || null, [profiles, user?.id])
   const profileImageUrl = forceImageUrl || profileFromStore?.avatar_url || user?.user_metadata?.profileImageUrl
   const backgroundColor = getColorFromId(user?.id)
   

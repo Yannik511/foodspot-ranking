@@ -24,7 +24,7 @@ const getColorFromId = (userId) => {
 }
 
 function UserAvatar({ user, size = 40, className = '', showBorder = true }) {
-  const { ensureProfiles, getProfile } = useProfilesStore()
+  const { ensureProfiles, profiles } = useProfilesStore()
   const userId = user?.id || user?.user_id
 
   useEffect(() => {
@@ -33,7 +33,11 @@ function UserAvatar({ user, size = 40, className = '', showBorder = true }) {
     }
   }, [userId, ensureProfiles])
 
-  const profileFromStore = useMemo(() => getProfile(userId), [getProfile, userId])
+  // Direkt aus dem Store lesen statt ueber getProfile: die Funktion ist
+  // absichtlich stabil (sie liest eine Ref), dadurch rechnete der useMemo nie
+  // neu — der Avatar blieb leer, bis die Komponente aus anderem Grund neu
+  // rendert. Genau das sah man als "laedt spaeter nach".
+  const profileFromStore = useMemo(() => profiles[userId] || null, [profiles, userId])
   const backgroundColor = useMemo(() => getColorFromId(userId), [userId])
   
   const profileImageUrl = profileFromStore?.avatar_url || user?.user_metadata?.profileImageUrl || user?.profileImageUrl
