@@ -131,8 +131,15 @@
   }
 }
 
-.dark html {
-  background-color: #0f172a;
+/* ACHTUNG Selektor: die dark-Klasse sitzt auf dem <html>-Element selbst
+   (ThemeContext setzt sie auf document.documentElement). ".dark html" suchte
+   ein html INNERHALB eines .dark-Elements und griff deshalb nie — html blieb
+   in beiden Modi weiss. Sichtbar wurde das an den abgerundeten Ecken der
+   iOS-Tastatur: dort verkleinert Capacitor mit resize "body" nur den Body,
+   und darunter scheint html durch.
+   Gleiche Farbe wie der Body, damit der Uebergang unsichtbar bleibt. */
+html.dark {
+  background-color: #111827;
 }
 
 .dark body {
