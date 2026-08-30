@@ -1,6 +1,7 @@
 import { cloneElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import { isSwipeBackDisabled } from '../hooks/useDisableSwipeBack'
+import { NavLayerContext } from '../hooks/useScreenFocus'
 
 /**
  * Zurueck-Geste wie in iOS: vom linken Rand nach rechts ziehen.
@@ -31,6 +32,11 @@ const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
 // Tiefer muss der Stack nicht sein — jeder gehaltene Screen kostet Speicher
 // und laesst seine Realtime-Abos weiterlaufen.
 const MAX_DEPTH = 2
+
+// Feste Objekte: ein frisches Literal pro Render wuerde jeden Verbraucher des
+// Kontexts unnoetig neu rendern lassen.
+const ACTIVE = { isActive: true }
+const INACTIVE = { isActive: false }
 
 // Jeder Eintrag traegt zwei Kennungen:
 //   id     — der React-key des Layers. Bleibt ueber ein REPLACE hinweg gleich,
@@ -323,7 +329,9 @@ function NavStack({ children }) {
               className="animate-fade-in"
               style={{ flex: 1, minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column' }}
             >
-              {cloneElement(children, { location: entry.location })}
+              <NavLayerContext.Provider value={isTop ? ACTIVE : INACTIVE}>
+                {cloneElement(children, { location: entry.location })}
+              </NavLayerContext.Provider>
             </div>
             {/* Dunkelt den zurueckliegenden Screen ab, wie in iOS. */}
             <div
