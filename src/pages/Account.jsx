@@ -571,16 +571,18 @@ function Account() {
           const ids = Array.from(participantIds)
           let profileLookup = {}
 
-          const { data: profileRows, error: profilesError } = await supabase
-            .from('user_profiles')
-            .select('user_id, username, profile_image_url, profile_visibility')
-            .in('user_id', ids)
+          // Ein Roundtrip fuer alle Teilnehmer. Die fruehere Tabellenabfrage
+          // (user_id, profile_visibility) lief immer in einen 400er (42703),
+          // gleiches Muster wie im ProfileContext, siehe Migration 047.
+          const { data: profileRows, error: profilesError } = await supabase.rpc('get_user_profiles_batch', {
+            p_user_ids: ids
+          })
 
-          if (!profilesError) {
-            profileRows?.forEach(profile => {
-              if (profile?.user_id) {
-                profileLookup[profile.user_id] = {
-                  id: profile.user_id,
+          if (!profilesError && Array.isArray(profileRows)) {
+            profileRows.forEach(profile => {
+              if (profile?.id) {
+                profileLookup[profile.id] = {
+                  id: profile.id,
                   username: profile.username,
                   avatar_url: profile.profile_image_url,
                   profile_image_url: profile.profile_image_url,
@@ -588,9 +590,13 @@ function Account() {
                 }
               }
             })
-          } else {
-            console.warn('user_profiles fallback (Account):', profilesError)
-            const fallbackProfiles = await Promise.all(ids.map(async (id) => {
+          }
+
+          const missingIds = ids.filter(id => !profileLookup[id])
+
+          if (missingIds.length > 0) {
+            if (profilesError) console.warn('user_profiles fallback (Account):', profilesError)
+            const fallbackProfiles = await Promise.all(missingIds.map(async (id) => {
               try {
                 const { data, error } = await supabase.rpc('get_user_profile', { user_id: id })
                 if (error || !data) return null
