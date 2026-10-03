@@ -37,6 +37,7 @@ import { PresenceProvider } from './contexts/PresenceContext'
 import { TabBarActionsProvider } from './contexts/TabBarActionsContext'
 import { SaveStatusProvider } from './contexts/SaveStatusContext'
 import SaveStatusOverlay from './components/SaveStatusOverlay'
+import PushBridge from './components/PushBridge'
 import Discover from './pages/Discover'
 import Legal from './pages/Legal'
 
@@ -60,6 +61,7 @@ function App() {
           <BrowserRouter>
           <TabBarContainer />
           <SaveStatusOverlay />
+          <PushBridge />
         <NavStack>
         <Routes>
           <Route path="/" element={<Landing />} />

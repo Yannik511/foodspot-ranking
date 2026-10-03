@@ -8,6 +8,7 @@ import { supabase } from '../services/supabase'
 import { assertImageAllowed } from '../services/moderation'
 import { isBiometricAvailable, hasBiometricLogin, disableBiometricLogin } from '../services/biometric'
 import { getBlockedUsers, unblockUser } from '../services/ugc'
+import { NOTIFICATION_PREF_DEFAULTS, getNotificationPrefs, setNotificationPrefs, getPushPermission, registerForPush } from '../services/push'
 import { hapticFeedback } from '../utils/haptics'
 import { springEasing } from '../utils/animations'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
@@ -73,6 +74,13 @@ const compressImage = (file) => {
   })
 }
 
+const NOTIFICATION_TOGGLES = [
+  { key: 'new_ratings', label: 'Neue Bewertungen', description: 'Wenn jemand in einer geteilten Liste einen Spot bewertet' },
+  { key: 'shared_lists', label: 'Geteilte Listen', description: 'Wenn dich jemand zu einer Liste einlädt' },
+  { key: 'friend_requests', label: 'Freundschaftsanfragen', description: 'Neue Anfragen und angenommene Anfragen' },
+  { key: 'reminders', label: 'Erinnerungen', description: 'Wenn du länger nicht in der App warst' },
+]
+
 function Settings() {
   const { user, signOut } = useAuth()
   const { darkMode, isDark, setDarkMode } = useTheme()
@@ -115,6 +123,35 @@ function Settings() {
     if (error) return
     hapticFeedback.success()
     setBlockedUsers((prev) => prev.filter((u) => u.id !== blockedId))
+  }
+
+  // Push-Benachrichtigungen
+  const [notifPrefs, setNotifPrefs] = useState(NOTIFICATION_PREF_DEFAULTS)
+  const [pushPermission, setPushPermission] = useState('unsupported')
+  useEffect(() => {
+    if (!user?.id) return
+    let cancelled = false
+    ;(async () => {
+      const [prefs, permission] = await Promise.all([getNotificationPrefs(user.id), getPushPermission()])
+      if (!cancelled) { setNotifPrefs(prefs); setPushPermission(permission) }
+    })()
+    return () => { cancelled = true }
+  }, [user?.id])
+  const handleToggleNotification = async (key) => {
+    if (!user?.id) return
+    hapticFeedback.light()
+    const next = { ...notifPrefs, [key]: !notifPrefs[key] }
+    setNotifPrefs(next)
+    const { error } = await setNotificationPrefs(user.id, next)
+    if (error) {
+      setNotifPrefs(notifPrefs)
+      hapticFeedback.error()
+      return
+    }
+    // Beim Einschalten die iOS-Erlaubnis nachholen, falls noch nie gefragt.
+    if (next[key] && pushPermission === 'prompt') {
+      setPushPermission(await registerForPush())
+    }
   }
 
   // Form state
@@ -1243,83 +1280,51 @@ function Settings() {
           </div>
           
           <div className="px-4 py-4 space-y-4">
-            {/* New Ratings */}
-            <div className="flex items-center justify-between opacity-50">
-              <div className="flex-1">
-                <p
-                  className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
-                  Neue Bewertungen
-                </p>
-                <p
-                  className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
-                  style={{ fontFamily: "'Inter', sans-serif" }}
-                >
-                  Bald verfügbar
-                </p>
-              </div>
-              <button
-                disabled
-                className={`relative w-12 h-6 rounded-full cursor-not-allowed ${
-                  isDark ? 'bg-gray-600' : 'bg-gray-300'
+            {NOTIFICATION_TOGGLES.map((item, index) => (
+              <div
+                key={item.key}
+                className={`flex items-center justify-between ${
+                  index > 0 ? `pt-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}` : ''
                 }`}
               >
-                <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full translate-x-0" />
-              </button>
-            </div>
+                <div className="flex-1 pr-4">
+                  <p
+                    className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
+                    style={{ fontFamily: "'Poppins', sans-serif" }}
+                  >
+                    {item.label}
+                  </p>
+                  <p
+                    className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
+                    style={{ fontFamily: "'Inter', sans-serif" }}
+                  >
+                    {item.description}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleToggleNotification(item.key)}
+                  className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
+                    notifPrefs[item.key] ? 'bg-[#FF7E42]' : isDark ? 'bg-gray-600' : 'bg-gray-300'
+                  }`}
+                  aria-label={item.label}
+                >
+                  <div
+                    className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                      notifPrefs[item.key] ? 'translate-x-6' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            ))}
 
-            {/* Shared Lists */}
-            <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700 opacity-50">
-              <div className="flex-1">
-                <p
-                  className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
-                  Geteilte Listen
-                </p>
-                <p
-                  className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
-                  style={{ fontFamily: "'Inter', sans-serif" }}
-                >
-                  Bald verfügbar
-                </p>
-              </div>
-              <button
-                disabled
-                className={`relative w-12 h-6 rounded-full cursor-not-allowed ${
-                  isDark ? 'bg-gray-600' : 'bg-gray-300'
-                }`}
+            {pushPermission === 'denied' && (
+              <p
+                className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm pt-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}
+                style={{ fontFamily: "'Inter', sans-serif" }}
               >
-                <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full translate-x-0" />
-              </button>
-            </div>
-
-            {/* Friend Requests */}
-            <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700 opacity-50">
-              <div className="flex-1">
-                <p
-                  className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
-                  Freundschaftsanfragen
-                </p>
-                <p
-                  className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
-                  style={{ fontFamily: "'Inter', sans-serif" }}
-                >
-                  Bald verfügbar
-                </p>
-              </div>
-              <button
-                disabled
-                className={`relative w-12 h-6 rounded-full cursor-not-allowed ${
-                  isDark ? 'bg-gray-600' : 'bg-gray-300'
-                }`}
-              >
-                <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full translate-x-0" />
-              </button>
-            </div>
+                Mitteilungen sind für Rankify ausgeschaltet. Du kannst sie in den iOS-Einstellungen unter „Mitteilungen“ erlauben.
+              </p>
+            )}
           </div>
         </section>
 

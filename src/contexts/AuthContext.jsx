@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../services/supabase'
 import { getEmailForUsername, resetPassword } from '../services/auth'
+import { unregisterPush } from '../services/push'
 
 const AuthContext = createContext({})
 
@@ -57,6 +58,8 @@ export const AuthProvider = ({ children }) => {
   }
 
   const signOut = async () => {
+    // Braucht noch die Session, darum vor dem eigentlichen Abmelden.
+    await unregisterPush()
     const { error } = await supabase.auth.signOut()
     return { error }
   }
