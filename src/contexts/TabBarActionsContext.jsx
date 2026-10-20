@@ -36,7 +36,6 @@ export function usePlusAction(fn, deps) {
 
   useEffect(() => { fnRef.current = fn })
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     // Nur der vorderste Screen bestimmt, was das Plus tut. Das verhindert
     // nebenbei, dass ein Screen im Hintergrund die Aktion des sichtbaren
@@ -44,6 +43,7 @@ export function usePlusAction(fn, deps) {
     if (!isActive) return undefined
     ctx.register(fn != null ? () => fnRef.current() : null)
     return () => ctx.register(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...(Array.isArray(deps) ? deps : []), isActive])
 }
 

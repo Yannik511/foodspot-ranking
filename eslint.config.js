@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'mobile-archive/**', 'archive/**', 'node_modules/**']),
+  globalIgnores(['dist', 'ios/**', 'mobile-archive/**', 'archive/**', 'node_modules/**']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -30,5 +30,11 @@ export default defineConfig([
         destructuredArrayIgnorePattern: '^_',
       }],
     },
+  },
+  {
+    // Context-Dateien exportieren bewusst Provider + Hook zusammen; die Regel
+    // betrifft nur Hot-Reload im Dev-Server, nicht die App.
+    files: ['src/contexts/**/*.jsx', 'src/components/BottomTabBar.jsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
   },
 ])
