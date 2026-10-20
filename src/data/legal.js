@@ -6,7 +6,7 @@
 //
 // ⚠️ Rechtlicher Hinweis: Diese Texte sind ein fachlich fundierter Entwurf auf Basis der
 // tatsächlichen Datenflüsse der App. Sie ersetzen KEINE Rechtsberatung. Vor Release:
-//   1. ✅ Impressum-Daten eingesetzt (Peter Rabenstein, privat/nicht-kommerziell).
+//   1. ✅ Impressum: Yannik Fuchs (Inhaber Apple-Developer-Account), support@getrankify.app, Postanschrift Gilching.
 //   2. ✅ Supabase-Region bestätigt: EU (Frankfurt, aws-eu-central-1).
 //   3. Idealerweise einmal juristisch gegenprüfen lassen.
 
@@ -36,6 +36,7 @@ export const LEGAL = {
           'Soziale Daten: Freundschaftsbeziehungen und Einladungen zu geteilten Listen.',
           'Push-Benachrichtigungen: wenn du Mitteilungen erlaubst, speichern wir das von Apple vergebene Geräte-Token (Push-Token) und deine Benachrichtigungs-Einstellungen. Darüber senden wir dir Hinweise zu Freundschaftsanfragen, Listen-Einladungen, neuen Bewertungen in geteilten Listen sowie gelegentliche Erinnerungen.',
           'Meldungen und Blockierungen: wenn du Inhalte oder Nutzer meldest bzw. blockierst, speichern wir dies, um Meldungen zu bearbeiten und Blockierungen umzusetzen.',
+          'Feedback: wenn du über „Feedback senden“ eine Nachricht schickst, speichern wir sie zusammen mit der gewählten Kategorie, der App-Version und der Plattform (z. B. iOS), um dein Anliegen zu bearbeiten und die App zu verbessern.',
         ],
       },
       {
@@ -44,7 +45,8 @@ export const LEGAL = {
           'Kontodaten und Inhaltsdaten verarbeiten wir zur Bereitstellung der App-Kernfunktionen (Vertragserfüllung, Art. 6 Abs. 1 lit. b DSGVO).',
           'Standortzugriff und Kamera-/Fotozugriff erfolgen ausschließlich auf Grundlage deiner Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du jederzeit in den Geräteeinstellungen widerrufen kannst.',
           'Push-Benachrichtigungen versenden wir nur mit deiner Einwilligung (Art. 6 Abs. 1 lit. a DSGVO). Du kannst sie in den iOS-Einstellungen komplett abschalten oder in der App unter Einstellungen einzeln nach Art steuern.',
-          'Die automatische Prüfung hochgeladener Bilder sowie die Bearbeitung von Meldungen und Blockierungen erfolgen auf Grundlage unseres berechtigten Interesses, die App frei von rechtswidrigen und anstößigen Inhalten zu halten (Art. 6 Abs. 1 lit. f DSGVO).',
+          'Die Übermittlung hochgeladener Bilder an OpenAI zur automatischen Prüfung erfolgt auf Grundlage deiner Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du beim ersten Foto-Upload erteilst und jederzeit in der App unter Einstellungen → „KI-Bildprüfung“ für die Zukunft widerrufen kannst.',
+          'Die Bearbeitung von Meldungen, Blockierungen und Feedback erfolgt auf Grundlage unseres berechtigten Interesses, die App frei von rechtswidrigen und anstößigen Inhalten zu halten und sie weiterzuentwickeln (Art. 6 Abs. 1 lit. f DSGVO).',
         ],
       },
       {
@@ -58,7 +60,7 @@ export const LEGAL = {
           'OpenStreetMap / Nominatim (OpenStreetMap Foundation): Ortssuche. Wenn du nach einem Ort suchst, wird deine Suchanfrage an nominatim.openstreetmap.org übertragen.',
           'Resend (Resend, Inc., USA): Versand von System-E-Mails wie Konto-Bestätigung und Passwort-Zurücksetzen. Dafür werden deine E-Mail-Adresse und der Inhalt der jeweiligen E-Mail verarbeitet. Der Versand erfolgt über Server in der EU (Irland); soweit dennoch Daten in die USA übermittelt werden, geschieht dies auf Grundlage von EU-Standardvertragsklauseln.',
           'Apple Push Notification Service (Apple Inc.): Zustellung von Push-Benachrichtigungen. Dafür werden dein Geräte-Token und der Inhalt der jeweiligen Benachrichtigung an Apple übertragen.',
-          'OpenAI Moderation API (OpenAI, L.L.C., USA): automatische Prüfung hochgeladener Bilder auf anstößige Inhalte, bevor sie gespeichert werden. Übertragen wird nur das Bild selbst, ohne Name, E-Mail-Adresse oder Nutzerkennung. Die Übermittlung in die USA erfolgt auf Grundlage von EU-Standardvertragsklauseln.',
+          'OpenAI Moderation API (OpenAI, L.L.C., USA): automatische Prüfung hochgeladener Bilder auf anstößige Inhalte, bevor sie gespeichert werden. Übertragen wird nur das Bild selbst, ohne Name, E-Mail-Adresse oder Nutzerkennung, und erst nachdem du beim ersten Foto-Upload ausdrücklich zugestimmt hast. Ohne Zustimmung können keine Fotos hochgeladen werden. Die Übermittlung in die USA erfolgt auf Grundlage von EU-Standardvertragsklauseln.',
         ],
       },
       {
@@ -90,13 +92,16 @@ export const LEGAL = {
       {
         heading: 'Verantwortlicher',
         paragraphs: [
-          'Peter Rabenstein',
+          'Yannik Fuchs',
+          'Am Bahnhof 4',
+          '82205 Gilching',
+          'Deutschland',
         ],
       },
       {
         heading: 'Kontakt',
         paragraphs: [
-          'E-Mail: peterrabenstein96@gmail.com',
+          'E-Mail: support@getrankify.app',
         ],
       },
       {

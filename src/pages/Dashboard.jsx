@@ -10,7 +10,7 @@ import SaveButton from '../components/SaveButton'
 import { cityLabelFromAddress } from '../utils/locationLabel'
 import { useSaveStatus } from '../contexts/SaveStatusContext'
 import { supabase } from '../services/supabase'
-import { assertImageAllowed } from '../services/moderation'
+import { assertImageAllowed, requestImageConsent } from '../services/moderation'
 import { hapticFeedback } from '../utils/haptics'
 import { springEasing, staggerDelay } from '../utils/animations'
 import { useHeaderHeight } from '../hooks/useHeaderHeight'
@@ -2971,7 +2971,7 @@ function Dashboard() {
 function EditSharedListModal({ list, onClose, onSave }) {
   const { isDark } = useTheme()
   const { user } = useAuth()
-  const { beginSave, resolveSave, failSave } = useSaveStatus()
+  const { beginSave, resolveSave, failSave, notify } = useSaveStatus()
 
   const [formData, setFormData] = useState({
     list_name: list.list_name,
@@ -3017,6 +3017,10 @@ function EditSharedListModal({ list, onClose, onSave }) {
   const handleCoverImageChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    if (!(await requestImageConsent())) {
+      e.target.value = ''
+      return
+    }
 
     if (!file.type.startsWith('image/')) {
       setErrors(prev => ({ ...prev, coverImage: 'Bitte wähle ein Bild aus' }))
@@ -3549,7 +3553,7 @@ function EditSharedListModal({ list, onClose, onSave }) {
       setShowSuggestions(false)
     } catch (error) {
       console.error('Error inviting friends:', error)
-      alert('Einladung fehlgeschlagen. Bitte versuche es erneut.')
+      notify('Einladung fehlgeschlagen. Bitte versuche es erneut.')
     } finally {
       setInviting(false)
     }
@@ -3582,7 +3586,7 @@ function EditSharedListModal({ list, onClose, onSave }) {
       ))
     } catch (error) {
       console.error('Error changing role:', error)
-      alert('Rolle konnte nicht geändert werden. Bitte versuche es erneut.')
+      notify('Rolle konnte nicht geändert werden. Bitte versuche es erneut.')
     }
   }
 
@@ -4156,6 +4160,10 @@ function EditListModal({ list, onClose, onSave }) {
   const handleCoverImageChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    if (!(await requestImageConsent())) {
+      e.target.value = ''
+      return
+    }
 
     if (!file.type.startsWith('image/')) {
       setErrors(prev => ({ ...prev, coverImage: 'Bitte wähle ein Bild aus' }))

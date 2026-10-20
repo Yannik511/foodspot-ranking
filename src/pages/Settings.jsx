@@ -5,13 +5,16 @@ import { useTheme } from '../contexts/ThemeContext'
 import Avatar from '../components/Avatar'
 import SaveButton from '../components/SaveButton'
 import { supabase } from '../services/supabase'
-import { assertImageAllowed } from '../services/moderation'
+import { assertImageAllowed, hasImageConsent, IMAGE_CONSENT_KEY, requestImageConsent } from '../services/moderation'
 import { isBiometricAvailable, hasBiometricLogin, disableBiometricLogin } from '../services/biometric'
 import { getBlockedUsers, unblockUser } from '../services/ugc'
 import { NOTIFICATION_PREF_DEFAULTS, getNotificationPrefs, setNotificationPrefs, getPushPermission, registerForPush } from '../services/push'
 import { hapticFeedback } from '../utils/haptics'
 import { springEasing } from '../utils/animations'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
+import { APP_VERSION } from '../data/changelog'
+import { clearUiCache } from '../utils/cache'
+import FeedbackSheet from '../components/FeedbackSheet'
 
 // Helper function to compress image
 const compressImage = (file) => {
@@ -155,8 +158,9 @@ function Settings() {
   }
 
   // Form state
-  const [displayName, setDisplayName] = useState('')
   const [username, setUsername] = useState('')
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [imageConsent, setImageConsent] = useState(hasImageConsent)
   const [email, setEmail] = useState('')
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -176,15 +180,10 @@ function Settings() {
     return user?.user_metadata?.username || user?.email?.split('@')[0] || 'Du'
   }
   
-  const getDisplayNameFromUser = () => {
-    return user?.user_metadata?.display_name || getUsername()
-  }
-  
   useEffect(() => {
     if (user) {
       setEmail(user.email || '')
       setUsername(getUsername())
-      setDisplayName(getDisplayNameFromUser())
       // Load profile visibility (default: 'private')
       const visibility = user?.user_metadata?.profile_visibility || 'private'
       setProfileVisibility(visibility)
@@ -229,21 +228,19 @@ function Settings() {
   
   useEffect(() => {
     // Check if there are any changes
-    const originalDisplayName = getDisplayNameFromUser()
     const originalUsername = getUsername()
     
     const originalVisibility = user?.user_metadata?.profile_visibility || 'private'
     const originalDiscoverSharing = user?.user_metadata?.discover_sharing !== false
 
     const changed =
-      (displayName !== originalDisplayName && displayName.trim() !== '') ||
       (username !== originalUsername && username.trim() !== '' && !usernameError) ||
       (currentPassword !== '' && newPassword !== '' && !passwordError) ||
       (profileVisibility !== originalVisibility) ||
       (discoverSharing !== originalDiscoverSharing)
 
     setHasChanges(changed)
-  }, [displayName, username, currentPassword, newPassword, confirmPassword, usernameError, passwordError, profileVisibility, discoverSharing, user])
+  }, [username, currentPassword, newPassword, confirmPassword, usernameError, passwordError, profileVisibility, discoverSharing, user])
   
   const handleSave = async () => {
     if (!hasChanges || loading) return
@@ -451,27 +448,36 @@ function Settings() {
     navigate('/about')
   }
 
+  // Wirkt sofort (lokal), unabhängig vom Speichern-Häkchen
+  const toggleImageConsent = () => {
+    hapticFeedback.light()
+    const next = !imageConsent
+    try {
+      if (next) localStorage.setItem(IMAGE_CONSENT_KEY, '1')
+      else localStorage.removeItem(IMAGE_CONSENT_KEY)
+    } catch {
+      return
+    }
+    setImageConsent(next)
+  }
+
   const handleChangelog = () => {
     hapticFeedback.light()
-    // TODO: Navigate to changelog page or show modal
-    alert('Changelog wird angezeigt... (bald verfügbar)')
+    navigate('/changelog')
   }
 
   const handleSendFeedback = () => {
     hapticFeedback.light()
-    // TODO: Open feedback form or email
-    window.location.href = 'mailto:feedback@rankify.app?subject=Rankify Feedback'
+    setFeedbackOpen(true)
   }
 
   const handleClearCache = async () => {
     hapticFeedback.medium()
-    if (!window.confirm('Möchtest du wirklich den Cache leeren? Lokale Daten werden gelöscht.')) {
+    if (!window.confirm('Cache leeren? Zwischengespeicherte Daten werden neu geladen – deine Anmeldung und Einstellungen bleiben erhalten.')) {
       return
     }
     try {
-      // Clear localStorage and sessionStorage (UI data only)
-      localStorage.clear()
-      sessionStorage.clear()
+      clearUiCache()
       hapticFeedback.success()
       setSuccess('Cache erfolgreich geleert!')
       setTimeout(() => {
@@ -492,6 +498,10 @@ function Settings() {
   const handleImageChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    if (!(await requestImageConsent())) {
+      e.target.value = ''
+      return
+    }
 
     if (!file.type.startsWith('image/')) {
       setError('Bitte wähle ein Bild aus')
@@ -775,34 +785,6 @@ function Settings() {
               </div>
             </div>
             
-            {/* Display Name */}
-            <div>
-              <label 
-                htmlFor="displayName"
-                className={`block ${isDark ? 'text-gray-300' : 'text-gray-700'} text-sm font-medium mb-2`}
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-              >
-                Anzeigename
-              </label>
-              <input
-                id="displayName"
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Dein Anzeigename"
-                disabled
-                className={`w-full px-4 py-3 rounded-xl border-2 ${
-                  isDark 
-                    ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-500' 
-                    : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400'
-                } focus:outline-none focus:ring-2 focus:ring-[#FF7E42] disabled:opacity-50`}
-                style={{ fontFamily: "'Inter', sans-serif" }}
-              />
-              <p className={`mt-1 text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                (bald verfügbar)
-              </p>
-            </div>
-            
             {/* Username */}
             <div>
               <label 
@@ -1064,41 +1046,6 @@ function Settings() {
               </div>
             </div>
 
-            {/* Accent Color */}
-            <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
-              <div>
-                <p
-                  className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
-                  Akzentfarbe
-                </p>
-                <p
-                  className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
-                  style={{ fontFamily: "'Inter', sans-serif" }}
-                >
-                  Bald verfügbar
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  disabled
-                  className="px-4 py-2 rounded-xl font-medium bg-[#FF7E42] text-white opacity-50 cursor-not-allowed"
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
-                  Orange
-                </button>
-                <button
-                  disabled
-                  className={`px-4 py-2 rounded-xl font-medium opacity-50 cursor-not-allowed ${
-                    isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
-                  }`}
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
-                  Neutral
-                </button>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -1178,6 +1125,37 @@ function Settings() {
                 <div
                   className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
                     discoverSharing ? 'translate-x-6' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* KI-Bildprüfung (Einwilligung, Apple 5.1.2(i)) */}
+            <div className={`flex items-center justify-between pt-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+              <div className="flex-1 pr-4">
+                <p
+                  className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
+                  style={{ fontFamily: "'Poppins', sans-serif" }}
+                >
+                  KI-Bildprüfung
+                </p>
+                <p
+                  className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
+                  style={{ fontFamily: "'Inter', sans-serif" }}
+                >
+                  Hochgeladene Fotos werden von OpenAI auf anstößige Inhalte geprüft. Ohne Zustimmung sind keine Foto-Uploads möglich.
+                </p>
+              </div>
+              <button
+                onClick={toggleImageConsent}
+                className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
+                  imageConsent ? 'bg-[#FF7E42]' : isDark ? 'bg-gray-600' : 'bg-gray-300'
+                }`}
+                aria-label="KI-Bildprüfung"
+              >
+                <div
+                  className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                    imageConsent ? 'translate-x-6' : 'translate-x-0'
                   }`}
                 />
               </button>
@@ -1339,68 +1317,16 @@ function Settings() {
             </h2>
           </div>
           
-          <div className="px-4 py-4 space-y-4">
-            {/* Pull to Refresh */}
-            <div className="flex items-center justify-between opacity-50">
-              <div className="flex-1">
-                <p
-                  className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
-                  Pull-to-Refresh
-                </p>
-                <p
-                  className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
-                  style={{ fontFamily: "'Inter', sans-serif" }}
-                >
-                  Bald verfügbar
-                </p>
-              </div>
-              <button
-                disabled
-                className={`relative w-12 h-6 rounded-full cursor-not-allowed ${
-                  isDark ? 'bg-gray-600' : 'bg-gray-300'
-                }`}
-              >
-                <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full translate-x-0" />
-              </button>
-            </div>
-
-            {/* Auto Sync */}
-            <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700 opacity-50">
-              <div className="flex-1">
-                <p
-                  className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-medium`}
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
-                  Bei Start automatisch syncen
-                </p>
-                <p
-                  className={`${isDark ? 'text-gray-500' : 'text-gray-400'} text-sm mt-1`}
-                  style={{ fontFamily: "'Inter', sans-serif" }}
-                >
-                  Bald verfügbar
-                </p>
-              </div>
-              <button
-                disabled
-                className={`relative w-12 h-6 rounded-full cursor-not-allowed ${
-                  isDark ? 'bg-gray-600' : 'bg-gray-300'
-                }`}
-              >
-                <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full translate-x-0" />
-              </button>
-            </div>
-
+          <div className="px-4 py-3">
             {/* Clear Cache */}
             <button
               onClick={handleClearCache}
-              className={`w-full text-left py-3 pt-4 border-t border-gray-200 dark:border-gray-700 ${
+              className={`w-full text-left py-1 ${
                 isDark ? 'text-gray-300' : 'text-gray-700'
               } hover:opacity-80 transition-opacity`}
               style={{ fontFamily: "'Poppins', sans-serif" }}
             >
-              Cache leeren (nur UI-Daten)
+              Cache leeren
             </button>
           </div>
         </section>
@@ -1440,50 +1366,6 @@ function Settings() {
           </section>
         )}
 
-        {/* Language Section */}
-        <section className={`${isDark ? 'bg-gray-800' : 'bg-white'} mt-4 mx-4 rounded-2xl overflow-hidden shadow-sm`}>
-          <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-            <h2
-              className={`${isDark ? 'text-gray-200' : 'text-gray-900'} font-semibold`}
-              style={{ fontFamily: "'Poppins', sans-serif", fontSize: '14px' }}
-            >
-              App-Sprache
-            </h2>
-          </div>
-          
-          <div className="px-4 py-4">
-            {/* Language */}
-            <div>
-              <label 
-                className={`block ${isDark ? 'text-gray-300' : 'text-gray-700'} text-sm font-medium mb-2`}
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-              >
-                Sprache
-              </label>
-              <div className="flex gap-2">
-                <button
-                  disabled
-                  className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all bg-[#FF7E42] text-white opacity-50 cursor-not-allowed`}
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
-                  Deutsch
-                </button>
-                <button
-                  disabled
-                  className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all ${
-                    isDark
-                      ? 'bg-gray-700 text-gray-300'
-                      : 'bg-gray-100 text-gray-700'
-                  } opacity-50 cursor-not-allowed`}
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                >
-                  English (bald verfügbar)
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-        
         {/* App Info Section */}
         <section className={`${isDark ? 'bg-gray-800' : 'bg-white'} mt-4 mx-4 rounded-2xl overflow-hidden shadow-sm`}>
           <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
@@ -1508,7 +1390,7 @@ function Settings() {
                 className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-sm`}
                 style={{ fontFamily: "'Inter', sans-serif" }}
               >
-                1.0.0
+                {APP_VERSION}
               </span>
             </div>
 
@@ -1518,7 +1400,7 @@ function Settings() {
               className={`w-full text-left py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} ${isDark ? 'text-gray-300' : 'text-gray-700'} hover:opacity-80 transition-opacity`}
               style={{ fontFamily: "'Poppins', sans-serif" }}
             >
-              Changelog
+              Neuigkeiten
             </button>
 
             {/* About */}
@@ -1541,7 +1423,8 @@ function Settings() {
           </div>
         </section>
       </main>
-      
+
+      <FeedbackSheet open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
   )
 }

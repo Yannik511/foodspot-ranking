@@ -15,6 +15,8 @@ import { hapticFeedback } from '../utils/haptics'
  *   beginSave(id, label)      → Zustand 'saving', Pille erscheint
  *   resolveSave(id, label?)   → Zustand 'success', Häkchen-Pop + Erfolgs-Haptik, auto-Ausblenden
  *   failSave(id, message)     → Zustand 'error', Wackeln + Fehler-Haptik, auto-Ausblenden
+ *   notify(message, state?)   → einmaliger Hinweis ohne laufenden Vorgang (Standard 'error'),
+ *                               ersetzt native alert()-Popups
  *
  * Die id koppelt Start/Ende: resolve/fail wirken nur, wenn sie zur aktuell laufenden
  * Operation gehören (verhindert, dass ein alter Vorgang eine neue Pille überschreibt).
@@ -61,8 +63,19 @@ export function SaveStatusProvider({ children }) {
     }, ERROR_HOLD_MS)
   }, [setOpBoth])
 
+  const notify = useCallback((message, state = 'error') => {
+    const id = `notify-${Date.now()}`
+    setOpBoth({ id, label: message, state })
+    if (state === 'error') hapticFeedback.error()
+    else hapticFeedback.success()
+    clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => {
+      if (opRef.current?.id === id) setOpBoth(null)
+    }, state === 'error' ? ERROR_HOLD_MS : SUCCESS_HOLD_MS)
+  }, [setOpBoth])
+
   return (
-    <SaveStatusContext.Provider value={{ op, beginSave, resolveSave, failSave }}>
+    <SaveStatusContext.Provider value={{ op, beginSave, resolveSave, failSave, notify }}>
       {children}
     </SaveStatusContext.Provider>
   )
@@ -72,7 +85,7 @@ export function useSaveStatus() {
   const ctx = useContext(SaveStatusContext)
   if (!ctx) {
     // Fallback, falls (versehentlich) ohne Provider genutzt — no-ops statt Crash.
-    return { op: null, beginSave: () => {}, resolveSave: () => {}, failSave: () => {} }
+    return { op: null, beginSave: () => {}, resolveSave: () => {}, failSave: () => {}, notify: () => {} }
   }
   return ctx
 }

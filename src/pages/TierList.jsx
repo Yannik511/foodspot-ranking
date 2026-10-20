@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
-import { assertImageAllowed } from '../services/moderation'
+import { assertImageAllowed, requestImageConsent } from '../services/moderation'
 import { useHeaderHeight } from '../hooks/useHeaderHeight'
 import { useScrollHeader } from '../hooks/useScrollHeader'
 import { usePlusAction } from '../contexts/TabBarActionsContext'
@@ -208,7 +208,7 @@ function TierList() {
   // INSERT-Ereignis der Realtime-Verbindung durch den echten ersetzt — falls
   // das Ereignis ausbleibt (die Verbindung steht erst nach der
   // Kontextpruefung), holt das hier den echten Datensatz nach.
-  const { op: saveOp } = useSaveStatus()
+  const { op: saveOp, notify } = useSaveStatus()
   useEffect(() => {
     if (saveOp?.state === 'success') setRefreshTick((n) => n + 1)
   }, [saveOp?.state, saveOp?.id])
@@ -534,21 +534,25 @@ function TierList() {
       // Rollback on error
       setList(previousList)
       setShowEditModal(true)
-      alert('Fehler beim Speichern. Bitte versuche es erneut.')
+      notify('Speichern fehlgeschlagen. Bitte versuche es erneut.')
     }
   }
 
   const handleCoverImageChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    if (!(await requestImageConsent())) {
+      e.target.value = ''
+      return
+    }
 
     if (!file.type.startsWith('image/')) {
-      alert('Bitte wähle ein Bild aus')
+      notify('Bitte wähle ein Bild aus')
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('Bild muss kleiner als 5MB sein')
+      notify('Bild muss kleiner als 5 MB sein')
       return
     }
 
@@ -576,7 +580,7 @@ function TierList() {
       }
     } catch (error) {
       console.error('Error uploading image:', error)
-      alert('Fehler beim Hochladen des Bildes')
+      notify(error?.name === 'ImageRejectedError' ? error.message : 'Bild konnte nicht hochgeladen werden')
     }
   }
 
