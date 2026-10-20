@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
+    "legal:html": "node scripts/build-legal-html.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

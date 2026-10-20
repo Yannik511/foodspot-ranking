@@ -52,6 +52,6 @@ describe('resetPassword', () => {
   })
 
   it('redirectTo zeigt auf die gehostete Reset-Seite', () => {
-    expect(RESET_REDIRECT_URL).toBe('https://yannik511.github.io/reset')
+    expect(RESET_REDIRECT_URL).toBe('https://getrankify.app/reset')
   })
 })

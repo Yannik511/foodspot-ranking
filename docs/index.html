@@ -6,8 +6,7 @@
   <title>Rankify – Rechtliches</title>
   <!--
     Öffentliche Rechtstexte für Rankify (App-Store-Privacy-URL via GitHub Pages).
-    Inhaltlich identisch mit src/data/legal.js — bei Änderungen BEIDE pflegen.
-    Impressum-Daten gesetzt (Peter Rabenstein, privat/nicht-kommerziell); Supabase-Region: EU (Frankfurt).
+    GENERIERT aus src/data/legal.js via `npm run legal:html` — nicht von Hand bearbeiten.
   -->
   <style>
     :root { color-scheme: light dark; }
@@ -39,7 +38,7 @@
 </head>
 <body>
   <h1>Rankify</h1>
-  <p class="updated">Stand: 2026-07-05</p>
+  <p class="updated">Stand: 2026-10-20</p>
   <nav>
     <a href="#datenschutz">Datenschutz</a>
     <a href="#nutzungsbedingungen">Nutzungsbedingungen</a>
@@ -59,11 +58,15 @@
     <li>Inhaltsdaten: von dir erstellte Listen, Bewertungen, Foodspots und hochgeladene Fotos.</li>
     <li>Standortdaten: nur wenn du die Standortfunktion aktiv nutzt und freigibst, werden GPS-Koordinaten erfasst und einem Foodspot bzw. einer Liste zugeordnet.</li>
     <li>Soziale Daten: Freundschaftsbeziehungen und Einladungen zu geteilten Listen.</li>
+    <li>Push-Benachrichtigungen: wenn du Mitteilungen erlaubst, speichern wir das von Apple vergebene Geräte-Token (Push-Token) und deine Benachrichtigungs-Einstellungen. Darüber senden wir dir Hinweise zu Freundschaftsanfragen, Listen-Einladungen, neuen Bewertungen in geteilten Listen sowie gelegentliche Erinnerungen.</li>
+    <li>Meldungen und Blockierungen: wenn du Inhalte oder Nutzer meldest bzw. blockierst, speichern wir dies, um Meldungen zu bearbeiten und Blockierungen umzusetzen.</li>
   </ul>
 
   <h3>3. Zwecke und Rechtsgrundlagen</h3>
   <p>Kontodaten und Inhaltsdaten verarbeiten wir zur Bereitstellung der App-Kernfunktionen (Vertragserfüllung, Art. 6 Abs. 1 lit. b DSGVO).</p>
   <p>Standortzugriff und Kamera-/Fotozugriff erfolgen ausschließlich auf Grundlage deiner Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du jederzeit in den Geräteeinstellungen widerrufen kannst.</p>
+  <p>Push-Benachrichtigungen versenden wir nur mit deiner Einwilligung (Art. 6 Abs. 1 lit. a DSGVO). Du kannst sie in den iOS-Einstellungen komplett abschalten oder in der App unter Einstellungen einzeln nach Art steuern.</p>
+  <p>Die automatische Prüfung hochgeladener Bilder sowie die Bearbeitung von Meldungen und Blockierungen erfolgen auf Grundlage unseres berechtigten Interesses, die App frei von rechtswidrigen und anstößigen Inhalten zu halten (Art. 6 Abs. 1 lit. f DSGVO).</p>
 
   <h3>4. Eingesetzte Dienste (Auftragsverarbeiter &amp; Dritte)</h3>
   <p>Zur Bereitstellung der App nutzen wir folgende Dienste:</p>
@@ -71,6 +74,9 @@
     <li>Supabase (Supabase Inc.): Hosting von Datenbank, Authentifizierung und Datei-Speicher. Hier werden deine Konto-, Profil- und Inhaltsdaten gespeichert. Serverstandort: EU (Frankfurt, aws-eu-central-1) – die Daten werden innerhalb der EU verarbeitet.</li>
     <li>Apple MapKit (Apple Inc.): Darstellung von Karten. Bei Kartennutzung werden technisch notwendige Daten (z. B. IP-Adresse, Kartenausschnitt) an Apple übertragen.</li>
     <li>OpenStreetMap / Nominatim (OpenStreetMap Foundation): Ortssuche. Wenn du nach einem Ort suchst, wird deine Suchanfrage an nominatim.openstreetmap.org übertragen.</li>
+    <li>Resend (Resend, Inc., USA): Versand von System-E-Mails wie Konto-Bestätigung und Passwort-Zurücksetzen. Dafür werden deine E-Mail-Adresse und der Inhalt der jeweiligen E-Mail verarbeitet. Der Versand erfolgt über Server in der EU (Irland); soweit dennoch Daten in die USA übermittelt werden, geschieht dies auf Grundlage von EU-Standardvertragsklauseln.</li>
+    <li>Apple Push Notification Service (Apple Inc.): Zustellung von Push-Benachrichtigungen. Dafür werden dein Geräte-Token und der Inhalt der jeweiligen Benachrichtigung an Apple übertragen.</li>
+    <li>OpenAI Moderation API (OpenAI, L.L.C., USA): automatische Prüfung hochgeladener Bilder auf anstößige Inhalte, bevor sie gespeichert werden. Übertragen wird nur das Bild selbst, ohne Name, E-Mail-Adresse oder Nutzerkennung. Die Übermittlung in die USA erfolgt auf Grundlage von EU-Standardvertragsklauseln.</li>
   </ul>
 
   <h3>5. Kein Tracking, keine Werbung</h3>
@@ -78,6 +84,7 @@
 
   <h3>6. Speicherdauer &amp; Löschung</h3>
   <p>Deine Daten werden gespeichert, solange dein Konto besteht. Du kannst dein Konto jederzeit direkt in der App unter Einstellungen → „Account löschen" unwiderruflich löschen. Dabei werden dein Konto, deine Inhalte und deine hochgeladenen Dateien dauerhaft entfernt.</p>
+  <p>Push-Token löschen wir zusammen mit deinem Konto oder sobald Apple uns meldet, dass ein Token nicht mehr gültig ist (z. B. nach dem Löschen der App).</p>
 
   <h3>7. Deine Rechte</h3>
   <p>Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch. Erteilte Einwilligungen kannst du jederzeit mit Wirkung für die Zukunft widerrufen. Außerdem steht dir ein Beschwerderecht bei einer Datenschutz-Aufsichtsbehörde zu. Zur Ausübung deiner Rechte kontaktiere uns über die im Impressum genannten Daten.</p>
@@ -93,6 +100,7 @@
   <h3>3. Inhalte der Nutzer</h3>
   <p>Für die von dir erstellten Inhalte (Listen, Bewertungen, Fotos) bist du selbst verantwortlich. Du sicherst zu, dass du die erforderlichen Rechte an hochgeladenen Fotos besitzt und keine Rechte Dritter verletzt.</p>
   <p>Es ist untersagt, rechtswidrige, beleidigende oder rechteverletzende Inhalte einzustellen.</p>
+  <p>Wir dulden keine anstößigen, gewaltverherrlichenden, sexuellen, hasserfüllten oder anderweitig unangemessenen Inhalte sowie kein missbräuchliches Verhalten gegenüber anderen Nutzern (Null-Toleranz). Hochgeladene Bilder werden automatisiert auf solche Inhalte geprüft. Verstöße führen zur Entfernung der betreffenden Inhalte und können zur Sperrung oder Löschung deines Kontos führen.</p>
 
   <h3>4. Verfügbarkeit</h3>
   <p>Wir bemühen uns um eine möglichst unterbrechungsfreie Verfügbarkeit, können diese jedoch nicht garantieren. Wartungen, technische Störungen oder Weiterentwicklungen können zu vorübergehenden Einschränkungen führen.</p>

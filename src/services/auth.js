@@ -1,9 +1,10 @@
 import { supabase } from './supabase'
 
 // Ziel-URL für den Passwort-Reset-Link (gehostete Reset-Seite auf GitHub Pages,
-// User-Pages-Repo yannik511.github.io). Die Seite schließt den Reset im Browser
-// ab; die Domain ist zugleich Associated Domain (applinks:yannik511.github.io).
-export const RESET_REDIRECT_URL = 'https://yannik511.github.io/reset'
+// Repo Yannik511.github.io mit eigener Domain getrankify.app). Die Seite schließt
+// den Reset im Browser ab. Muss in Supabase unter Auth → URL Configuration →
+// Redirect URLs freigegeben sein.
+export const RESET_REDIRECT_URL = 'https://getrankify.app/reset'
 
 // Löst einen Zugangsnamen serverseitig zur E-Mail auf (RPC 067).
 // Gibt null zurück, wenn kein Profil existiert oder die RPC fehlschlägt.

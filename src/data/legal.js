@@ -1,7 +1,8 @@
 // Zentrale Quelle für alle Rechtstexte (In-App-Seiten + statische GitHub-Pages-Version
-// werden aus denselben Inhalten gepflegt). Bei Änderungen BEIDE aktualisieren:
+// werden aus denselben Inhalten gepflegt). Nur HIER ändern, danach die öffentliche
+// Seite neu erzeugen:
 //   - diese Datei  (In-App: /privacy, /impressum, /terms)
-//   - docs/index.html  (öffentliche Apple-Privacy-URL via GitHub Pages)
+//   - docs/index.html  (Apple-Privacy-URL via GitHub Pages) ← `npm run legal:html`
 //
 // ⚠️ Rechtlicher Hinweis: Diese Texte sind ein fachlich fundierter Entwurf auf Basis der
 // tatsächlichen Datenflüsse der App. Sie ersetzen KEINE Rechtsberatung. Vor Release:
@@ -9,7 +10,7 @@
 //   2. ✅ Supabase-Region bestätigt: EU (Frankfurt, aws-eu-central-1).
 //   3. Idealerweise einmal juristisch gegenprüfen lassen.
 
-export const LAST_UPDATED = '2026-07-05'
+export const LAST_UPDATED = '2026-10-20'
 
 export const LEGAL = {
   privacy: {
@@ -33,6 +34,8 @@ export const LEGAL = {
           'Inhaltsdaten: von dir erstellte Listen, Bewertungen, Foodspots und hochgeladene Fotos.',
           'Standortdaten: nur wenn du die Standortfunktion aktiv nutzt und freigibst, werden GPS-Koordinaten erfasst und einem Foodspot bzw. einer Liste zugeordnet.',
           'Soziale Daten: Freundschaftsbeziehungen und Einladungen zu geteilten Listen.',
+          'Push-Benachrichtigungen: wenn du Mitteilungen erlaubst, speichern wir das von Apple vergebene Geräte-Token (Push-Token) und deine Benachrichtigungs-Einstellungen. Darüber senden wir dir Hinweise zu Freundschaftsanfragen, Listen-Einladungen, neuen Bewertungen in geteilten Listen sowie gelegentliche Erinnerungen.',
+          'Meldungen und Blockierungen: wenn du Inhalte oder Nutzer meldest bzw. blockierst, speichern wir dies, um Meldungen zu bearbeiten und Blockierungen umzusetzen.',
         ],
       },
       {
@@ -40,6 +43,8 @@ export const LEGAL = {
         paragraphs: [
           'Kontodaten und Inhaltsdaten verarbeiten wir zur Bereitstellung der App-Kernfunktionen (Vertragserfüllung, Art. 6 Abs. 1 lit. b DSGVO).',
           'Standortzugriff und Kamera-/Fotozugriff erfolgen ausschließlich auf Grundlage deiner Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du jederzeit in den Geräteeinstellungen widerrufen kannst.',
+          'Push-Benachrichtigungen versenden wir nur mit deiner Einwilligung (Art. 6 Abs. 1 lit. a DSGVO). Du kannst sie in den iOS-Einstellungen komplett abschalten oder in der App unter Einstellungen einzeln nach Art steuern.',
+          'Die automatische Prüfung hochgeladener Bilder sowie die Bearbeitung von Meldungen und Blockierungen erfolgen auf Grundlage unseres berechtigten Interesses, die App frei von rechtswidrigen und anstößigen Inhalten zu halten (Art. 6 Abs. 1 lit. f DSGVO).',
         ],
       },
       {
@@ -51,6 +56,9 @@ export const LEGAL = {
           'Supabase (Supabase Inc.): Hosting von Datenbank, Authentifizierung und Datei-Speicher. Hier werden deine Konto-, Profil- und Inhaltsdaten gespeichert. Serverstandort: EU (Frankfurt, aws-eu-central-1) – die Daten werden innerhalb der EU verarbeitet.',
           'Apple MapKit (Apple Inc.): Darstellung von Karten. Bei Kartennutzung werden technisch notwendige Daten (z. B. IP-Adresse, Kartenausschnitt) an Apple übertragen.',
           'OpenStreetMap / Nominatim (OpenStreetMap Foundation): Ortssuche. Wenn du nach einem Ort suchst, wird deine Suchanfrage an nominatim.openstreetmap.org übertragen.',
+          'Resend (Resend, Inc., USA): Versand von System-E-Mails wie Konto-Bestätigung und Passwort-Zurücksetzen. Dafür werden deine E-Mail-Adresse und der Inhalt der jeweiligen E-Mail verarbeitet. Der Versand erfolgt über Server in der EU (Irland); soweit dennoch Daten in die USA übermittelt werden, geschieht dies auf Grundlage von EU-Standardvertragsklauseln.',
+          'Apple Push Notification Service (Apple Inc.): Zustellung von Push-Benachrichtigungen. Dafür werden dein Geräte-Token und der Inhalt der jeweiligen Benachrichtigung an Apple übertragen.',
+          'OpenAI Moderation API (OpenAI, L.L.C., USA): automatische Prüfung hochgeladener Bilder auf anstößige Inhalte, bevor sie gespeichert werden. Übertragen wird nur das Bild selbst, ohne Name, E-Mail-Adresse oder Nutzerkennung. Die Übermittlung in die USA erfolgt auf Grundlage von EU-Standardvertragsklauseln.',
         ],
       },
       {
@@ -63,6 +71,7 @@ export const LEGAL = {
         heading: '6. Speicherdauer & Löschung',
         paragraphs: [
           'Deine Daten werden gespeichert, solange dein Konto besteht. Du kannst dein Konto jederzeit direkt in der App unter Einstellungen → „Account löschen" unwiderruflich löschen. Dabei werden dein Konto, deine Inhalte und deine hochgeladenen Dateien dauerhaft entfernt.',
+          'Push-Token löschen wir zusammen mit deinem Konto oder sobald Apple uns meldet, dass ein Token nicht mehr gültig ist (z. B. nach dem Löschen der App).',
         ],
       },
       {
