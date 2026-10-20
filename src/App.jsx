@@ -21,6 +21,7 @@ import Account from './pages/Account'
 import WorldMap from './pages/WorldMap'
 import Settings from './pages/Settings'
 import About from './pages/About'
+import Changelog from './pages/Changelog'
 import Social from './pages/Social'
 import FriendProfile from './pages/FriendProfile'
 import Compare from './pages/Compare'
@@ -37,6 +38,7 @@ import { PresenceProvider } from './contexts/PresenceContext'
 import { TabBarActionsProvider } from './contexts/TabBarActionsContext'
 import { SaveStatusProvider } from './contexts/SaveStatusContext'
 import SaveStatusOverlay from './components/SaveStatusOverlay'
+import ImageConsentSheet from './components/ImageConsentSheet'
 import PushBridge from './components/PushBridge'
 import Discover from './pages/Discover'
 import Legal from './pages/Legal'
@@ -61,6 +63,7 @@ function App() {
           <BrowserRouter>
           <TabBarContainer />
           <SaveStatusOverlay />
+          <ImageConsentSheet />
           <PushBridge />
         <NavStack>
         <Routes>
@@ -154,6 +157,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <About />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/changelog"
+            element={
+              <ProtectedRoute>
+                <Changelog />
               </ProtectedRoute>
             }
           />

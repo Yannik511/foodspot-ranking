@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { useSaveStatus } from '../contexts/SaveStatusContext'
 import { supabase } from '../services/supabase'
-import { assertImageAllowed } from '../services/moderation'
+import { assertImageAllowed, requestImageConsent } from '../services/moderation'
 import { scrollFieldIntoView } from '../utils/keyboard'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 import { getCategoryTerms } from '../utils/categoryTerms'
@@ -505,6 +505,10 @@ function AddFoodspot() {
   const handleImageChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    if (!(await requestImageConsent())) {
+      e.target.value = ''
+      return
+    }
 
     if (!file.type.startsWith('image/')) {
       setErrors(prev => ({ ...prev, image: 'Bitte wähle ein Bild aus' }))

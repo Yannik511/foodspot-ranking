@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../services/supabase'
-import { assertImageAllowed } from '../services/moderation'
+import { assertImageAllowed, requestImageConsent } from '../services/moderation'
 import { scrollFieldIntoView } from '../utils/keyboard'
 import { useHeaderHeight } from '../hooks/useHeaderHeight'
 import LocationPickerSheet from '../components/LocationPickerSheet'
@@ -146,6 +146,10 @@ function CreateList() {
   const handleCoverImageChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    if (!(await requestImageConsent())) {
+      e.target.value = ''
+      return
+    }
 
     // Validate file
     if (!file.type.startsWith('image/')) {

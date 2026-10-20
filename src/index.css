@@ -64,6 +64,21 @@
     @apply antialiased;
     -webkit-tap-highlight-color: transparent;
   }
+
+  /* App-Gefühl statt Website: kein Text-Markieren und kein Long-Press-Menü
+     (Link-/Bild-Vorschau). Eingabefelder bleiben normal bedienbar. */
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  input,
+  textarea,
+  [contenteditable='true'] {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
   
   html {
     scroll-behavior: smooth;

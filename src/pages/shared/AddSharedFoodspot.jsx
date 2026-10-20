@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { requestImageConsent } from '../../services/moderation'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTheme } from '../../contexts/ThemeContext'
@@ -301,10 +302,11 @@ function AddSharedFoodspot() {
     }
   }
 
-  const handlePhotoSelection = (event) => {
+  const handlePhotoSelection = async (event) => {
     const files = Array.from(event.target.files || [])
     event.target.value = ''
     if (!files.length) return
+    if (!(await requestImageConsent())) return
 
     const normalized = files.map(file => ({
       file,

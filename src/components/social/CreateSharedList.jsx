@@ -5,7 +5,7 @@ import { useTheme } from '../../contexts/ThemeContext'
 import { useHeaderHeight } from '../../hooks/useHeaderHeight'
 import UserAvatar from './UserAvatar'
 import { supabase } from '../../services/supabase'
-import { assertImageAllowed } from '../../services/moderation'
+import { assertImageAllowed, requestImageConsent } from '../../services/moderation'
 import { hapticFeedback } from '../../utils/haptics'
 import { devLog } from '../../utils/devLog'
 
@@ -272,6 +272,10 @@ function CreateSharedList({ onClose, isFullscreen = false }) {
   const handleImageSelect = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    if (!(await requestImageConsent())) {
+      e.target.value = ''
+      return
+    }
     
     if (file.size > 5 * 1024 * 1024) {
       setError('Bild ist zu groß (max. 5MB)')

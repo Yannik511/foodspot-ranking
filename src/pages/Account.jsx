@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import Avatar from '../components/Avatar'
 import { supabase } from '../services/supabase'
-import { assertImageAllowed } from '../services/moderation'
+import { assertImageAllowed, requestImageConsent } from '../services/moderation'
 import { useProfilesStore } from '../contexts/ProfileContext'
 import { useHeaderHeight, getContentPaddingTop } from '../hooks/useHeaderHeight'
 import { useScrollHeader } from '../hooks/useScrollHeader'
@@ -750,6 +750,10 @@ function Account() {
   const handleImageChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    if (!(await requestImageConsent())) {
+      e.target.value = ''
+      return
+    }
 
     if (!file.type.startsWith('image/')) {
       showToast('Bitte wähle ein Bild aus', 'error')

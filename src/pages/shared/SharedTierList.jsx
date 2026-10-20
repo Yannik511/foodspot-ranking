@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { requestImageConsent } from '../../services/moderation'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTheme } from '../../contexts/ThemeContext'
@@ -731,6 +732,7 @@ function SharedTierList() {
     event.target.value = ''
 
     if (files.length === 0) return
+    if (!(await requestImageConsent())) return
 
     const currentPhotos = spotPhotosRef.current[selectedSpot.id] || []
     const inFlight = photoUploadQueue.filter(item =>
